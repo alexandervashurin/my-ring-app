@@ -90,3 +90,22 @@ sqlite igra.db < igra.db.sql
 ```
 
 ### 4. Запуск приложения в режиме разработки
+
+```bash
+lein run
+```
+
+Приложение будет доступно по адресу: http://localhost:3000
+
+### 5. Сборка и запуск в виде JAR-файла (для продакшена)
+
+Сборка
+
+```bash
+lein uberjar
+```
+Эта команда создаст два файла:
+
+-- target/uberjar/my-ring-app-0.1.0-SNAPSHOT.jar — обычный JAR
+-- target/uberjar/my-ring-app-0.1.0-SNAPSHOT-standalone.jar — standalone JAR со всеми зависимостями (используйте этот!)
+
