@@ -67,3 +67,4 @@
 ```bash
 git clone https://github.com/alexandervashurin/my-ring-app.git
 cd my-ring-app
+lein run
