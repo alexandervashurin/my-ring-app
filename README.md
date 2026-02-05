@@ -106,6 +106,15 @@ lein uberjar
 ```
 Эта команда создаст два файла:
 
--- target/uberjar/my-ring-app-0.1.0-SNAPSHOT.jar — обычный JAR
--- target/uberjar/my-ring-app-0.1.0-SNAPSHOT-standalone.jar — standalone JAR со всеми зависимостями (используйте этот!)
+####  ```target/uberjar/my-ring-app-0.1.0-SNAPSHOT.jar``` — обычный JAR
+####  ```target/uberjar/my-ring-app-0.1.0-SNAPSHOT-standalone.jar``` — standalone JAR со всеми зависимостями (используйте этот!)
+
+Настройка порта
+
+По умолчанию приложение запускает на порту 3000. Чтобы изменить порт:
+
+```bash
+# Через переменную окружения
+PORT=8080 java -jar my-ring-app-0.1.0-SNAPSHOT-standalone.jar
+```
 
