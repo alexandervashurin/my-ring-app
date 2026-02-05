@@ -1,4 +1,5 @@
 (ns my-ring-app.core
+  (:gen-class)
   (:require [ring.adapter.jetty :as jetty]
             [ring.util.response :as resp]
             [ring.middleware.params :refer [wrap-params]]
@@ -81,8 +82,8 @@
 ;; Получение расширенных данных работников с именами справочников
 (defn get-workers-with-details []
   (try
-    (jdbc/query db-spec 
-      ["SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
+    (jdbc/query db-spec
+                ["SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
                ц.название_цеха as цех,
                с.название_системы as система,
                к.название_категории as категория,
@@ -104,8 +105,8 @@
   "Поиск работников по ФИО (регистронезависимый)"
   (try
     (let [search-term (str "%" query "%")]
-      (jdbc/query db-spec 
-        ["SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
+      (jdbc/query db-spec
+                  ["SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
                  ц.название_цеха as цех,
                  с.название_системы as система,
                  к.название_категории as категория,
@@ -122,7 +123,7 @@
              OR LOWER(r.отчество) LIKE LOWER(?)
              OR LOWER(ц.название_цеха) LIKE LOWER(?)
           ORDER BY r.фамилия, r.имя"
-         search-term search-term search-term search-term]))
+                   search-term search-term search-term search-term]))
     (catch Exception e
       (println "Ошибка при поиске:" (.getMessage e))
       [])))
@@ -131,8 +132,8 @@
 (defn get-worker-salary [worker-id year month]
   "Получение информации о зарплате работника за период"
   (try
-    (first (jdbc/query db-spec 
-      ["SELECT r.id, r.фамилия, r.имя, r.отчество, ц.название_цеха,
+    (first (jdbc/query db-spec
+                       ["SELECT r.id, r.фамилия, r.имя, r.отчество, ц.название_цеха,
                с.название_системы, у.год, у.месяц,
                у.всего_отработанных_часов,
                у.больничные_дни, у.командировочные_дни,
@@ -149,7 +150,7 @@
         LEFT JOIN Оклад о ON r.оклад_id = о.id
         LEFT JOIN Почасовые_ставки п ON r.почасовая_ставка_id = п.id
         WHERE r.id = ? AND у.год = ? AND у.месяц = ?"
-       worker-id year month]))
+                        worker-id year month]))
     (catch Exception e
       (println "Ошибка при получении зарплаты:" (.getMessage e))
       nil)))
@@ -158,8 +159,8 @@
 (defn get-worker-salary-history [worker-id]
   "Получение всей истории зарплат работника"
   (try
-    (jdbc/query db-spec 
-      ["SELECT r.фамилия, r.имя, у.год, у.месяц,
+    (jdbc/query db-spec
+                ["SELECT r.фамилия, r.имя, у.год, у.месяц,
                н.общая_зарплата,
                н.зарплата_за_больничные_дни,
                н.зарплата_за_командировочные_дни,
@@ -170,7 +171,7 @@
         LEFT JOIN Начисление_заработной_платы н ON у.id = н.учет_рабочего_времени_id
         WHERE r.id = ?
         ORDER BY у.год DESC, у.месяц DESC"
-       worker-id])
+                 worker-id])
     (catch Exception e
       (println "Ошибка при получении истории зарплаты:" (.getMessage e))
       [])))
@@ -179,8 +180,8 @@
 (defn get-worker-work-time [worker-id]
   "Получение всех записей учета рабочего времени для работника"
   (try
-    (jdbc/query db-spec 
-      ["SELECT у.id, у.год, у.месяц,
+    (jdbc/query db-spec
+                ["SELECT у.id, у.год, у.месяц,
                у.всего_часов_за_месяц_по_плану,
                у.всего_часов_в_месяц_по_факту,
                у.количество_отработанных_дней,
@@ -192,7 +193,7 @@
         FROM Учет_рабочего_времени у
         WHERE у.работник_id = ?
         ORDER BY у.год DESC, у.месяц DESC"
-       worker-id])
+                 worker-id])
     (catch Exception e
       (println "Ошибка при получении учета рабочего времени:" (.getMessage e))
       [])))
@@ -201,8 +202,8 @@
 (defn get-work-time-by-id [id]
   "Получение одной записи учета рабочего времени по ID"
   (try
-    (first (jdbc/query db-spec 
-      ["SELECT * FROM Учет_рабочего_времени WHERE id = ?" id]))
+    (first (jdbc/query db-spec
+                       ["SELECT * FROM Учет_рабочего_времени WHERE id = ?" id]))
     (catch Exception e
       (println "Ошибка при получении записи учета времени:" (.getMessage e))
       nil)))
@@ -216,7 +217,7 @@
   (GET "/" []
     (-> (resp/response (views/render-home))
         (resp/content-type "text/html; charset=utf-8")))
-  
+
   ;; Список работников с поиском
   (GET "/workers" request
     (let [params (:params request)
@@ -226,7 +227,7 @@
                     (get-workers-with-details))]
       (-> (resp/response (views/render-workers-page workers query))
           (resp/content-type "text/html; charset=utf-8"))))
-  
+
   ;; Форма создания работника
   (GET "/workers/new" request
     (let [params (:params request)
@@ -239,11 +240,11 @@
           ставки (get-spravochnik "Почасовые_ставки")
           errors (when-let [err-str (:errors params)]
                    (clojure.string/split err-str #","))]
-      (-> (resp/response (views/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки 
+      (-> (resp/response (views/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
                                                        :errors errors
                                                        :worker-data params))
           (resp/content-type "text/html; charset=utf-8"))))
-  
+
   ;; Форма редактирования работника
   (GET "/workers/:id/edit" [id :as request]
     (let [params (:params request)
@@ -259,12 +260,12 @@
                    (clojure.string/split err-str #","))]
       (if worker
         (-> (resp/response (views/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
-                                                           :errors errors))
+                                                          :errors errors))
             (resp/content-type "text/html; charset=utf-8"))
         (-> (resp/response "Работник не найден")
             (resp/status 404)
             (resp/content-type "text/html; charset=utf-8")))))
-  
+
   ;; Создание работника - С ВАЛИДАЦИЕЙ
   (POST "/workers/create" request
     (let [params (:params request)
@@ -308,7 +309,7 @@
                                                            :errors (:errors validation-result)
                                                            :worker-data params))
               (resp/content-type "text/html; charset=utf-8"))))))
-  
+
   ;; Обновление работника - С ВАЛИДАЦИЕЙ
   (POST "/workers/:id/update" [id :as request]
     (let [params (:params request)
@@ -338,7 +339,7 @@
                   ставки (get-spravochnik "Почасовые_ставки")
                   worker (get-record-by-id "Работник" id)]
               (-> (resp/response (views/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
-                                                               :errors [(:message result)]))
+                                                                :errors [(:message result)]))
                   (resp/content-type "text/html; charset=utf-8")))))
         ;; Валидация не прошла
         (let [цеха (get-spravochnik "Цех")
@@ -350,14 +351,14 @@
               ставки (get-spravochnik "Почасовые_ставки")
               worker (merge (get-record-by-id "Работник" id) params)]
           (-> (resp/response (views/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
-                                                           :errors (:errors validation-result)))
+                                                            :errors (:errors validation-result)))
               (resp/content-type "text/html; charset=utf-8"))))))
-  
+
   ;; Удаление работника
   (POST "/workers/:id/delete" [id]
     (let [result (delete-record "Работник" (Integer/parseInt id))]
       (resp/redirect "/workers")))
-  
+
   ;; Страница зарплаты работника
   (GET "/workers/:id/salary" [id]
     (let [worker (get-record-by-id "Работник" id)
@@ -367,7 +368,7 @@
         (-> (resp/response (views/render-salary-page worker salary-info salary-history))
             (resp/content-type "text/html; charset=utf-8"))
         (resp/redirect "/workers"))))
-  
+
   ;; НОВЫЙ РОУТ: Страница учета рабочего времени
   (GET "/workers/:id/work-time" [id]
     (let [worker (get-record-by-id "Работник" id)
@@ -376,7 +377,7 @@
         (-> (resp/response (views/render-work-time-page worker work-time-records))
             (resp/content-type "text/html; charset=utf-8"))
         (resp/redirect "/workers"))))
-  
+
   ;; НОВЫЙ РОУТ: Форма редактирования записи учета времени
   (GET "/work-time/:id/edit" [id]
     (let [work-time-record (get-work-time-by-id id)
@@ -386,7 +387,7 @@
         (-> (resp/response (views/render-edit-work-time-form work-time-record worker))
             (resp/content-type "text/html; charset=utf-8"))
         (resp/redirect "/workers"))))
-  
+
   ;; НОВЫЙ РОУТ: Обновление записи учета времени
   (POST "/work-time/:id/update" [id :as request]
     (let [params (:params request)
@@ -414,7 +415,7 @@
               worker (get-record-by-id "Работник" (:работник_id work-time-record))]
           (-> (resp/response (views/render-edit-work-time-form work-time-record worker :errors (:errors validation-result)))
               (resp/content-type "text/html; charset=utf-8"))))))
-  
+
   ;; Просмотр всех таблиц
   (GET "/db" []
     (let [tables (get-tables)
@@ -424,11 +425,11 @@
                             tables)]
       (-> (resp/response (views/render-all-tables-page tables-data))
           (resp/content-type "text/html; charset=utf-8"))))
-  
+
   (route/not-found
-    (-> (resp/response "Страница не найдена")
-        (resp/status 404)
-        (resp/content-type "text/html; charset=utf-8"))))
+   (-> (resp/response "Страница не найдена")
+       (resp/status 404)
+       (resp/content-type "text/html; charset=utf-8"))))
 
 ;; Middleware для обработки параметров
 (def app
