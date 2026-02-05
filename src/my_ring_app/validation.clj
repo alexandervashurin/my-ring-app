@@ -87,3 +87,74 @@
 (defn validate-worker-update [data]
   "Валидация данных при обновлении работника (более мягкая)"
   (validate-worker data))
+
+;; НОВАЯ ФУНКЦИЯ: Валидация учета рабочего времени
+(defn validate-work-time [data]
+  "Валидация данных учета рабочего времени"
+  (let [errors (atom [])]
+    
+    ;; Проверка года
+    (when (or (empty? (:год data))
+              (str/blank? (:год data)))
+      (swap! errors conj "Год обязателен"))
+    
+    (when (and (:год data)
+               (not (re-matches #"^\d{4}$" (:год data))))
+      (swap! errors conj "Неверный формат года (ожидается 4 цифры)"))
+    
+    ;; Проверка месяца
+    (when (or (empty? (:месяц data))
+              (str/blank? (:месяц data)))
+      (swap! errors conj "Месяц обязателен"))
+    
+    (when (and (:месяц data)
+               (not (re-matches #"^\d{1,2}$" (:месяц data))))
+      (swap! errors conj "Неверный формат месяца"))
+    
+    (when (and (:месяц data)
+               (let [month (Integer/parseInt (:месяц data))]
+                 (or (< month 1) (> month 12))))
+      (swap! errors conj "Месяц должен быть от 1 до 12"))
+    
+    ;; Проверка плановых часов
+    (when (or (empty? (:всего_часов_за_месяц_по_плану data))
+              (str/blank? (:всего_часов_за_месяц_по_плану data)))
+      (swap! errors conj "Плановые часы обязательны"))
+    
+    (when (and (:всего_часов_за_месяц_по_плану data)
+               (not (re-matches #"^\d+$" (:всего_часов_за_месяц_по_плану data))))
+      (swap! errors conj "Плановые часы должны быть числом"))
+    
+    ;; Проверка фактических часов
+    (when (or (empty? (:всего_часов_в_месяц_по_факту data))
+              (str/blank? (:всего_часов_в_месяц_по_факту data)))
+      (swap! errors conj "Фактические часы обязательны"))
+    
+    (when (and (:всего_часов_в_месяц_по_факту data)
+               (not (re-matches #"^\d+$" (:всего_часов_в_месяц_по_факту data))))
+      (swap! errors conj "Фактические часы должны быть числом"))
+    
+    ;; Проверка отработанных дней
+    (when (and (seq (:количество_отработанных_дней data))
+               (not (re-matches #"^\d+$" (:количество_отработанных_дней data))))
+      (swap! errors conj "Отработанные дни должны быть числом"))
+    
+    ;; Проверка рабочих часов в день
+    (when (and (seq (:количество_рабочих_часов_в_день data))
+               (not (re-matches #"^\d+$" (:количество_рабочих_часов_в_день data))))
+      (swap! errors conj "Рабочие часы в день должны быть числом"))
+    
+    ;; Проверка больничных дней
+    (when (and (seq (:больничные_дни data))
+               (not (re-matches #"^\d+$" (:больничные_дни data))))
+      (swap! errors conj "Больничные дни должны быть числом"))
+    
+    ;; Проверка командировочных дней
+    (when (and (seq (:командировочные_дни data))
+               (not (re-matches #"^\d+$" (:командировочные_дни data))))
+      (swap! errors conj "Командировочные дни должны быть числом"))
+    
+    ;; Возвращаем результат
+    (if (empty? @errors)
+      {:valid? true}
+      {:valid? false :errors @errors})))
