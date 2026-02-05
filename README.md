@@ -66,23 +66,27 @@
 
 ```bash
 git clone https://github.com/alexandervashurin/my-ring-app.git
-cd my-ring-app ```
+cd my-ring-app 
+```
 
 ### 2. Установка зависимостей
 
 ```bash
-lein deps ```
+lein deps 
+```
 
 ### 3. Подготовка базы данных
 
 Убедитесь, что файл igra.db находится в корне проекта:
 
 ```bash
-ls -la igra.db ```
+ls -la igra.db 
+```
 
 Если базы данных нет, создайте её из дампа:
 
 ```bash
-sqlite igra.db < igra.db.sql ```
+sqlite igra.db < igra.db.sql 
+```
 
 ### 4. Запуск приложения в режиме разработки
