@@ -65,5 +65,5 @@
 ### 1. Клонирование репозитория
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/my-ring-app.git
+git clone https://github.com/alexandervashurin/my-ring-app.git
 cd my-ring-app
