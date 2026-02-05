@@ -2,3 +2,5 @@
 /.lein-*
 *.class
 *.jar
+./lsp
+./clj-kondo

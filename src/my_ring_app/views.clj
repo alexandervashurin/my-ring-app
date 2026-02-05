@@ -90,6 +90,19 @@
         selected (if (= item-id (str selected-value)) " selected" "")]
     (str "<option value='" item-id "'" selected ">" item-label "</option>")))
 
+(defn- render-error-messages [errors]
+  "Рендер списка ошибок валидации"
+  (when (seq errors)
+    (str "<div class='alert alert-error' style='margin-bottom: 20px;'>"
+         "<strong>⚠️ Ошибки валидации:</strong>"
+         "<ul style='margin: 10px 0 0 20px;'>"
+         (apply str 
+           (map (fn [error]
+                  (str "<li>" error "</li>"))
+                errors))
+         "</ul>"
+         "</div>")))
+
 ;; ======================================================================
 ;; Главная страница
 ;; ======================================================================
@@ -160,8 +173,10 @@
 ;; Форма работника
 ;; ======================================================================
 
-(defn render-worker-form [mode worker-data цеха системы_оплаты категории разряды режимы оклады ставки]
-  "Рендер формы создания/редактирования работника"
+;; ИЗМЕНЕНО: Теперь функция принимает мапу опций в конце
+(defn render-worker-form [mode worker-data цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
+  "Рендер формы создания/редактирования работника
+   Опции: {:errors [...], :worker-data {...}}"
   (let [цех-id (:цех_id worker-data)
         система-id (:система_оплаты_id worker-data)
         категория-id (:категория_работника_id worker-data)
@@ -170,10 +185,14 @@
         оклад-id (:оклад_id worker-data)
         ставка-id (:почасовая_ставка_id worker-data)
         form-title (if (= mode :create) "➕ Добавить работника" "✏️ Редактировать работника")
-        form-action (if (= mode :edit) (str "/workers/" (:id worker-data) "/update") "/workers/create")]
+        form-action (if (= mode :edit) (str "/workers/" (:id worker-data) "/update") "/workers/create")
+        errors (:errors options)]
     
     (str "<div class='form-container'>"
          "<h2>" form-title "</h2>"
+         
+         ;; Отображение ошибок валидации
+         (render-error-messages errors)
          
          "<form method='POST' action='" form-action "' style='background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>"
          
@@ -300,17 +319,23 @@
            };
          </script>")))
 
-(defn render-new-worker-page [цеха системы_оплаты категории разряды режимы оклады ставки]
-  "Рендер страницы создания нового работника"
-  (wrap-html 
-    (render-worker-form :create {} цеха системы_оплаты категории разряды режимы оклады ставки)
-    "Новый работник"))
+;; ИЗМЕНЕНО: Упрощенные функции для страниц
+(defn render-new-worker-page [цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
+  "Рендер страницы создания нового работника
+   Опции: {:errors [...], :worker-data {...}}"
+  (let [errors (:errors options)
+        worker-data (:worker-data options)]
+    (wrap-html 
+      (render-worker-form :create (or worker-data {}) цеха системы_оплаты категории разряды режимы оклады ставки {:errors errors})
+      "Новый работник")))
 
-(defn render-edit-worker-page [worker цеха системы_оплаты категории разряды режимы оклады ставки]
-  "Рендер страницы редактирования работника"
-  (wrap-html 
-    (render-worker-form :edit worker цеха системы_оплаты категории разряды режимы оклады ставки)
-    "Редактировать работника"))
+(defn render-edit-worker-page [worker цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
+  "Рендер страницы редактирования работника
+   Опции: {:errors [...]}"
+  (let [errors (:errors options)]
+    (wrap-html 
+      (render-worker-form :edit worker цеха системы_оплаты категории разряды режимы оклады ставки {:errors errors})
+      "Редактировать работника")))
 
 ;; ======================================================================
 ;; Страница всех таблиц

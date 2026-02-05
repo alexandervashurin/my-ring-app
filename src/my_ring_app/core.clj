@@ -7,7 +7,8 @@
             [compojure.core :refer [defroutes GET POST DELETE]]
             [compojure.route :as route]
             [clojure.java.jdbc :as jdbc]
-            [my-ring-app.views :as views]))
+            [my-ring-app.views :as views]
+            [my-ring-app.validation :as validation]))
 
 ;; Подключение к SQLite БД
 (def db-spec
@@ -114,88 +115,131 @@
           (resp/content-type "text/html; charset=utf-8"))))
   
   ;; Форма создания работника
-  (GET "/workers/new" []
-    (let [цеха (get-spravochnik "Цех")
-          системы_оплаты (get-spravochnik "Система_оплаты")
-          категории (get-spravochnik "Категория_работника")
-          разряды (get-spravochnik "Разряд")
-          режимы (get-spravochnik "Режим_работы")
-          оклады (get-spravochnik "Оклад")
-          ставки (get-spravochnik "Почасовые_ставки")]
-      (-> (resp/response (views/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки))
-          (resp/content-type "text/html; charset=utf-8"))))
-  
-  ;; Форма редактирования работника
-  (GET "/workers/:id/edit" [id]
-    (let [worker (get-record-by-id "Работник" id)
+  (GET "/workers/new" request
+    (let [params (:params request)
           цеха (get-spravochnik "Цех")
           системы_оплаты (get-spravochnik "Система_оплаты")
           категории (get-spravochnik "Категория_работника")
           разряды (get-spravochnik "Разряд")
           режимы (get-spravochnik "Режим_работы")
           оклады (get-spravochnik "Оклад")
-          ставки (get-spravochnik "Почасовые_ставки")]
+          ставки (get-spravochnik "Почасовые_ставки")
+          ;; Если есть ошибки из параметров, передаем их
+          errors (when-let [err-str (:errors params)]
+                   (clojure.string/split err-str #","))]
+      (-> (resp/response (views/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки 
+                                                       :errors errors
+                                                       :worker-data params))
+          (resp/content-type "text/html; charset=utf-8"))))
+  
+  ;; Форма редактирования работника
+  (GET "/workers/:id/edit" [id :as request]
+    (let [params (:params request)
+          worker (get-record-by-id "Работник" id)
+          цеха (get-spravochnik "Цех")
+          системы_оплаты (get-spravochnik "Система_оплаты")
+          категории (get-spravochnik "Категория_работника")
+          разряды (get-spravochnik "Разряд")
+          режимы (get-spravochnik "Режим_работы")
+          оклады (get-spravochnik "Оклад")
+          ставки (get-spravochnik "Почасовые_ставки")
+          errors (when-let [err-str (:errors params)]
+                   (clojure.string/split err-str #","))]
       (if worker
-        (-> (resp/response (views/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки))
+        (-> (resp/response (views/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
+                                                           :errors errors))
             (resp/content-type "text/html; charset=utf-8"))
         (-> (resp/response "Работник не найден")
             (resp/status 404)
             (resp/content-type "text/html; charset=utf-8")))))
   
-  ;; Создание работника
+  ;; Создание работника - С ВАЛИДАЦИЕЙ
   (POST "/workers/create" request
     (let [params (:params request)
-          data {:фамилия (:фамилия params)
-                :имя (:имя params)
-                :отчество (:отчество params)
-                :дата_приема (:дата_приема params)
-                :цех_id (Integer/parseInt (:цех_id params))
-                :система_оплаты_id (Integer/parseInt (:система_оплаты_id params))
-                :категория_работника_id (Integer/parseInt (:категория_работника_id params))
-                :разряд_id (Integer/parseInt (:разряд_id params))
-                :режим_работы_id (Integer/parseInt (:режим_работы_id params))
-                :оклад_id (when (seq (:оклад_id params)) (Integer/parseInt (:оклад_id params)))
-                :почасовая_ставка_id (when (seq (:почасовая_ставка_id params)) (Integer/parseInt (:почасовая_ставка_id params)))}]
-      (let [result (create-record "Работник" data)]
-        (if (:success result)
-          (resp/redirect "/workers")
-          (let [цеха (get-spravochnik "Цех")
-                системы_оплаты (get-spravochnik "Система_оплаты")
-                категории (get-spravochnik "Категория_работника")
-                разряды (get-spravochnik "Разряд")
-                режимы (get-spravochnik "Режим_работы")
-                оклады (get-spravochnik "Оклад")
-                ставки (get-spravochnik "Почасовые_ставки")]
-            (-> (resp/response (views/render-error-page (:message result)))
-                (resp/content-type "text/html; charset=utf-8")))))))
+          validation-result (validation/validate-worker params)]
+      (if (:valid? validation-result)
+        ;; Валидация прошла успешно
+        (let [data {:фамилия (:фамилия params)
+                    :имя (:имя params)
+                    :отчество (:отчество params)
+                    :дата_приема (:дата_приема params)
+                    :цех_id (Integer/parseInt (:цех_id params))
+                    :система_оплаты_id (Integer/parseInt (:система_оплаты_id params))
+                    :категория_работника_id (Integer/parseInt (:категория_работника_id params))
+                    :разряд_id (Integer/parseInt (:разряд_id params))
+                    :режим_работы_id (Integer/parseInt (:режим_работы_id params))
+                    :оклад_id (when (seq (:оклад_id params)) (Integer/parseInt (:оклад_id params)))
+                    :почасовая_ставка_id (when (seq (:почасовая_ставка_id params)) (Integer/parseInt (:почасовая_ставка_id params)))}
+              result (create-record "Работник" data)]
+          (if (:success result)
+            (resp/redirect "/workers")
+            (let [цеха (get-spravochnik "Цех")
+                  системы_оплаты (get-spravochnik "Система_оплаты")
+                  категории (get-spravochnik "Категория_работника")
+                  разряды (get-spravochnik "Разряд")
+                  режимы (get-spravochnik "Режим_работы")
+                  оклады (get-spravochnik "Оклад")
+                  ставки (get-spravochnik "Почасовые_ставки")]
+              (-> (resp/response (views/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
+                                                               :errors [(:message result)]
+                                                               :worker-data params))
+                  (resp/content-type "text/html; charset=utf-8")))))
+        ;; Валидация не прошла
+        (let [цеха (get-spravochnik "Цех")
+              системы_оплаты (get-spravochnik "Система_оплаты")
+              категории (get-spravochnik "Категория_работника")
+              разряды (get-spravochnik "Разряд")
+              режимы (get-spravochnik "Режим_работы")
+              оклады (get-spravochnik "Оклад")
+              ставки (get-spravochnik "Почасовые_ставки")]
+          (-> (resp/response (views/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
+                                                           :errors (:errors validation-result)
+                                                           :worker-data params))
+              (resp/content-type "text/html; charset=utf-8"))))))
   
-  ;; Обновление работника
+  ;; Обновление работника - С ВАЛИДАЦИЕЙ
   (POST "/workers/:id/update" [id :as request]
     (let [params (:params request)
-          data {:фамилия (:фамилия params)
-                :имя (:имя params)
-                :отчество (:отчество params)
-                :дата_приема (:дата_приема params)
-                :цех_id (Integer/parseInt (:цех_id params))
-                :система_оплаты_id (Integer/parseInt (:система_оплаты_id params))
-                :категория_работника_id (Integer/parseInt (:категория_работника_id params))
-                :разряд_id (Integer/parseInt (:разряд_id params))
-                :режим_работы_id (Integer/parseInt (:режим_работы_id params))
-                :оклад_id (when (seq (:оклад_id params)) (Integer/parseInt (:оклад_id params)))
-                :почасовая_ставка_id (when (seq (:почасовая_ставка_id params)) (Integer/parseInt (:почасовая_ставка_id params)))}]
-      (let [result (update-record "Работник" (Integer/parseInt id) data)]
-        (if (:success result)
-          (resp/redirect "/workers")
-          (let [цеха (get-spravochnik "Цех")
-                системы_оплаты (get-spravochnik "Система_оплаты")
-                категории (get-spravochnik "Категория_работника")
-                разряды (get-spravochnik "Разряд")
-                режимы (get-spravochnik "Режим_работы")
-                оклады (get-spravochnik "Оклад")
-                ставки (get-spravochnik "Почасовые_ставки")
-                worker (get-record-by-id "Работник" id)]
-            (-> (resp/response (views/render-error-page (:message result)))
-                (resp/content-type "text/html; charset=utf-8")))))))
+          validation-result (validation/validate-worker-update params)]
+      (if (:valid? validation-result)
+        ;; Валидация прошла успешно
+        (let [data {:фамилия (:фамилия params)
+                    :имя (:имя params)
+                    :отчество (:отчество params)
+                    :дата_приема (:дата_приема params)
+                    :цех_id (Integer/parseInt (:цех_id params))
+                    :система_оплаты_id (Integer/parseInt (:система_оплаты_id params))
+                    :категория_работника_id (Integer/parseInt (:категория_работника_id params))
+                    :разряд_id (Integer/parseInt (:разряд_id params))
+                    :режим_работы_id (Integer/parseInt (:режим_работы_id params))
+                    :оклад_id (when (seq (:оклад_id params)) (Integer/parseInt (:оклад_id params)))
+                    :почасовая_ставка_id (when (seq (:почасовая_ставка_id params)) (Integer/parseInt (:почасовая_ставка_id params)))}
+              result (update-record "Работник" (Integer/parseInt id) data)]
+          (if (:success result)
+            (resp/redirect "/workers")
+            (let [цеха (get-spravochnik "Цех")
+                  системы_оплаты (get-spravochnik "Система_оплаты")
+                  категории (get-spravochnik "Категория_работника")
+                  разряды (get-spravochnik "Разряд")
+                  режимы (get-spravochnik "Режим_работы")
+                  оклады (get-spravochnik "Оклад")
+                  ставки (get-spravochnik "Почасовые_ставки")
+                  worker (get-record-by-id "Работник" id)]
+              (-> (resp/response (views/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
+                                                               :errors [(:message result)]))
+                  (resp/content-type "text/html; charset=utf-8")))))
+        ;; Валидация не прошла
+        (let [цеха (get-spravochnik "Цех")
+              системы_оплаты (get-spravochnik "Система_оплаты")
+              категории (get-spravochnik "Категория_работника")
+              разряды (get-spravochnik "Разряд")
+              режимы (get-spravochnik "Режим_работы")
+              оклады (get-spravochnik "Оклад")
+              ставки (get-spravochnik "Почасовые_ставки")
+              worker (merge (get-record-by-id "Работник" id) params)]
+          (-> (resp/response (views/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
+                                                           :errors (:errors validation-result)))
+              (resp/content-type "text/html; charset=utf-8"))))))
   
   ;; Удаление работника
   (POST "/workers/:id/delete" [id]
