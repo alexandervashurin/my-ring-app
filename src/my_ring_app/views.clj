@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]))
 
 ;; ======================================================================
-;; Вспомогательные функции (определяем сначала!)
+;; Вспомогательные функции (определяем в правильном порядке!)
 ;; ======================================================================
 
 (defn- generate-css []
@@ -91,7 +91,7 @@
     (str "<option value='" item-id "'" selected ">" item-label "</option>")))
 
 (defn- render-error-messages [errors]
-  "Рендер списка ошибок валидации"
+  "Рендер списка ошибок валидации (возвращает только блок ошибок, НЕ всю страницу)"
   (when (seq errors)
     (str "<div class='alert alert-error' style='margin-bottom: 20px;'>"
          "<strong>⚠️ Ошибки валидации:</strong>"
@@ -117,7 +117,7 @@
 ;; Страница списка работников
 ;; ======================================================================
 
-(defn render-workers-table [workers]
+(defn render-workers-table [workers search-query]
   "Рендер таблицы работников"
   (let [table-content (if (empty? workers)
                         "<div class='empty-state'>Нет работников в базе данных</div>"
@@ -162,21 +162,39 @@
          "<h2>📋 Список работников</h2>"
          "<a href='/workers/new' class='btn btn-success'>➕ Добавить работника</a>"
          "</div>"
+         
+         ;; Форма поиска
+         "<div style='background: #f0f4ff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #bbdefb;'>"
+         "<form method='GET' action='/workers' style='display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;'>"
+         "<div style='flex: 1; min-width: 250px;'>"
+         "<label style='display: block; margin-bottom: 5px; font-weight: 600; color: #1976d2;'>Поиск по ФИО или цеху:</label>"
+         "<input type='text' name='search' placeholder='Введите фамилию, имя, отчество или цех...' value='" (or search-query "") "'"
+         " style='width: 100%; padding: 12px; border: 2px solid #bbdefb; border-radius: 6px; font-size: 14px; transition: border-color 0.3s;'>"
+         "</div>"
+         "<button type='submit' class='btn btn-primary' style='padding: 12px 24px; white-space: nowrap;'>🔍 Найти</button>"
+         (when search-query
+           (str "<a href='/workers' class='btn btn-secondary' style='padding: 12px 24px; white-space: nowrap; margin-left: 10px;'>Сбросить фильтр</a>"
+                "<div style='margin-top: 15px; padding: 12px; background: #e3f2fd; border-radius: 6px; color: #1976d2; font-size: 14px;'>"
+                "<strong>Результаты поиска:</strong> найдено " (count workers) " работников по запросу: <em>\"" search-query "\"</em>"
+                "</div>"))
+         "</form>"
+         "</div>"
+         
          table-content
          "</div>")))
 
-(defn render-workers-page [workers]
+(defn render-workers-page [workers search-query]
   "Рендер страницы списка работников"
-  (wrap-html (render-workers-table workers) "Работники"))
+  (wrap-html (render-workers-table workers search-query) "Работники"))
 
 ;; ======================================================================
 ;; Форма работника
 ;; ======================================================================
 
-;; ИЗМЕНЕНО: Теперь функция принимает мапу опций в конце
+;; Функция принимает опции как последний аргумент (мапу)
 (defn render-worker-form [mode worker-data цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
   "Рендер формы создания/редактирования работника
-   Опции: {:errors [...], :worker-data {...}}"
+   Опции: {:errors [...]}"
   (let [цех-id (:цех_id worker-data)
         система-id (:система_оплаты_id worker-data)
         категория-id (:категория_работника_id worker-data)
@@ -319,7 +337,6 @@
            };
          </script>")))
 
-;; ИЗМЕНЕНО: Упрощенные функции для страниц
 (defn render-new-worker-page [цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
   "Рендер страницы создания нового работника
    Опции: {:errors [...], :worker-data {...}}"
@@ -381,29 +398,3 @@
   (wrap-html 
     (str "<div class='alert alert-error'>" message "</div>")
     "Ошибка"))
-
-;; ======================================================================
-;; Страница успеха
-;; ======================================================================
-
-(defn render-success-page [message redirect-url]
-  "Рендер страницы успеха с автоматическим редиректом"
-  (str "<!DOCTYPE html>"
-       "<html lang='ru'>"
-       "<head>"
-       "<meta charset='UTF-8'>"
-       "<meta http-equiv='refresh' content='2;url=" redirect-url "'>"
-       "<title>Успех</title>"
-       (generate-css)
-       "</head>"
-       "<body>"
-       "<div class='container'>"
-       (generate-header)
-       "<div class='alert alert-success' style='text-align: center; margin-top: 50px;'>"
-       "<h2>✅ " message "</h2>"
-       "<p>Перенаправление через 2 секунды...</p>"
-       "<a href='" redirect-url "' class='btn btn-primary' style='margin-top: 20px;'>Перейти сейчас</a>"
-       "</div>"
-       "</div>"
-       "</body>"
-       "</html>"))

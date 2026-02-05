@@ -7,6 +7,7 @@
             [compojure.core :refer [defroutes GET POST DELETE]]
             [compojure.route :as route]
             [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]  ;; ДОБАВЛЕНО: импорт для работы со строками
             [my-ring-app.views :as views]
             [my-ring-app.validation :as validation]))
 
@@ -98,6 +99,34 @@
       (println "Ошибка при получении работников:" (.getMessage e))
       [])))
 
+;; НОВАЯ ФУНКЦИЯ: Поиск работников
+(defn search-workers [query]
+  "Поиск работников по ФИО (регистронезависимый)"
+  (try
+    (let [search-term (str "%" query "%")]
+      (jdbc/query db-spec 
+        ["SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
+                 ц.название_цеха as цех,
+                 с.название_системы as система,
+                 к.название_категории as категория,
+                 рз.номер_разряда as разряд,
+                 рм.название_режима as режим
+          FROM Работник r
+          LEFT JOIN Цех ц ON r.цех_id = ц.id
+          LEFT JOIN Система_оплаты с ON r.система_оплаты_id = с.id
+          LEFT JOIN Категория_работника к ON r.категория_работника_id = к.id
+          LEFT JOIN Разряд рз ON r.разряд_id = рз.id
+          LEFT JOIN Режим_работы рм ON r.режим_работы_id = рм.id
+          WHERE LOWER(r.фамилия) LIKE LOWER(?) 
+             OR LOWER(r.имя) LIKE LOWER(?) 
+             OR LOWER(r.отчество) LIKE LOWER(?)
+             OR LOWER(ц.название_цеха) LIKE LOWER(?)
+          ORDER BY r.фамилия, r.имя"
+         search-term search-term search-term search-term]))
+    (catch Exception e
+      (println "Ошибка при поиске:" (.getMessage e))
+      [])))
+
 ;; ======================================================================
 ;; Контроллеры (Controller)
 ;; ======================================================================
@@ -108,10 +137,14 @@
     (-> (resp/response (views/render-home))
         (resp/content-type "text/html; charset=utf-8")))
   
-  ;; Список работников
-  (GET "/workers" []
-    (let [workers (get-workers-with-details)]
-      (-> (resp/response (views/render-workers-page workers))
+  ;; Список работников с поиском
+  (GET "/workers" request
+    (let [params (:params request)
+          query (:search params)
+          workers (if (and query (not (str/blank? query)))
+                    (search-workers query)
+                    (get-workers-with-details))]
+      (-> (resp/response (views/render-workers-page workers query))
           (resp/content-type "text/html; charset=utf-8"))))
   
   ;; Форма создания работника
