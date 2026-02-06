@@ -10,7 +10,13 @@
                  [ring/ring-defaults "0.3.3"]
                  [ring/ring-json "0.5.1"]
                  [org.clojure/java.jdbc "0.7.12"]
-                 [org.xerial/sqlite-jdbc "3.42.0.0"]]
+                 [org.xerial/sqlite-jdbc "3.42.0.0"]
+                 [clojure-csv/clojure-csv "2.0.2"]
+                 ;; Логирование
+                 [org.clojure/tools.logging "1.2.4"]
+                 [ch.qos.logback/logback-classic "1.4.11"]
+                 [ch.qos.logback/logback-core "1.4.11"]
+                 [org.slf4j/slf4j-api "2.0.9"]]
   :main ^:skip-aot my-ring-app.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all
