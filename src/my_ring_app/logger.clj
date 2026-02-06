@@ -1,21 +1,18 @@
 (ns my-ring-app.logger
-  (:require [clojure.tools.logging :as log]
-            [java.time :as time]))
-
-;; Логгер для аудита действий
-(def audit-logger (log/logger "my-ring-app.audit"))
+  (:require [clojure.tools.logging :as log])
+  (:import [java.time LocalDateTime]))
 
 (defn log-audit
   "Логирование действий пользователей (аудит)"
   [action entity-type entity-id & [details]]
-  (let [timestamp (time/local-date-time (time/clock))
+  (let [timestamp (LocalDateTime/now)
         log-message (format "[%s] ACTION: %s | ENTITY: %s | ID: %s | DETAILS: %s"
-                           timestamp
-                           action
-                           entity-type
-                           entity-id
-                           (or details "-"))]
-    (log/info audit-logger log-message)))
+                            timestamp
+                            action
+                            entity-type
+                            entity-id
+                            (or details "-"))]
+    (log/info log-message)))  ; ← убран аргумент audit-logger
 
 (defn log-request
   "Логирование входящих запросов"
@@ -34,9 +31,9 @@
   "Логирование ошибок"
   [error message & [context]]
   (let [error-message (format "ERROR: %s | MESSAGE: %s | CONTEXT: %s"
-                             (.getMessage error)
-                             message
-                             (or context "-"))]
+                              (.getMessage error)
+                              message
+                              (or context "-"))]
     (log/error error-message)))
 
 (defn log-info
