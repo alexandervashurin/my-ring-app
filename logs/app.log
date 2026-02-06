@@ -1,5 +1,0 @@
-2026-02-06 11:46:07.567 [main] INFO  org.eclipse.jetty.util.log - Logging initialized @1082ms to org.eclipse.jetty.util.log.Slf4jLog
-2026-02-06 11:46:49.397 [main] INFO  org.eclipse.jetty.util.log - Logging initialized @989ms to org.eclipse.jetty.util.log.Slf4jLog
-2026-02-06 11:55:59.460 [main] INFO  org.eclipse.jetty.util.log - Logging initialized @1110ms to org.eclipse.jetty.util.log.Slf4jLog
-2026-02-06 11:58:25.206 [main] INFO  org.eclipse.jetty.util.log - Logging initialized @1032ms to org.eclipse.jetty.util.log.Slf4jLog
-2026-02-06 12:11:46.990 [main] INFO  org.eclipse.jetty.util.log - Logging initialized @936ms to org.eclipse.jetty.util.log.Slf4jLog
