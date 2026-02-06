@@ -2,7 +2,12 @@
   (:require [ring.util.response :as resp]
             [clojure.string :as str]
             [my-ring-app.model :as model]
-            [my-ring-app.views :as views]
+            [my-ring-app.views.layout :as layout]
+            [my-ring-app.views.home :as home]
+            [my-ring-app.views.workers :as workers]          ; ← для форм работников
+            [my-ring-app.views.salary :as salary]            ; ← для страницы зарплаты
+            [my-ring-app.views.work-time :as work-time]      ; ← для учета времени
+            [my-ring-app.views.tables :as tables]            ; ← для всех таблиц
             [my-ring-app.validation :as validation]
             [my-ring-app.logger :as logger]))
 
@@ -12,7 +17,7 @@
 
 (defn home-page []
   (logger/log-info "Открыта главная страница")
-  (-> (resp/response (views/render-home))
+  (-> (resp/response (home/render-home))
       (resp/content-type "text/html; charset=utf-8")))
 
 ;; ======================================================================
@@ -26,7 +31,7 @@
                   (model/get-workers-with-details))]
     (logger/log-info (format "Открыт список работников (поиск: %s, найдено: %d)"
                              (or query "-") (count workers)))
-    (-> (resp/response (views/render-workers-page workers query))
+    (-> (resp/response (workers/render-workers-page workers query))
         (resp/content-type "text/html; charset=utf-8"))))
 
 (defn new-worker-form [params]
@@ -40,9 +45,9 @@
         ставки (model/get-spravochnik "Почасовые_ставки")
         errors (when-let [err-str (:errors params)]
                  (clojure.string/split err-str #","))]
-    (-> (resp/response (views/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
-                                                     :errors errors
-                                                     :worker-data params))
+    (-> (resp/response (workers/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
+                                                       :errors errors
+                                                       :worker-data params))
         (resp/content-type "text/html; charset=utf-8"))))
 
 (defn edit-worker-form [id params]
@@ -58,8 +63,8 @@
         errors (when-let [err-str (:errors params)]
                  (clojure.string/split err-str #","))]
     (if worker
-      (-> (resp/response (views/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
-                                                        :errors errors))
+      (-> (resp/response (workers/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
+                                                           :errors errors))
           (resp/content-type "text/html; charset=utf-8"))
       (-> (resp/response "Работник не найден")
           (resp/status 404)
@@ -97,9 +102,9 @@
                   режимы (model/get-spravochnik "Режим_работы")
                   оклады (model/get-spravochnik "Оклад")
                   ставки (model/get-spravochnik "Почасовые_ставки")]
-              (-> (resp/response (views/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
-                                                               :errors [(:message result)]
-                                                               :worker-data params))
+              (-> (resp/response (workers/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
+                                                                 :errors [(:message result)]
+                                                                 :worker-data params))
                   (resp/content-type "text/html; charset=utf-8"))))))
       ;; Валидация не прошла
       (do
@@ -111,9 +116,9 @@
               режимы (model/get-spravochnik "Режим_работы")
               оклады (model/get-spravochnik "Оклад")
               ставки (model/get-spravochnik "Почасовые_ставки")]
-          (-> (resp/response (views/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
-                                                           :errors (:errors validation-result)
-                                                           :worker-data params))
+          (-> (resp/response (workers/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
+                                                             :errors (:errors validation-result)
+                                                             :worker-data params))
               (resp/content-type "text/html; charset=utf-8")))))))
 
 (defn update-worker [id params]
@@ -149,8 +154,8 @@
                   оклады (model/get-spravochnik "Оклад")
                   ставки (model/get-spravochnik "Почасовые_ставки")
                   worker (model/get-record-by-id "Работник" id)]
-              (-> (resp/response (views/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
-                                                                :errors [(:message result)]))
+              (-> (resp/response (workers/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
+                                                                   :errors [(:message result)]))
                   (resp/content-type "text/html; charset=utf-8"))))))
       ;; Валидация не прошла
       (do
@@ -163,8 +168,8 @@
               оклады (model/get-spravochnik "Оклад")
               ставки (model/get-spravochnik "Почасовые_ставки")
               worker (merge (model/get-record-by-id "Работник" id) params)]
-          (-> (resp/response (views/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
-                                                            :errors (:errors validation-result)))
+          (-> (resp/response (workers/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
+                                                               :errors (:errors validation-result)))
               (resp/content-type "text/html; charset=utf-8")))))))
 
 (defn delete-worker [id]
@@ -189,7 +194,7 @@
         salary-info (model/get-worker-salary (Integer/parseInt id) 2025 10)
         salary-history (model/get-worker-salary-history (Integer/parseInt id))]
     (if worker
-      (-> (resp/response (views/render-salary-page worker salary-info salary-history))
+      (-> (resp/response (salary/render-salary-page worker salary-info salary-history))
           (resp/content-type "text/html; charset=utf-8"))
       (resp/redirect "/workers"))))
 
@@ -202,7 +207,7 @@
   (let [worker (model/get-record-by-id "Работник" id)
         work-time-records (model/get-worker-work-time (Integer/parseInt id))]
     (if worker
-      (-> (resp/response (views/render-work-time-page worker work-time-records))
+      (-> (resp/response (work-time/render-work-time-page worker work-time-records))
           (resp/content-type "text/html; charset=utf-8"))
       (resp/redirect "/workers"))))
 
@@ -212,7 +217,7 @@
         worker (when work-time-record
                  (model/get-record-by-id "Работник" (:работник_id work-time-record)))]
     (if (and work-time-record worker)
-      (-> (resp/response (views/render-edit-work-time-form work-time-record worker))
+      (-> (resp/response (work-time/render-edit-work-time-form work-time-record worker))
           (resp/content-type "text/html; charset=utf-8"))
       (resp/redirect "/workers"))))
 
@@ -241,14 +246,14 @@
             (logger/log-error (Exception. (:message result)) "Ошибка при обновлении учета времени")
             (let [work-time-record (model/get-work-time-by-id id)
                   worker (model/get-record-by-id "Работник" (:работник_id work-time-record))]
-              (-> (resp/response (views/render-edit-work-time-form work-time-record worker :errors [(:message result)]))
+              (-> (resp/response (work-time/render-edit-work-time-form work-time-record worker :errors [(:message result)]))
                   (resp/content-type "text/html; charset=utf-8"))))))
       ;; Валидация не прошла
       (do
         (logger/log-warn (format "Валидация учета времени не пройдена: %s" (clojure.string/join ", " (:errors validation-result))))
         (let [work-time-record (merge (model/get-work-time-by-id id) params)
               worker (model/get-record-by-id "Работник" (:работник_id work-time-record))]
-          (-> (resp/response (views/render-edit-work-time-form work-time-record worker :errors (:errors validation-result)))
+          (-> (resp/response (work-time/render-edit-work-time-form work-time-record worker :errors (:errors validation-result)))
               (resp/content-type "text/html; charset=utf-8")))))))
 
 ;; ======================================================================
@@ -262,7 +267,7 @@
                             {:table table
                              :rows (model/get-table-data table)})
                           tables)]
-    (-> (resp/response (views/render-all-tables-page tables-data))
+    (-> (resp/response (tables/render-all-tables-page tables-data))
         (resp/content-type "text/html; charset=utf-8"))))
 
 ;; ======================================================================
