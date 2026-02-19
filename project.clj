@@ -15,7 +15,9 @@
                  ;; Логирование — КРИТИЧЕСКИ ВАЖНО: правильные версии
                  [org.slf4j/slf4j-api "2.0.9"]
                  [ch.qos.logback/logback-classic "1.4.11"]
-                 [org.clojure/tools.logging "1.2.4"]]
+                 [org.clojure/tools.logging "1.2.4"]
+                 ;; Время и дата (Clojure wrapper for Java 8 Time API)
+                 [clojure.java-time/clojure.java-time "1.4.3"]]
   :main ^:skip-aot my-ring-app.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all

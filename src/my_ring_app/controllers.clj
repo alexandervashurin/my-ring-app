@@ -8,6 +8,7 @@
             [my-ring-app.views.salary :as salary]
             [my-ring-app.views.work-time :as work-time]
             [my-ring-app.views.tables :as tables]
+            [my-ring-app.views.dashboard :as dashboard]
             [my-ring-app.validation :as validation]
             [my-ring-app.logger :as logger]))
 
@@ -55,6 +56,16 @@
   (logger/log-info "Открыта главная страница")
   (-> (resp/response (home/render-home))
       (resp/content-type "text/html; charset=utf-8")))
+
+;; ======================================================================
+;; Контроллер дашборда
+;; ======================================================================
+
+(defn dashboard-page []
+  (logger/log-info "Открыта страница дашборда")
+  (let [dashboard-data (model/get-dashboard-data)]
+    (-> (resp/response (dashboard/render-dashboard-page dashboard-data))
+        (resp/content-type "text/html; charset=utf-8"))))
 
 ;; ======================================================================
 ;; Контроллеры работников

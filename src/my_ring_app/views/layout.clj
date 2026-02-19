@@ -52,10 +52,35 @@
     .alert-success { background: #e8f5e9; color: #2e7d32; border-left: 4px solid #4CAF50; }
     .alert-error { background: #ffebee; color: #c62828; border-left: 4px solid #F44336; }
     .alert-info { background: #e3f2fd; color: #1565c0; border-left: 4px solid #2196F3; }
+    
+    /* Dashboard styles */
+    .dashboard-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .stat-card { display: flex; align-items: center; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.3s, box-shadow 0.3s; }
+    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+    .stat-card__icon { font-size: 48px; margin-right: 20px; }
+    .stat-card__content { flex: 1; }
+    .stat-card__value { font-size: 28px; font-weight: 700; margin-bottom: 5px; }
+    .stat-card__label { font-size: 14px; opacity: 0.8; }
+    .stat-card--primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .stat-card--success { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; }
+    .stat-card--info { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; }
+    .stat-card--warning { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; }
+    
+    .charts-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .chart-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .chart-title { margin: 0 0 20px 0; color: #333; font-size: 18px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+    .tables-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+    .dashboard-table { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .table-title { margin: 0 0 20px 0; color: #333; font-size: 18px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+    .worker-link { color: #667eea; text-decoration: none; font-weight: 600; }
+    .worker-link:hover { text-decoration: underline; }
+    
     @media (max-width: 768px) {
       nav a { display: block; margin: 5px 0; }
       .data-table { font-size: 12px; }
       .data-table th, .data-table td { padding: 8px; }
+      .dashboard-stats { grid-template-columns: 1fr; }
+      .charts-row, .tables-row { grid-template-columns: 1fr; }
     }
   </style>")
 
@@ -71,6 +96,7 @@
   (let [active-class (fn [page] (if (= page active-page) " class='active'" ""))]
     (str "<nav>"
          "<a href='/'" (active-class "home") ">Главная</a>"
+         "<a href='/dashboard'" (active-class "dashboard") ">Дашборд</a>"
          "<a href='/workers'" (active-class "workers") ">Работники</a>"
          "<a href='/db'" (active-class "db") ">Все таблицы</a>"
          "</nav>")))

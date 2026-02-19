@@ -273,3 +273,130 @@
     (catch Exception e
       (logger/log-error e (format "Ошибка при получении записи учета времени ID=%s" id) {:id id})
       nil)))
+
+;; ======================================================================
+;; Dashboard Analytics
+;; ======================================================================
+
+(defn get-dashboard-stats []
+  "Получение общей статистики для дашборда"
+  (try
+    (let [total-workers (first (jdbc/query db-spec ["SELECT COUNT(*) as count FROM Работник"]))
+          total-shops (first (jdbc/query db-spec ["SELECT COUNT(*) as count FROM Цех"]))
+          avg-salary (first (jdbc/query db-spec ["SELECT AVG(общая_зарплата) as avg FROM Начисление_заработной_платы"]))
+          total-payroll (first (jdbc/query db-spec ["SELECT SUM(общая_зарплата) as total FROM Начисление_заработной_платы"]))]
+      (logger/log-info "Получена статистика для дашборда")
+      {:total-workers (:count total-workers)
+       :total-shops (:count total-shops)
+       :avg-salary (or (:avg avg-salary) 0)
+       :total-payroll (or (:total total-payroll) 0)})
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении статистики дашборда")
+      {})))
+
+(defn get-workers-by-shop []
+  "Распределение работников по цехам"
+  (try
+    (let [result (jdbc/query db-spec
+                             ["SELECT ц.название_цеха as name, COUNT(r.id) as count
+                              FROM Цех ц
+                              LEFT JOIN Работник r ON r.цех_id = ц.id
+                              GROUP BY ц.id, ц.название_цеха
+                              ORDER BY count DESC"])]
+      (logger/log-info (format "Получено распределение по цехам (%d записей)" (count result)))
+      result)
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении распределения по цехам")
+      [])))
+
+(defn get-workers-by-category []
+  "Распределение работников по категориям"
+  (try
+    (let [result (jdbc/query db-spec
+                             ["SELECT к.название_категории as name, COUNT(r.id) as count
+                              FROM Категория_работника к
+                              LEFT JOIN Работник r ON r.категория_работника_id = к.id
+                              GROUP BY к.id, к.название_категории
+                              ORDER BY count DESC"])]
+      (logger/log-info (format "Получено распределение по категориям (%d записей)" (count result)))
+      result)
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении распределения по категориям")
+      [])))
+
+(defn get-workers-by-rank []
+  "Распределение работников по разрядам"
+  (try
+    (let [result (jdbc/query db-spec
+                             ["SELECT рз.номер_разряда as name, COUNT(r.id) as count
+                              FROM Разряд рз
+                              LEFT JOIN Работник r ON r.разряд_id = рз.id
+                              GROUP BY рз.id, рз.номер_разряда
+                              ORDER BY рз.номер_разряда"])]
+      (logger/log-info (format "Получено распределение по разрядам (%d записей)" (count result)))
+      result)
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении распределения по разрядам")
+      [])))
+
+(defn get-payroll-by-month []
+  "Фонд оплаты труда по месяцам"
+  (try
+    (let [result (jdbc/query db-spec
+                             ["SELECT год, месяц, SUM(общая_зарплата) as total
+                              FROM Начисление_заработной_платы n
+                              JOIN Учет_рабочего_времени у ON n.учет_рабочего_времени_id = у.id
+                              GROUP BY год, месяц
+                              ORDER BY год DESC, месяц DESC
+                              LIMIT 6"])]
+      (logger/log-info (format "Получен фонд оплаты труда по месяцам (%d записей)" (count result)))
+      result)
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении фонда оплаты труда по месяцам")
+      [])))
+
+(defn get-top-workers-by-salary []
+  "Топ-5 работников по зарплате"
+  (try
+    (let [result (jdbc/query db-spec
+                             ["SELECT r.фамилия, r.имя, r.отчество, ц.название_цеха,
+                                      MAX(n.общая_зарплата) as max_salary
+                              FROM Работник r
+                              LEFT JOIN Цех ц ON r.цех_id = ц.id
+                              LEFT JOIN Учет_рабочего_времени у ON r.id = у.работник_id
+                              LEFT JOIN Начисление_заработной_платы n ON у.id = н.учет_рабочего_времени_id
+                              GROUP BY r.id, r.фамилия, r.имя, r.отчество, ц.название_цеха
+                              ORDER BY max_salary DESC
+                              LIMIT 5"])]
+      (logger/log-info (format "Получен топ работников по зарплате (%d записей)" (count result)))
+      result)
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении топа работников по зарплате")
+      [])))
+
+(defn get-recent-hires []
+  "Последние принятые работники (топ-5)"
+  (try
+    (let [result (jdbc/query db-spec
+                             ["SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
+                                      ц.название_цеха as цех
+                              FROM Работник r
+                              LEFT JOIN Цех ц ON r.цех_id = ц.id
+                              ORDER BY r.дата_приема DESC
+                              LIMIT 5"])]
+      (logger/log-info (format "Получены последние принятые работники (%d записей)" (count result)))
+      result)
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении последних принятых работников")
+      [])))
+
+(defn get-dashboard-data []
+  "Получение всех данных для дашборда"
+  (logger/log-info "Запрос данных для дашборда")
+  {:stats (get-dashboard-stats)
+   :by-shop (get-workers-by-shop)
+   :by-category (get-workers-by-category)
+   :by-rank (get-workers-by-rank)
+   :payroll-by-month (get-payroll-by-month)
+   :top-workers (get-top-workers-by-salary)
+   :recent-hires (get-recent-hires)})
