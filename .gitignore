@@ -5,3 +5,5 @@
 *.jar
 .lsp/
 .clj-kondo/
+
+.ai

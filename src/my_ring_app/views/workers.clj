@@ -1,5 +1,5 @@
 (ns my-ring-app.views.workers
-  (:require [my-ring-app.views.layout :refer [wrap-html]]
+  (:require [my-ring-app.views.layout :refer [wrap-html html-escape]]
             [my-ring-app.views.helpers :as helpers]))
 
 (defn render-workers-table [workers search-query]
@@ -21,22 +21,22 @@
                              "</tr>"
                              "</thead>"
                              "<tbody>"
-                             (apply str 
+                             (apply str
                                (map (fn [w]
                                       (str "<tr>"
-                                           "<td>" (:id w) "</td>"
-                                           "<td><strong>" (:фамилия w) "</strong> " (:имя w) " " (or (:отчество w) "") "</td>"
-                                           "<td>" (:дата_приема w) "</td>"
-                                           "<td>" (:цех w) "</td>"
-                                           "<td>" (:система w) "</td>"
-                                           "<td>" (:категория w) "</td>"
-                                           "<td>" (:разряд w) "</td>"
-                                           "<td>" (:режим w) "</td>"
+                                           "<td>" (html-escape (str (:id w))) "</td>"
+                                           "<td><strong>" (html-escape (:фамилия w)) "</strong> " (html-escape (:имя w)) " " (html-escape (or (:отчество w) "")) "</td>"
+                                           "<td>" (html-escape (:дата_приема w)) "</td>"
+                                           "<td>" (html-escape (:цех w)) "</td>"
+                                           "<td>" (html-escape (:система w)) "</td>"
+                                           "<td>" (html-escape (:категория w)) "</td>"
+                                           "<td>" (html-escape (:разряд w)) "</td>"
+                                           "<td>" (html-escape (:режим w)) "</td>"
                                            "<td>"
-                                           "<a href='/workers/" (:id w) "/work-time' class='btn btn-sm btn-info' title='Учет времени'>⏰</a> "
-                                           "<a href='/workers/" (:id w) "/salary' class='btn btn-sm btn-success' title='Зарплата'>💰</a> "
-                                           "<a href='/workers/" (:id w) "/edit' class='btn btn-sm btn-warning' title='Редактировать'>✏️</a> "
-                                           "<form method='POST' action='/workers/" (:id w) "/delete' style='display: inline;' onsubmit='return confirm(\"Удалить работника " (:фамилия w) " " (:имя w) "?\")'>"
+                                           "<a href='/workers/" (html-escape (str (:id w))) "/work-time' class='btn btn-sm btn-info' title='Учет времени'>⏰</a> "
+                                           "<a href='/workers/" (html-escape (str (:id w))) "/salary' class='btn btn-sm btn-success' title='Зарплата'>💰</a> "
+                                           "<a href='/workers/" (html-escape (str (:id w))) "/edit' class='btn btn-sm btn-warning' title='Редактировать'>✏️</a> "
+                                           "<form method='POST' action='/workers/" (html-escape (str (:id w))) "/delete' style='display: inline;' onsubmit='return confirm(\"Удалить работника " (html-escape (:фамилия w)) " " (html-escape (:имя w)) "?\")'>"
                                            "<button type='submit' class='btn btn-sm btn-danger' title='Удалить'>🗑️</button>"
                                            "</form>"
                                            "</td>"
@@ -88,35 +88,35 @@
         errors (:errors options)]
     
     (str "<div class='form-container'>"
-         "<h2>" form-title "</h2>"
-         
+         "<h2>" (html-escape form-title) "</h2>"
+
          ;; Отображение ошибок валидации
          (helpers/render-error-messages errors)
-         
-         "<form method='POST' action='" form-action "' style='background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>"
-         
+
+         "<form method='POST' action='" (html-escape form-action) "' style='background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>"
+
          ;; Фамилия
          "<div class='form-group'>"
          "<label>Фамилия *</label>"
-         "<input type='text' name='фамилия' value='" (or (:фамилия worker-data) "") "' required>"
+         "<input type='text' name='фамилия' value='" (html-escape (or (:фамилия worker-data) "")) "' required>"
          "</div>"
-         
+
          ;; Имя
          "<div class='form-group'>"
          "<label>Имя *</label>"
-         "<input type='text' name='имя' value='" (or (:имя worker-data) "") "' required>"
+         "<input type='text' name='имя' value='" (html-escape (or (:имя worker-data) "")) "' required>"
          "</div>"
-         
+
          ;; Отчество
          "<div class='form-group'>"
          "<label>Отчество</label>"
-         "<input type='text' name='отчество' value='" (or (:отчество worker-data) "") "'>"
+         "<input type='text' name='отчество' value='" (html-escape (or (:отчество worker-data) "")) "'>"
          "</div>"
-         
+
          ;; Дата приема
          "<div class='form-group'>"
          "<label>Дата приема *</label>"
-         "<input type='date' name='дата_приема' value='" (or (:дата_приема worker-data) "") "' required>"
+         "<input type='date' name='дата_приема' value='" (html-escape (or (:дата_приема worker-data) "")) "' required>"
          "</div>"
          
          ;; Цех

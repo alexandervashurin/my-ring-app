@@ -15,6 +15,15 @@
 ;; Вспомогательные функции
 ;; ======================================================================
 
+(defn- parse-int [s default]
+  "Безопасное преобразование строки в число"
+  (try
+    (if (or (nil? s) (str/blank? s))
+      default
+      (Integer/parseInt (str/trim s)))
+    (catch NumberFormatException e
+      default)))
+
 (defn- clean-id [id]
   "Очистка ID от лишних символов, оставляем только цифры"
   (when id
@@ -105,37 +114,51 @@
   (logger/log-info "Попытка создания работника")
   (let [validation-result (validation/validate-worker params)]
     (if (:valid? validation-result)
-      (let [data {:фамилия (:фамилия params)
-                  :имя (:имя params)
-                  :отчество (:отчество params)
-                  :дата_приема (:дата_приема params)
-                  :цех_id (Integer/parseInt (:цех_id params))
-                  :система_оплаты_id (Integer/parseInt (:система_оплаты_id params))
-                  :категория_работника_id (Integer/parseInt (:категория_работника_id params))
-                  :разряд_id (Integer/parseInt (:разряд_id params))
-                  :режим_работы_id (Integer/parseInt (:режим_работы_id params))
-                  :оклад_id (when (seq (:оклад_id params)) (Integer/parseInt (:оклад_id params)))
-                  :почасовая_ставка_id (when (seq (:почасовая_ставка_id params)) (Integer/parseInt (:почасовая_ставка_id params)))}
-            result (model/create-record "Работник" data)]
-        (if (:success result)
-          (do
-            (logger/log-audit "CREATE" "Worker" (:id result)
-                              (format "Создан работник %s %s" (:фамилия params) (:имя params)))
-            (logger/log-info (format "Работник успешно создан, ID=%s" (:id result)))
-            (resp/redirect "/workers"))
-          (do
-            (logger/log-error (Exception. (:message result)) "Ошибка при создании работника")
-            (let [цеха (model/get-spravochnik "Цех")
-                  системы_оплаты (model/get-spravochnik "Система_оплаты")
-                  категории (model/get-spravochnik "Категория_работника")
-                  разряды (model/get-spravochnik "Разряд")
-                  режимы (model/get-spravochnik "Режим_работы")
-                  оклады (model/get-spravochnik "Оклад")
-                  ставки (model/get-spravochnik "Почасовые_ставки")]
-              (-> (resp/response (workers/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
-                                                                 :errors [(:message result)]
-                                                                 :worker-data params))
-                  (resp/content-type "text/html; charset=utf-8"))))))
+      (try
+        (let [data {:фамилия (:фамилия params)
+                    :имя (:имя params)
+                    :отчество (:отчество params)
+                    :дата_приема (:дата_приема params)
+                    :цех_id (parse-int (:цех_id params) 0)
+                    :система_оплаты_id (parse-int (:система_оплаты_id params) 0)
+                    :категория_работника_id (parse-int (:категория_работника_id params) 0)
+                    :разряд_id (parse-int (:разряд_id params) 0)
+                    :режим_работы_id (parse-int (:режим_работы_id params) 0)
+                    :оклад_id (when (seq (:оклад_id params)) (parse-int (:оклад_id params) nil))
+                    :почасовая_ставка_id (when (seq (:почасовая_ставка_id params)) (parse-int (:почасовая_ставка_id params) nil))}
+              result (model/create-record "Работник" data)]
+          (if (:success result)
+            (do
+              (logger/log-audit "CREATE" "Worker" (:id result)
+                                (format "Создан работник %s %s" (:фамилия params) (:имя params)))
+              (logger/log-info (format "Работник успешно создан, ID=%s" (:id result)))
+              (resp/redirect "/workers"))
+            (do
+              (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при создании работника")
+              (let [цеха (model/get-spravochnik "Цех")
+                    системы_оплаты (model/get-spravochnik "Система_оплаты")
+                    категории (model/get-spravochnik "Категория_работника")
+                    разряды (model/get-spravochnik "Разряд")
+                    режимы (model/get-spravochnik "Режим_работы")
+                    оклады (model/get-spravochnik "Оклад")
+                    ставки (model/get-spravochnik "Почасовые_ставки")]
+                (-> (resp/response (workers/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
+                                                                   :errors [(:message result)]
+                                                                   :worker-data params))
+                    (resp/content-type "text/html; charset=utf-8"))))))
+        (catch Exception e
+          (logger/log-error ^Throwable e "Критическая ошибка при создании работника")
+          (let [цеха (model/get-spravochnik "Цех")
+                системы_оплаты (model/get-spravochnik "Система_оплаты")
+                категории (model/get-spravochnik "Категория_работника")
+                разряды (model/get-spravochnik "Разряд")
+                режимы (model/get-spravochnik "Режим_работы")
+                оклады (model/get-spravochnik "Оклад")
+                ставки (model/get-spravochnik "Почасовые_ставки")]
+            (-> (resp/response (workers/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
+                                                               :errors ["Внутренняя ошибка при создании работника"]
+                                                               :worker-data params))
+                (resp/content-type "text/html; charset=utf-8")))))
       (do
         (logger/log-warn (format "Валидация не пройдена: %s" (clojure.string/join ", " (:errors validation-result))))
         (let [цеха (model/get-spravochnik "Цех")
@@ -177,7 +200,7 @@
                   (logger/log-info (format "Работник успешно обновлен, ID=%s" worker-id))
                   (resp/redirect "/workers"))
                 (do
-                  (logger/log-error (Exception. (:message result)) "Ошибка при обновлении работника")
+                  (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении работника")
                   (let [цеха (model/get-spravochnik "Цех")
                         системы_оплаты (model/get-spravochnik "Система_оплаты")
                         категории (model/get-spravochnik "Категория_работника")
@@ -216,7 +239,7 @@
               (logger/log-info (format "Работник успешно удален, ID=%s" worker-id))
               (resp/redirect "/workers"))
             (do
-              (logger/log-error (Exception. (:message result)) "Ошибка при удалении работника")
+              (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при удалении работника")
               (resp/redirect "/workers"))))))))
 
 ;; ======================================================================
@@ -294,7 +317,7 @@
                   (logger/log-info (format "Учет времени успешно обновлен, ID=%s" work-time-id))
                   (resp/redirect (str "/workers/" (:работник_id (model/get-work-time-by-id (str work-time-id))) "/work-time")))
                 (do
-                  (logger/log-error (Exception. (:message result)) "Ошибка при обновлении учета времени")
+                  (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении учета времени")
                   (let [work-time-record (model/get-work-time-by-id (str work-time-id))
                         worker (model/get-record-by-id "Работник" (:работник_id work-time-record))]
                     (-> (resp/response (work-time/render-edit-work-time-form work-time-record worker :errors [(:message result)]))

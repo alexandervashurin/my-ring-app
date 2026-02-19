@@ -29,7 +29,7 @@
 
 (defn log-error
   "Логирование ошибок"
-  [error message & [context]]
+  [^Throwable error message & [context]]
   (let [error-message (format "ERROR: %s | MESSAGE: %s | CONTEXT: %s"
                               (.getMessage error)
                               message

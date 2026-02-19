@@ -1,6 +1,18 @@
 (ns my-ring-app.views.layout
   (:require [clojure.string :as str]))
 
+(defn html-escape
+  "Экранирование HTML-символов для защиты от XSS"
+  [s]
+  (if (nil? s)
+    ""
+    (-> (str s)
+        (str/replace "&" "&amp;")
+        (str/replace "<" "&lt;")
+        (str/replace ">" "&gt;")
+        (str/replace "\"" "&quot;")
+        (str/replace "'" "&#x27;"))))
+
 (defn- generate-css []
   "Генерация стилей CSS"
   "<style>
