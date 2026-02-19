@@ -284,14 +284,64 @@
     (let [total-workers (first (jdbc/query db-spec ["SELECT COUNT(*) as count FROM Работник"]))
           total-shops (first (jdbc/query db-spec ["SELECT COUNT(*) as count FROM Цех"]))
           avg-salary (first (jdbc/query db-spec ["SELECT AVG(общая_зарплата) as avg FROM Начисление_заработной_платы"]))
-          total-payroll (first (jdbc/query db-spec ["SELECT SUM(общая_зарплата) as total FROM Начисление_заработной_платы"]))]
+          total-payroll (first (jdbc/query db-spec ["SELECT SUM(общая_зарплата) as total FROM Начисление_заработной_платы"]))
+          ;; Работники по системам оплаты
+          workers-by-payment (jdbc/query db-spec
+                                         ["SELECT с.название_системы as name, COUNT(r.id) as count
+                                          FROM Работник r
+                                          LEFT JOIN Система_оплаты с ON r.система_оплаты_id = с.id
+                                          GROUP BY с.id, с.название_системы
+                                          ORDER BY count DESC"])]
       (logger/log-info "Получена статистика для дашборда")
       {:total-workers (:count total-workers)
        :total-shops (:count total-shops)
        :avg-salary (or (:avg avg-salary) 0)
-       :total-payroll (or (:total total-payroll) 0)})
+       :total-payroll (or (:total total-payroll) 0)
+       :workers-by-payment workers-by-payment})
     (catch Exception e
       (logger/log-error e "Ошибка при получении статистики дашборда")
+      {})))
+
+(defn get-salary-distribution []
+  "Распределение работников по уровню зарплаты"
+  (try
+    (let [result (jdbc/query db-spec
+                             ["SELECT 
+                                SUM(CASE WHEN n.общая_зарплата < 40000 THEN 1 ELSE 0 END) as low,
+                                SUM(CASE WHEN n.общая_зарплата BETWEEN 40000 AND 60000 THEN 1 ELSE 0 END) as medium,
+                                SUM(CASE WHEN n.общая_зарплата BETWEEN 60001 AND 90000 THEN 1 ELSE 0 END) as high,
+                                SUM(CASE WHEN n.общая_зарплата > 90000 THEN 1 ELSE 0 END) as very_high
+                              FROM Начисление_заработной_платы n
+                              JOIN Учет_рабочего_времени у ON n.учет_рабочего_времени_id = у.id
+                              WHERE у.год = 2025 AND у.месяц = 10"])]
+      (if-let [row (first result)]
+        (do
+          (logger/log-info "Получено распределение по зарплате")
+          [{:name "Менее 40 000 ₽" :count (or (:low row) 0)}
+           {:name "40 000 - 60 000 ₽" :count (or (:medium row) 0)}
+           {:name "60 000 - 90 000 ₽" :count (or (:high row) 0)}
+           {:name "Более 90 000 ₽" :count (or (:very_high row) 0)}])
+        []))
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении распределения по зарплате")
+      [])))
+
+(defn get-attendance-stats []
+  "Статистика посещаемости"
+  (try
+    (let [result (first (jdbc/query db-spec
+                                    ["SELECT 
+                                      AVG(всего_отработанных_часов) as avg_hours,
+                                      AVG(больничные_дни) as avg_sick,
+                                      AVG(командировочные_дни) as avg_business
+                                    FROM Учет_рабочего_времени
+                                    WHERE год = 2025 AND месяц = 10"]))]
+      (logger/log-info "Получена статистика посещаемости")
+      {:avg-hours (or (:avg_hours result) 0)
+       :avg-sick-days (or (:avg_sick result) 0)
+       :avg-business-days (or (:avg_business result) 0)})
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении статистики посещаемости")
       {})))
 
 (defn get-workers-by-shop []
@@ -343,11 +393,11 @@
   "Фонд оплаты труда по месяцам"
   (try
     (let [result (jdbc/query db-spec
-                             ["SELECT год, месяц, SUM(общая_зарплата) as total
+                             ["SELECT n.год, n.месяц, SUM(n.общая_зарплата) as total
                               FROM Начисление_заработной_платы n
                               JOIN Учет_рабочего_времени у ON n.учет_рабочего_времени_id = у.id
-                              GROUP BY год, месяц
-                              ORDER BY год DESC, месяц DESC
+                              GROUP BY n.год, n.месяц
+                              ORDER BY n.год DESC, n.месяц DESC
                               LIMIT 6"])]
       (logger/log-info (format "Получен фонд оплаты труда по месяцам (%d записей)" (count result)))
       result)
@@ -364,7 +414,7 @@
                               FROM Работник r
                               LEFT JOIN Цех ц ON r.цех_id = ц.id
                               LEFT JOIN Учет_рабочего_времени у ON r.id = у.работник_id
-                              LEFT JOIN Начисление_заработной_платы n ON у.id = н.учет_рабочего_времени_id
+                              LEFT JOIN Начисление_заработной_платы n ON у.id = n.учет_рабочего_времени_id
                               GROUP BY r.id, r.фамилия, r.имя, r.отчество, ц.название_цеха
                               ORDER BY max_salary DESC
                               LIMIT 5"])]
@@ -399,4 +449,6 @@
    :by-rank (get-workers-by-rank)
    :payroll-by-month (get-payroll-by-month)
    :top-workers (get-top-workers-by-salary)
-   :recent-hires (get-recent-hires)})
+   :recent-hires (get-recent-hires)
+   :salary-distribution (get-salary-distribution)
+   :attendance (get-attendance-stats)})

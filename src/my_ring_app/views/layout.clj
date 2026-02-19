@@ -54,17 +54,29 @@
     .alert-info { background: #e3f2fd; color: #1565c0; border-left: 4px solid #2196F3; }
     
     /* Dashboard styles */
-    .dashboard-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
-    .stat-card { display: flex; align-items: center; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.3s, box-shadow 0.3s; }
+    .dashboard-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .stat-card { display: flex; align-items: center; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.3s, box-shadow 0.3s; position: relative; overflow: hidden; }
     .stat-card:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
-    .stat-card__icon { font-size: 48px; margin-right: 20px; }
+    .stat-card__icon { font-size: 48px; margin-right: 20px; flex-shrink: 0; }
     .stat-card__content { flex: 1; }
     .stat-card__value { font-size: 28px; font-weight: 700; margin-bottom: 5px; }
-    .stat-card__label { font-size: 14px; opacity: 0.8; }
+    .stat-card__label { font-size: 14px; opacity: 0.8; margin-bottom: 8px; }
+    .stat-card__trend { font-size: 12px; margin-top: 8px; padding: 4px 8px; border-radius: 4px; display: inline-block; }
+    .stat-card__trend--up { background: rgba(76, 175, 80, 0.2); color: #4CAF50; }
+    .stat-card__trend--down { background: rgba(244, 67, 54, 0.2); color: #F44336; }
     .stat-card--primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
     .stat-card--success { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; }
     .stat-card--info { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; }
     .stat-card--warning { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; }
+    .stat-card--purple { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); color: white; }
+    .stat-card--blue { background: linear-gradient(135deg, #5ee7df 0%, #b490ca 100%); color: white; }
+    
+    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
+    .dashboard-actions { display: flex; gap: 10px; }
+    .btn-refresh { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
+    .btn-refresh:hover { transform: rotate(180deg); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+    .btn-export { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
+    .btn-export:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(67, 233, 123, 0.4); }
     
     .charts-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 30px; }
     .chart-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
@@ -75,12 +87,20 @@
     .worker-link { color: #667eea; text-decoration: none; font-weight: 600; }
     .worker-link:hover { text-decoration: underline; }
     
+    /* Progress bars */
+    .progress-container { margin-top: 10px; }
+    .progress-bar { height: 8px; background: rgba(255,255,255,0.3); border-radius: 4px; overflow: hidden; margin-top: 5px; }
+    .progress-fill { height: 100%; background: rgba(255,255,255,0.8); border-radius: 4px; transition: width 0.5s ease; }
+    
     @media (max-width: 768px) {
       nav a { display: block; margin: 5px 0; }
       .data-table { font-size: 12px; }
       .data-table th, .data-table td { padding: 8px; }
       .dashboard-stats { grid-template-columns: 1fr; }
       .charts-row, .tables-row { grid-template-columns: 1fr; }
+      .dashboard-header { flex-direction: column; align-items: flex-start; }
+      .dashboard-actions { width: 100%; justify-content: space-between; }
+      .btn-refresh, .btn-export { flex: 1; justify-content: center; }
     }
   </style>")
 
