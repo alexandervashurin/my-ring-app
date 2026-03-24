@@ -224,7 +224,7 @@
             "GET /api/1c/workers?format=json"
             :salary-export
             "GET /api/1c/salary?format=xml&year=2025&month=10"}}})
-        (resp/content-type "application/json; charset=utf-8")))
+        (resp/content-type "application/json; charset=utf-8"))
     (catch Exception e
       (logger/log-error e "API: Ошибка при получении документации 1С")
       (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))

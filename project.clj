@@ -17,6 +17,8 @@
                  [org.slf4j/slf4j-api "2.0.9"]
                  [ch.qos.logback/logback-classic "1.4.11"]
                  [org.clojure/tools.logging "1.2.4"]
+                 ;; JSON
+                 [org.clojure/data.json "2.4.0"]
                  ;; Время и дата (Clojure wrapper for Java 8 Time API)
                  [clojure.java-time/clojure.java-time "1.4.3"]
                  ;; Безопасность и аутентификация
@@ -25,8 +27,7 @@
                  [org.clojure/data.csv "1.0.1"]
                  [org.clojure/data.xml "0.2.0-alpha6"]  ; XML для 1С
                  [org.apache.poi/poi "5.2.3"]  ; Excel
-                 [javax.mail/javax.mail-api "1.6.2"]  ; Email API
-                 [com.sun.mail/javax.mail "1.6.2"]]  ; Email реализация
+                 [org.apache.poi/poi-ooxml "5.2.3"]]  ; Excel XSSF
   :main ^:skip-aot my-ring-app.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all

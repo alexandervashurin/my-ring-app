@@ -3,7 +3,9 @@
   (:require [compojure.core :refer [defroutes GET]]
             [ring.util.response :as resp]
             [clojure.string :as str]
+            [clojure.java.jdbc :as jdbc]
             [my-ring-app.model :as model]
+            [my-ring-app.config :refer [db-spec]]
             [my-ring-app.logger :as logger]))
 
 ;; ======================================================================

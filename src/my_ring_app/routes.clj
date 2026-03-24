@@ -1,5 +1,5 @@
 (ns my-ring-app.routes
-  (:require [compojure.core :refer [defroutes GET POST DELETE]]
+  (:require [compojure.core :refer [defroutes GET POST PUT DELETE]]
             [compojure.route :as route]
             [ring.util.response :as resp]
             [my-ring-app.controllers :as controllers]

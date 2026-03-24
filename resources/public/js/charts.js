@@ -41,7 +41,7 @@
 
     var ctx = canvas.getContext('2d');
     var data = window.DashboardData ? window.DashboardData.byShop : [];
-    
+
     charts.byShop = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -86,6 +86,13 @@
               size: 16,
               weight: 'bold'
             }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return context.label + ': ' + context.parsed.y + ' чел.';
+              }
+            }
           }
         },
         scales: {
@@ -93,6 +100,16 @@
             beginAtZero: true,
             ticks: {
               stepSize: 1
+            }
+          },
+          x: {
+            ticks: {
+              maxRotation: 45,
+              minRotation: 45,
+              autoSkip: false,
+              font: {
+                size: 11
+              }
             }
           }
         }
@@ -109,7 +126,7 @@
 
     var ctx = canvas.getContext('2d');
     var data = window.DashboardData ? window.DashboardData.byCategory : [];
-    
+
     charts.byCategory = new Chart(ctx, {
       type: 'pie',
       data: {
@@ -133,7 +150,14 @@
         maintainAspectRatio: true,
         plugins: {
           legend: {
-            position: 'bottom'
+            position: 'bottom',
+            labels: {
+              boxWidth: 12,
+              padding: 10,
+              font: {
+                size: 11
+              }
+            }
           },
           title: {
             display: true,
@@ -141,6 +165,17 @@
             font: {
               size: 16,
               weight: 'bold'
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                var label = context.label || '';
+                var value = context.parsed || 0;
+                var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                var percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '';
+                return label + ': ' + value + ' чел. (' + percentage + ')';
+              }
             }
           }
         }
@@ -157,7 +192,7 @@
 
     var ctx = canvas.getContext('2d');
     var data = window.DashboardData ? window.DashboardData.salaryDistribution : [];
-    
+
     charts.salaryDistribution = new Chart(ctx, {
       type: 'doughnut',
       data: {
@@ -179,7 +214,14 @@
         maintainAspectRatio: true,
         plugins: {
           legend: {
-            position: 'bottom'
+            position: 'bottom',
+            labels: {
+              boxWidth: 12,
+              padding: 10,
+              font: {
+                size: 11
+              }
+            }
           },
           title: {
             display: true,
@@ -187,6 +229,17 @@
             font: {
               size: 16,
               weight: 'bold'
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                var label = context.label || '';
+                var value = context.parsed || 0;
+                var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                var percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '';
+                return label + ': ' + value + ' чел. (' + percentage + ')';
+              }
             }
           }
         }

@@ -5,7 +5,10 @@
             [clojure.string :as str]
             [my-ring-app.model :as model]
             [my-ring-app.logger :as logger]
-            [clojure.java-time :as time]))
+            [java-time :as time]))
+
+;; Время запуска приложения
+(def ^:private app-start-time (System/currentTimeMillis))
 
 ;; ======================================================================
 ;; Вспомогательные функции
@@ -44,16 +47,6 @@
     (catch Exception e
       {:status "disconnected"
        :error (.getMessage e)})))
-
-(defn- get-app-stats []
-  "Статистика приложения"
-  {:version "1.8.0-SNAPSHOT"
-   :clojure-version (str (clojure-version))
-   :uptime-seconds (- (System/currentTimeMillis) app-start-time)
-   :environment (or (System/getenv "ENV") "development")})
-
-;; Время запуска приложения
-(def ^:private app-start-time (System/currentTimeMillis))
 
 ;; ======================================================================
 ;; Health Check
@@ -130,7 +123,10 @@
     (let [memory (get-memory-info)
           uptime (/ (- (System/currentTimeMillis) app-start-time) 1000)
           db-stats (get-db-stats)
-          app-stats (get-app-stats)
+          app-stats {:version "1.8.0-SNAPSHOT"
+                     :clojure-version (str (clojure-version))
+                     :uptime-seconds (- (System/currentTimeMillis) app-start-time)
+                     :environment (or (System/getenv "ENV") "development")}
           metrics (str
                    "# HELP app_uptime_seconds Время работы приложения (секунды)\n"
                    "# TYPE app_uptime_seconds counter\n"
@@ -175,6 +171,13 @@
 ;; ======================================================================
 ;; Статистика приложения
 ;; ======================================================================
+
+(defn- get-app-stats []
+  "Статистика приложения"
+  {:version "1.8.0-SNAPSHOT"
+   :clojure-version (str (clojure-version))
+   :uptime-seconds (- (System/currentTimeMillis) app-start-time)
+   :environment (or (System/getenv "ENV") "development")})
 
 (defn app-statistics
   "GET /api/stats — расширенная статистика приложения"

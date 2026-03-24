@@ -2,7 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [my-ring-app.config :refer [db-spec]]
             [my-ring-app.logger :as logger]
-            [clojure.json :as json]))
+            [clojure.data.json :as json]))
 
 ;; ======================================================================
 ;; Вспомогательные функции

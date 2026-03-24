@@ -85,7 +85,9 @@
     .dashboard-actions { display: flex; gap: 10px; }
     .charts-row, .tables-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 30px; }
     .chart-container, .dashboard-table { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .chart-title, .table-title { margin: 0 0 20px 0; color: #333; font-size: 18px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+    .chart-container { min-height: 350px; }
+    .chart-title, .table-title { margin: 0 0 20px 0; color: #333; font-size: 18px; border-bottom: 2px solid #667eea; padding-bottom: 10px; line-height: 1.3; }
+    .chart-title { font-size: 16px; word-wrap: break-word; }
     .worker-link { color: #667eea; text-decoration: none; font-weight: 600; }
     .worker-link:hover { text-decoration: underline; }
     .progress-container { margin-top: 10px; }
@@ -151,7 +153,7 @@
          "</div>"
          "</header>")))
 
-(defn- generate-navigation [active-page user]
+(defn- generate-navigation [active-page user lang]
   "Генерация навигационного меню"
   (let [active-class (fn [page] (if (= page active-page) " class='active'" ""))
         user-role (:role user)
