@@ -8,9 +8,18 @@
             [my-ring-app.api.salary :as api-salary]
             [my-ring-app.api.export :as api-export]
             [my-ring-app.api.audit :as api-audit]
-            [my-ring-app.api.reports :as api-reports]))
+            [my-ring-app.api.reports :as api-reports]
+            [my-ring-app.api.notifications :as api-notifications]))
 
 (defroutes app-routes
+  ;; ======================================================================
+  ;; REST API - Email уведомления
+  ;; ======================================================================
+  (GET "/api/notifications/test" [] api-notifications/test-email-api)
+  (POST "/api/notifications/new-worker" [] api-notifications/notify-new-worker-api)
+  (POST "/api/notifications/birthday" [] api-notifications/notify-birthday-api)
+  (POST "/api/notifications/anniversary" [] api-notifications/notify-anniversary-api)
+
   ;; ======================================================================
   ;; REST API - PDF отчёты
   ;; ======================================================================
