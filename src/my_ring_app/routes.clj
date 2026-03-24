@@ -5,9 +5,17 @@
             [my-ring-app.controllers.auth :as auth-controllers]
             [my-ring-app.api.workers :as api-workers]
             [my-ring-app.api.dashboard :as api-dashboard]
-            [my-ring-app.api.salary :as api-salary]))
+            [my-ring-app.api.salary :as api-salary]
+            [my-ring-app.api.export :as api-export]))
 
 (defroutes app-routes
+  ;; ======================================================================
+  ;; REST API - Экспорт данных
+  ;; ======================================================================
+  (GET "/api/export/workers.csv" [] api-export/export-workers-csv)
+  (GET "/api/export/salary.csv" [] api-export/export-salary-csv)
+  (GET "/api/export/workers.xlsx" [] api-export/export-workers-excel)
+
   ;; ======================================================================
   ;; REST API - Дашборд и аналитика
   ;; ======================================================================

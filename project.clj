@@ -19,7 +19,10 @@
                  ;; Время и дата (Clojure wrapper for Java 8 Time API)
                  [clojure.java-time/clojure.java-time "1.4.3"]
                  ;; Безопасность и аутентификация
-                 [buddy/buddy-hashers "2.0.167"]]
+                 [buddy/buddy-hashers "2.0.167"]
+                 ;; Экспорт данных
+                 [org.clojure/data.csv "1.0.1"]
+                 [org.apache.poi/poi "5.2.3"]]  ; Excel
   :main ^:skip-aot my-ring-app.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all
