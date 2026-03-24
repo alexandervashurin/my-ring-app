@@ -148,16 +148,14 @@
        "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
        "<title>" title " - Управление БД работников</title>"
        (generate-css)
-       "<style>"
-       ".user-info { display: flex; align-items: center; font-size: 14px; }"
-       ".user-greeting { color: white; opacity: 0.95; }"
-       "</style>"
+       "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'></script>"
        "</head>"
        "<body>"
        "<div class='container'>"
        (generate-header user)
        (generate-navigation (or active-page "home") user)
        content
-       "</div>"
+       "<script src='/js/app.js'></script>"
+       "<script src='/js/charts.js'></script>"
        "</body>"
        "</html>"))

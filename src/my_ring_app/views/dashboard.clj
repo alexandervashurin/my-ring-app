@@ -116,6 +116,42 @@
   (let [colors ["#667eea" "#764ba2" "#f093fb" "#f5576c" "#4facfe" "#00f2fe" "#43e97b" "#38f9d7"]]
     (render-chart-container title chart-id "pie" labels data (vec (take (count labels) colors)))))
 
+(defn- render-chart-containers
+  "Рендеринг контейнеров для графиков Chart.js"
+  []
+  (str "<div class='dashboard-header'>"
+       "<h1 style='margin-bottom: 30px;'>📊 Дашборд аналитики</h1>"
+       "<div class='dashboard-actions'>"
+       "<button onclick='location.reload()' class='btn btn-refresh' title='Обновить данные'>🔄 Обновить</button>"
+       "</div>"
+       "</div>"
+       "<div class='charts-row'>"
+       "<div class='chart-container'>"
+       "<h3 class='chart-title'>🏭 Распределение по цехам</h3>"
+       "<canvas id='chart-workers-by-shop'></canvas>"
+       "</div>"
+       "<div class='chart-container'>"
+       "<h3 class='chart-title'>👥 Распределение по категориям</h3>"
+       "<canvas id='chart-workers-by-category'></canvas>"
+       "</div>"
+       "</div>"
+       "<div class='charts-row'>"
+       "<div class='chart-container'>"
+       "<h3 class='chart-title'>💰 Распределение по зарплате</h3>"
+       "<canvas id='chart-salary-distribution'></canvas>"
+       "</div>"
+       "<div class='chart-container'>"
+       "<h3 class='chart-title'>📈 Фонд оплаты по месяцам</h3>"
+       "<canvas id='chart-payroll-by-month'></canvas>"
+       "</div>"
+       "</div>"
+       "<div class='charts-row'>"
+       "<div class='chart-container'>"
+       "<h3 class='chart-title'>🎯 Распределение по разрядам</h3>"
+       "<canvas id='chart-workers-by-rank'></canvas>"
+       "</div>"
+       "</div>"))
+
 (defn- render-distribution-charts [by-shop by-category by-rank salary-distribution]
   "Рендеринг диаграмм распределения"
   (str "<div class='dashboard-header'>"
@@ -218,29 +254,28 @@
         top-workers (:top-workers dashboard-data)
         recent-hires (:recent-hires dashboard-data)
         salary-distribution (:salary-distribution dashboard-data)
-        attendance (:attendance dashboard-data)]
+        attendance (:attendance dashboard-data)
+        ;; Данные для JavaScript графиков
+        chart-data (str "window.DashboardData = {"
+                        "byShop: [" (apply str (interpose "," (for [item by-shop]
+                                                               (str "{name: \"" (:name item) "\", count: " (:count item) "}"))) ) "],"
+                        "byCategory: [" (apply str (interpose "," (for [item by-category]
+                                                                    (str "{name: \"" (:name item) "\", count: " (:count item) "}"))) ) "],"
+                        "byRank: [" (apply str (interpose "," (for [item by-rank]
+                                                              (str "{name: \"" (:name item) "\", count: " (:count item) "}"))) ) "],"
+                        "salaryDistribution: [" (apply str (interpose "," (for [item salary-distribution]
+                                                                           (str "{name: \"" (:name item) "\", count: " (:count item) "}"))) ) "],"
+                        "payrollByMonth: [" (apply str (interpose "," (for [item payroll-by-month]
+                                                                        (str "{month: " (:месяц item) ", year: " (:год item) ", total: " (:total item) "}"))) ) "]"
+                        "};")]
     (layout/wrap-html
      (str
-      ;; Скрипт для экспорта
-      "<script>"
-      "function exportToCSV() {"
-      "  const data = [[" (clojure.string/join "," (map #(str "\"" % "\"") (map :name by-shop))) "],"
-      "                 [" (clojure.string/join "," (map str (map :count by-shop))) "]];"
-      "  const csv = data.map(row => row.join(',')).join('\\n');"
-      "  const blob = new Blob([csv], { type: 'text/csv' });"
-      "  const url = window.URL.createObjectURL(blob);"
-      "  const a = document.createElement('a');"
-      "  a.href = url;"
-      "  a.download = 'dashboard-export.csv';"
-      "  a.click();"
-      "}"
-      "</script>"
+      ;; Данные для графиков
+      "<script>" chart-data "</script>"
       ;; Карточки статистики
       (render-stats-cards stats attendance)
-      ;; Диаграммы распределения
-      (render-distribution-charts by-shop by-category by-rank salary-distribution)
-      ;; График ФОТ
-      (render-payroll-chart payroll-by-month)
+      ;; Контейнеры для графиков
+      (render-chart-containers)
       ;; Таблицы
       "<div class='tables-row'>"
       (render-top-workers top-workers)
