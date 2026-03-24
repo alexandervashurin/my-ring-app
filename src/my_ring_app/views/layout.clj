@@ -1,5 +1,6 @@
 (ns my-ring-app.views.layout
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [my-ring-app.i18n :as i18n]))
 
 (defn html-escape
   "Экранирование HTML-символов для защиты от XSS"
@@ -12,6 +13,16 @@
         (str/replace ">" "&gt;")
         (str/replace "\"" "&quot;")
         (str/replace "'" "&#x27;"))))
+
+(defn- generate-language-switcher [current-lang]
+  "Генерация переключателя языков"
+  (let [languages (i18n/get-available-languages)]
+    (str "<div class='language-switcher'>"
+         (apply str (for [lang languages]
+                      (if (= (name lang) current-lang)
+                        (str "<span class='lang-current'>" (i18n/get-language-name lang) "</span>")
+                        (str "<a href='/lang/" lang "' class='lang-link'>" (i18n/get-language-name lang) "</a>"))))
+         "</div>")))
 
 (defn- generate-css []
   "Генерация стилей CSS"
@@ -104,25 +115,29 @@
     }
   </style>")
 
-(defn- generate-header [user]
+(defn- generate-header [user current-lang]
   "Генерация шапки страницы"
   (let [user-info (when user
                     (str "<div class='user-info'>"
-                         "<span class='user-greeting'>👤 " (html-escape (:username user)) " (" 
+                         "<span class='user-greeting'>👤 " (html-escape (:username user)) " ("
                          (html-escape (get {"admin" "Администратор"
                                             "manager" "Менеджер"
                                             "viewer" "Наблюдатель"
                                             "hr" "HR-специалист"} (:role user) (:role user))) ")</span>"
-                         "<a href='/profile' class='btn btn-sm btn-info' style='margin-left: 10px;'>Профиль</a>"
-                         "<a href='/logout' class='btn btn-sm btn-secondary' style='margin-left: 5px;'>Выход</a>"
-                         "</div>"))]
+                         "<a href='/profile' class='btn btn-sm btn-info' style='margin-left: 10px;'>" (i18n/t current-lang :auth :profile) "</a>"
+                         "<a href='/logout' class='btn btn-sm btn-secondary' style='margin-left: 5px;'>" (i18n/t current-lang :auth :logout) "</a>"
+                         "</div>"))
+        lang-switcher (generate-language-switcher current-lang)]
     (str "<header>"
          "<div style='display: flex; justify-content: space-between; align-items: center;'>"
          "<div>"
-         "<h1>🏭 Система управления персоналом</h1>"
-         "<p style='opacity: 0.9; margin-top: 5px;'>CRUD-приложение для базы данных работников</p>"
+         "<h1>🏭 " (i18n/t current-lang :common :title) "</h1>"
+         "<p style='opacity: 0.9; margin-top: 5px;'>" (i18n/t current-lang :common :subtitle) "</p>"
          "</div>"
+         "<div style='display: flex; align-items: center; gap: 15px;'>"
+         lang-switcher
          user-info
+         "</div>"
          "</div>"
          "</header>")))
 
@@ -139,23 +154,32 @@
            "<a href='/db'" (active-class "db") ">Все таблицы</a>")
          "</nav>")))
 
-(defn wrap-html [content title & [active-page user]]
+(defn wrap-html [content title & [active-page user current-lang]]
   "Оборачивает контент в полную HTML-страницу"
-  (str "<!DOCTYPE html>"
-       "<html lang='ru'>"
-       "<head>"
-       "<meta charset='UTF-8'>"
-       "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-       "<title>" title " - Управление БД работников</title>"
-       (generate-css)
-       "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'></script>"
-       "</head>"
-       "<body>"
-       "<div class='container'>"
-       (generate-header user)
-       (generate-navigation (or active-page "home") user)
-       content
-       "<script src='/js/app.js'></script>"
-       "<script src='/js/charts.js'></script>"
-       "</body>"
-       "</html>"))
+  (let [lang (or current-lang "ru")]
+    (str "<!DOCTYPE html>"
+         "<html lang='" lang "'>"
+         "<head>"
+         "<meta charset='UTF-8'>"
+         "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+         "<title>" title " - " (i18n/t lang :common :title) "</title>"
+         (generate-css)
+         "<style>"
+         ".language-switcher { display: flex; gap: 10px; align-items: center; }"
+         ".lang-link { color: white; text-decoration: underline; cursor: pointer; font-size: 14px; }"
+         ".lang-link:hover { color: #f0f4ff; }"
+         ".lang-current { color: white; font-weight: bold; font-size: 14px; }"
+         ".user-info { display: flex; align-items: center; font-size: 14px; }"
+         ".user-greeting { color: white; opacity: 0.95; }"
+         "</style>"
+         "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'></script>"
+         "</head>"
+         "<body>"
+         "<div class='container'>"
+         (generate-header user lang)
+         (generate-navigation (or active-page "home") user lang)
+         content
+         "<script src='/js/app.js'></script>"
+         "<script src='/js/charts.js'></script>"
+         "</body>"
+         "</html>")))

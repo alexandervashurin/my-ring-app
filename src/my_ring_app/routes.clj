@@ -1,6 +1,7 @@
 (ns my-ring-app.routes
   (:require [compojure.core :refer [defroutes GET POST DELETE]]
             [compojure.route :as route]
+            [ring.util.response :as resp]
             [my-ring-app.controllers :as controllers]
             [my-ring-app.controllers.auth :as auth-controllers]
             [my-ring-app.api.workers :as api-workers]
@@ -12,6 +13,13 @@
             [my-ring-app.api.notifications :as api-notifications]))
 
 (defroutes app-routes
+  ;; ======================================================================
+  ;; Переключение языка
+  ;; ======================================================================
+  (GET "/lang/:lang" [lang] (-> (resp/redirect "/")
+                                 (resp/status 302)
+                                 (assoc :session {:lang lang})))
+
   ;; ======================================================================
   ;; REST API - Email уведомления
   ;; ======================================================================

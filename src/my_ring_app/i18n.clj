@@ -1,0 +1,116 @@
+(ns my-ring-app.i18n
+  "Интернационализация (i18n) — поддержка нескольких языков"
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [clojure.string :as str]))
+
+;; ======================================================================
+;; Загрузка переводов
+;; ======================================================================
+
+(def ^:private translations
+  "Кэш переводов"
+  (delay
+    (try
+      (with-open [r (io/reader (io/resource "i18n.edn"))]
+        (edn/read-string (slurp r)))
+      (catch Exception e
+        (println "Error loading i18n.edn:" (.getMessage e))
+        {}))))
+
+;; ======================================================================
+;; Вспомогательные функции
+;; ======================================================================
+
+(defn- get-translation
+  "Получение перевода по ключу"
+  [lang & keys]
+  (try
+    (let [lang-data (get @translations (keyword lang) {})]
+      (reduce get lang-data (map keyword keys)))
+    (catch Exception e
+      nil)))
+
+(defn- get-default-translation
+  "Получение перевода по умолчанию (русский)"
+  [& keys]
+  (apply get-translation "ru" keys))
+
+;; ======================================================================
+;; Публичные функции
+;; ======================================================================
+
+(defn t
+  "Перевод строки
+   (t :ru :workers :title) => \"Работники\"
+   (t :en :workers :title) => \"Workers\""
+  ([lang key]
+   (or (get-translation (name lang) (name key))
+       (get-default-translation (name key))
+       (name key)))
+  ([lang key & keys]
+   (or (apply get-translation (name lang) (name key) (map name keys))
+       (apply get-default-translation (name key) (map name keys))
+       (name key))))
+
+(defn t-format
+  "Перевод с форматированием
+   (t-format :ru :workers :search_results 5) => \"Результаты поиска: найдено 5 работников\""
+  [lang key & args]
+  (let [template (t lang key)]
+    (if (and template (seq args))
+      (apply format template args)
+      template)))
+
+(defn get-available-languages
+  "Получение списка доступных языков"
+  []
+  (keys @translations))
+
+(defn get-language-name
+  "Получение названия языка"
+  [lang]
+  (case (name lang)
+    "ru" "Русский"
+    "en" "English"
+    (name lang)))
+
+(defn wrap-i18n
+  "Middleware для определения языка пользователя"
+  [handler]
+  (fn [request]
+    (let [session (:session request {})
+          lang (or (:lang session)
+                   (get-in request [:headers "accept-language"])
+                   "ru")
+          request-with-lang (assoc-in request [:session :lang] lang)]
+      (handler request-with-lang))))
+
+(defn get-current-lang
+  "Получение текущего языка из запроса"
+  [request]
+  (or (get-in request [:session :lang]) "ru"))
+
+;; ======================================================================
+;; Словари для часто используемых переводов
+;; ======================================================================
+
+(defn translate-field
+  "Перевод названия поля"
+  [lang field]
+  (t lang :workers :fields field))
+
+(defn translate-nav
+  "Перевод навигации"
+  [lang item]
+  (t lang :navigation item))
+
+(defn translate-error
+  "Перевод ошибки"
+  [lang error]
+  (t lang :errors error))
+
+(defn translate-message
+  "Перевод сообщения"
+  [lang msg]
+  (t lang :messages msg))

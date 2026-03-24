@@ -1,0 +1,187 @@
+{
+  "ru" {
+    "common" {
+      "title" "Система управления персоналом"
+      "subtitle" "CRUD-приложение для базы данных работников"
+      "loading" "Загрузка..."
+      "save" "Сохранить"
+      "cancel" "Отмена"
+      "delete" "Удалить"
+      "edit" "Редактировать"
+      "create" "Создать"
+      "search" "Поиск"
+      "export" "Экспорт"
+      "import" "Импорт"
+      "yes" "Да"
+      "no" "Нет"
+      "ok" "OK"
+      "close" "Закрыть"
+    }
+    
+    "navigation" {
+      "home" "Главная"
+      "dashboard" "Дашборд"
+      "workers" "Работники"
+      "tables" "Все таблицы"
+      "profile" "Профиль"
+      "logout" "Выход"
+      "login" "Вход"
+    }
+    
+    "workers" {
+      "title" "Работники"
+      "new" "Добавить работника"
+      "edit" "Редактировать работника"
+      "delete_confirm" "Удалить работника?"
+      "search_placeholder" "Введите фамилию, имя, отчество или цех..."
+      "search_results" "Результаты поиска: найдено %d работников"
+      "no_workers" "Нет работников в базе данных"
+      "fields" {
+        "id" "ID"
+        "surname" "Фамилия"
+        "name" "Имя"
+        "patronymic" "Отчество"
+        "hire_date" "Дата приема"
+        "shop" "Цех"
+        "payment_system" "Система оплаты"
+        "category" "Категория"
+        "rank" "Разряд"
+        "work_mode" "Режим работы"
+        "salary" "Оклад"
+        "hourly_rate" "Почасовая ставка"
+      }
+    }
+    
+    "dashboard" {
+      "title" "Дашборд"
+      "total_workers" "Всего работников"
+      "total_shops" "Цехов"
+      "avg_salary" "Средняя зарплата"
+      "total_payroll" "Фонд оплаты труда"
+      "refresh" "Обновить"
+      "export_csv" "Экспорт CSV"
+    }
+    
+    "auth" {
+      "login_title" "Вход в систему"
+      "login_subtitle" "Система управления персоналом"
+      "username" "Имя пользователя"
+      "password" "Пароль"
+      "login_button" "Войти"
+      "logout" "Выход"
+      "profile" "Профиль"
+      "default_credentials" "По умолчанию: admin / admin123"
+      "login_error_empty" "Введите имя пользователя и пароль"
+      "login_error_invalid" "Неверное имя пользователя или пароль"
+    }
+    
+    "errors" {
+      "not_found" "Страница не найдена"
+      "access_denied" "Доступ запрещён"
+      "insufficient_permissions" "У вас недостаточно прав для доступа к этой странице"
+      "server_error" "Внутренняя ошибка сервера"
+      "validation_error" "Ошибка валидации данных"
+    }
+    
+    "messages" {
+      "saved" "Данные успешно сохранены"
+      "deleted" "Данные успешно удалены"
+      "created" "Запись успешно создана"
+      "updated" "Данные успешно обновлены"
+      "error" "Произошла ошибка"
+    }
+  }
+  
+  "en" {
+    "common" {
+      "title" "Human Resource Management System"
+      "subtitle" "CRUD application for employee database"
+      "loading" "Loading..."
+      "save" "Save"
+      "cancel" "Cancel"
+      "delete" "Delete"
+      "edit" "Edit"
+      "create" "Create"
+      "search" "Search"
+      "export" "Export"
+      "import" "Import"
+      "yes" "Yes"
+      "no" "No"
+      "ok" "OK"
+      "close" "Close"
+    }
+    
+    "navigation" {
+      "home" "Home"
+      "dashboard" "Dashboard"
+      "workers" "Workers"
+      "tables" "All Tables"
+      "profile" "Profile"
+      "logout" "Logout"
+      "login" "Login"
+    }
+    
+    "workers" {
+      "title" "Workers"
+      "new" "Add Worker"
+      "edit" "Edit Worker"
+      "delete_confirm" "Delete worker?"
+      "search_placeholder" "Enter surname, name, patronymic or shop..."
+      "search_results" "Search results: found %d workers"
+      "no_workers" "No workers in database"
+      "fields" {
+        "id" "ID"
+        "surname" "Surname"
+        "name" "Name"
+        "patronymic" "Patronymic"
+        "hire_date" "Hire Date"
+        "shop" "Shop"
+        "payment_system" "Payment System"
+        "category" "Category"
+        "rank" "Rank"
+        "work_mode" "Work Mode"
+        "salary" "Salary"
+        "hourly_rate" "Hourly Rate"
+      }
+    }
+    
+    "dashboard" {
+      "title" "Dashboard"
+      "total_workers" "Total Workers"
+      "total_shops" "Total Shops"
+      "avg_salary" "Average Salary"
+      "total_payroll" "Total Payroll"
+      "refresh" "Refresh"
+      "export_csv" "Export CSV"
+    }
+    
+    "auth" {
+      "login_title" "Login to System"
+      "login_subtitle" "Human Resource Management System"
+      "username" "Username"
+      "password" "Password"
+      "login_button" "Login"
+      "logout" "Logout"
+      "profile" "Profile"
+      "default_credentials" "Default: admin / admin123"
+      "login_error_empty" "Enter username and password"
+      "login_error_invalid" "Invalid username or password"
+    }
+    
+    "errors" {
+      "not_found" "Page not found"
+      "access_denied" "Access denied"
+      "insufficient_permissions" "You don't have sufficient permissions to access this page"
+      "server_error" "Internal server error"
+      "validation_error" "Data validation error"
+    }
+    
+    "messages" {
+      "saved" "Data saved successfully"
+      "deleted" "Data deleted successfully"
+      "created" "Record created successfully"
+      "updated" "Data updated successfully"
+      "error" "An error occurred"
+    }
+  }
+}
