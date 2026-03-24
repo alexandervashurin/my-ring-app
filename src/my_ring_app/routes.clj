@@ -6,9 +6,18 @@
             [my-ring-app.api.workers :as api-workers]
             [my-ring-app.api.dashboard :as api-dashboard]
             [my-ring-app.api.salary :as api-salary]
-            [my-ring-app.api.export :as api-export]))
+            [my-ring-app.api.export :as api-export]
+            [my-ring-app.api.audit :as api-audit]))
 
 (defroutes app-routes
+  ;; ======================================================================
+  ;; REST API - Аудит
+  ;; ======================================================================
+  (GET "/api/audit" [] api-audit/get-audit-log-api)
+  (GET "/api/audit/stats" [] api-audit/get-audit-stats-api)
+  (GET "/api/audit/:entity-type/:entity-id" [] api-audit/get-audit-by-entity-api)
+  (GET "/api/audit/user/:username" [] api-audit/get-audit-by-user-api)
+
   ;; ======================================================================
   ;; REST API - Экспорт данных
   ;; ======================================================================

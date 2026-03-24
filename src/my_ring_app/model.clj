@@ -1,11 +1,33 @@
 (ns my-ring-app.model
   (:require [clojure.java.jdbc :as jdbc]
             [my-ring-app.config :refer [db-spec]]
-            [my-ring-app.logger :as logger]))
+            [my-ring-app.logger :as logger]
+            [clojure.json :as json]))
 
 ;; ======================================================================
 ;; Вспомогательные функции
 ;; ======================================================================
+
+(defn log-audit-change
+  "Логирование изменений в таблицу аудита"
+  [entity-type entity-id action user-info old-values new-values & [details]]
+  (try
+    (let [audit-data {:entity_type entity-type
+                      :entity_id entity-id
+                      :action action
+                      :user_id (:user-id user-info)
+                      :username (:username user-info "system")
+                      :old_values (when old-values (json/write-str old-values))
+                      :new_values (when new-values (json/write-str new-values))
+                      :ip_address (:ip-address user-info)
+                      :user_agent (:user-agent user-info)
+                      :details (or details "-")}]
+      (jdbc/insert! db-spec :Аудит_изменений audit-data)
+      (logger/log-info (format "Аудит: %s %s ID=%d пользователем %s"
+                               action entity-type entity-id (:username user-info "system"))))
+    (catch Exception e
+      (logger/log-error e "Ошибка при записи в аудит"
+                        {:entity-type entity-type :entity-id entity-id :action action}))))
 
 (defn safe-query [sql params]
   (try
@@ -452,3 +474,86 @@
    :recent-hires (get-recent-hires)
    :salary-distribution (get-salary-distribution)
    :attendance (get-attendance-stats)})
+
+;; ======================================================================
+;; Аудит изменений
+;; ======================================================================
+
+(defn get-audit-log
+  "Получение записей аудита с пагинацией"
+  ([] (get-audit-log 50 0))
+  ([limit offset] (get-audit-log limit offset nil nil))
+  ([limit offset entity-type action]
+   (try
+     (let [where-clause (cond
+                          (and entity-type action)
+                          ["WHERE entity_type = ? AND action = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+                           entity-type action limit offset]
+                          entity-type
+                          ["WHERE entity_type = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+                           entity-type limit offset]
+                          action
+                          ["WHERE action = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+                           action limit offset]
+                          :else
+                          ["ORDER BY created_at DESC LIMIT ? OFFSET ?" limit offset])]
+       (let [result (apply jdbc/query db-spec where-clause)]
+         (logger/log-info (format "Получено %d записей аудита" (count result)))
+         result))
+     (catch Exception e
+       (logger/log-error e "Ошибка при получении записей аудита")
+       []))))
+
+(defn get-audit-log-count
+  "Получение количества записей аудита"
+  ([] (get-audit-log-count nil nil))
+  ([entity-type action]
+   (try
+     (let [where-clause (cond
+                          (and entity-type action)
+                          ["SELECT COUNT(*) as count FROM Аудит_изменений WHERE entity_type = ? AND action = ?"
+                           entity-type action]
+                          entity-type
+                          ["SELECT COUNT(*) as count FROM Аудит_изменений WHERE entity_type = ?" entity-type]
+                          action
+                          ["SELECT COUNT(*) as count FROM Аудит_изменений WHERE action = ?" action]
+                          :else
+                          ["SELECT COUNT(*) as count FROM Аудит_изменений"])]
+       (:count (first (apply jdbc/query db-spec where-clause))))
+     (catch Exception e
+       (logger/log-error e "Ошибка при подсчёте записей аудита")
+       0))))
+
+(defn get-audit-by-entity
+  "Получение истории изменений конкретной сущности"
+  [entity-type entity-id]
+  (try
+    (let [result (jdbc/query db-spec
+                             ["SELECT * FROM Аудит_изменений
+                              WHERE entity_type = ? AND entity_id = ?
+                              ORDER BY created_at DESC"
+                              entity-type entity-id])]
+      (logger/log-info (format "Получена история %s ID=%d (%d записей)"
+                               entity-type entity-id (count result)))
+      result)
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении истории сущности"
+                        {:entity-type entity-type :entity-id entity-id})
+      [])))
+
+(defn get-audit-by-user
+  "Получение действий пользователя"
+  [username limit]
+  (try
+    (let [result (jdbc/query db-spec
+                             ["SELECT * FROM Аудит_изменений
+                              WHERE username = ?
+                              ORDER BY created_at DESC
+                              LIMIT ?"
+                              username (or limit 100)])]
+      (logger/log-info (format "Получены действия пользователя %s (%d записей)" username (count result)))
+      result)
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении действий пользователя"
+                        {:username username})
+      [])))
