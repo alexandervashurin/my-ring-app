@@ -6,7 +6,7 @@
             [buddy.hashers :as hashers]
             [ring.util.response :as resp]
             [clojure.string :as str]
-            [clojure.java-time :as time]))
+            [java-time :as time]))
 
 ;; ======================================================================
 ;; Константы и роли

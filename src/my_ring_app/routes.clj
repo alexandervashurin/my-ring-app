@@ -2,9 +2,21 @@
   (:require [compojure.core :refer [defroutes GET POST DELETE]]
             [compojure.route :as route]
             [my-ring-app.controllers :as controllers]
-            [my-ring-app.controllers.auth :as auth-controllers]))
+            [my-ring-app.controllers.auth :as auth-controllers]
+            [my-ring-app.api.workers :as api-workers]))
 
 (defroutes app-routes
+  ;; ======================================================================
+  ;; REST API
+  ;; ======================================================================
+  ;; Работники API
+  (GET "/api/workers" [] api-workers/get-workers)
+  (GET "/api/workers/search" [] api-workers/search-workers-api)
+  (GET "/api/workers/:id" [] api-workers/get-worker-by-id)
+  (POST "/api/workers" [] api-workers/create-worker)
+  (PUT "/api/workers/:id" [] api-workers/update-worker)
+  (DELETE "/api/workers/:id" [] api-workers/delete-worker)
+
   ;; ======================================================================
   ;; Аутентификация
   ;; ======================================================================
