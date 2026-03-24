@@ -23,8 +23,7 @@
                  [buddy/buddy-hashers "2.0.167"]
                  ;; Экспорт данных
                  [org.clojure/data.csv "1.0.1"]
-                 [org.apache.poi/poi "5.2.3"]  ; Excel
-                 [clj-pdf "2.12.1"]]  ; PDF отчёты
+                 [org.apache.poi/poi "5.2.3"]]  ; Excel
   :main ^:skip-aot my-ring-app.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all
