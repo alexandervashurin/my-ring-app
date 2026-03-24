@@ -31,8 +31,8 @@
     .container { max-width: 1400px; margin: 0 auto; }
     header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
     header h1 { margin: 0; font-size: 28px; }
-    nav { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    nav a { display: inline-block; margin: 0 10px; padding: 10px 15px; text-decoration: none; color: #667eea; border-radius: 5px; transition: all 0.3s; }
+    nav { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; gap: 10px; }
+    nav a { display: inline-block; padding: 10px 15px; text-decoration: none; color: #667eea; border-radius: 5px; transition: all 0.3s; }
     nav a:hover { background: #f0f4ff; }
     nav a.active { background: #667eea; color: white; }
     .form-container, .table-container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
@@ -40,22 +40,24 @@
     .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
     .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
     .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
-    .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; transition: all 0.3s; text-decoration: none; display: inline-block; text-align: center; }
+    .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; transition: all 0.3s; text-decoration: none; display: inline-block; text-align: center; font-size: 14px; }
     .btn-primary { background: #667eea; color: white; }
     .btn-primary:hover { background: #5568d3; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4); }
     .btn-secondary { background: #e0e0e0; color: #333; }
     .btn-secondary:hover { background: #d0d0d0; }
-    .btn-success { background: #4CAF50; color: white; padding: 8px 12px; }
+    .btn-success { background: #4CAF50; color: white; }
     .btn-success:hover { background: #45a049; }
-    .btn-warning { background: #FF9800; color: white; padding: 8px 12px; }
+    .btn-warning { background: #FF9800; color: white; }
     .btn-warning:hover { background: #F57C00; }
-    .btn-danger { background: #F44336; color: white; padding: 8px 12px; }
+    .btn-danger { background: #F44336; color: white; }
     .btn-danger:hover { background: #E53935; }
-    .btn-info { background: #2196F3; color: white; padding: 8px 12px; }
+    .btn-info { background: #2196F3; color: white; }
     .btn-info:hover { background: #1976D2; }
     .btn-sm { padding: 6px 10px; font-size: 12px; }
-    .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    .data-table th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px; text-align: left; font-weight: 600; }
+    .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; display: block; overflow-x: auto; }
+    .data-table thead { display: table-header-group; }
+    .data-table tbody { display: table-row-group; }
+    .data-table th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px; text-align: left; font-weight: 600; white-space: nowrap; }
     .data-table td { padding: 10px; border-bottom: 1px solid #eee; }
     .data-table tr:hover { background: #f9f9f9; }
     .empty-state { padding: 40px; text-align: center; color: #999; font-size: 16px; background: #f9f9f9; border-radius: 8px; }
@@ -63,8 +65,6 @@
     .alert-success { background: #e8f5e9; color: #2e7d32; border-left: 4px solid #4CAF50; }
     .alert-error { background: #ffebee; color: #c62828; border-left: 4px solid #F44336; }
     .alert-info { background: #e3f2fd; color: #1565c0; border-left: 4px solid #2196F3; }
-    
-    /* Dashboard styles */
     .dashboard-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
     .stat-card { display: flex; align-items: center; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.3s, box-shadow 0.3s; position: relative; overflow: hidden; }
     .stat-card:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
@@ -81,37 +81,47 @@
     .stat-card--warning { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; }
     .stat-card--purple { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); color: white; }
     .stat-card--blue { background: linear-gradient(135deg, #5ee7df 0%, #b490ca 100%); color: white; }
-    
     .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
     .dashboard-actions { display: flex; gap: 10px; }
-    .btn-refresh { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
-    .btn-refresh:hover { transform: rotate(180deg); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
-    .btn-export { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
-    .btn-export:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(67, 233, 123, 0.4); }
-    
-    .charts-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 30px; }
-    .chart-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .chart-title { margin: 0 0 20px 0; color: #333; font-size: 18px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
-    .tables-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
-    .dashboard-table { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .table-title { margin: 0 0 20px 0; color: #333; font-size: 18px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+    .charts-row, .tables-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .chart-container, .dashboard-table { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .chart-title, .table-title { margin: 0 0 20px 0; color: #333; font-size: 18px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
     .worker-link { color: #667eea; text-decoration: none; font-weight: 600; }
     .worker-link:hover { text-decoration: underline; }
-    
-    /* Progress bars */
     .progress-container { margin-top: 10px; }
     .progress-bar { height: 8px; background: rgba(255,255,255,0.3); border-radius: 4px; overflow: hidden; margin-top: 5px; }
     .progress-fill { height: 100%; background: rgba(255,255,255,0.8); border-radius: 4px; transition: width 0.5s ease; }
+    .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+    .pagination a, .pagination span { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #667eea; transition: all 0.3s; }
+    .pagination a:hover { background: #f0f4ff; border-color: #667eea; }
+    .pagination .active { background: #667eea; color: white; border-color: #667eea; }
+    .search-box { background: #f0f4ff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #bbdefb; }
+    .search-box input[type='text'] { width: 100%; padding: 12px; border: 2px solid #bbdefb; border-radius: 6px; font-size: 14px; transition: border-color 0.3s; }
+    .search-box input[type='text']:focus { outline: none; border-color: #667eea; }
+    .search-results-info { margin-top: 15px; padding: 12px; background: #e3f2fd; border-radius: 6px; color: #1976d2; font-size: 14px; }
     
+    /* Mobile responsive */
     @media (max-width: 768px) {
+      body { padding: 10px; }
+      header { padding: 15px; }
+      header h1 { font-size: 22px; }
+      .user-info { margin-top: 10px; flex-direction: column; align-items: flex-start; gap: 10px; }
+      nav { flex-direction: column; }
       nav a { display: block; margin: 5px 0; }
       .data-table { font-size: 12px; }
       .data-table th, .data-table td { padding: 8px; }
       .dashboard-stats { grid-template-columns: 1fr; }
-      .charts-row, .tables-row { grid-template-columns: 1fr; }
       .dashboard-header { flex-direction: column; align-items: flex-start; }
       .dashboard-actions { width: 100%; justify-content: space-between; }
       .btn-refresh, .btn-export { flex: 1; justify-content: center; }
+      .charts-row, .tables-row { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .btn-group { flex-direction: column; }
+      .btn-group .btn { width: 100%; }
+      .pagination { flex-direction: column; }
+      .stat-card { flex-direction: column; text-align: center; }
+      .stat-card__icon { margin-right: 0; margin-bottom: 10px; }
+      .stat-card__value { font-size: 24px; }
     }
   </style>")
 
@@ -162,6 +172,14 @@
          "<head>"
          "<meta charset='UTF-8'>"
          "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+         "<meta name='theme-color' content='#667eea'>"
+         "<meta name='description' content='Система управления персоналом - CRUD приложение для базы данных работников'>"
+         "<meta name='mobile-web-app-capable' content='yes'>"
+         "<meta name='apple-mobile-web-app-capable' content='yes'>"
+         "<meta name='apple-mobile-web-app-status-bar-style' content='default'>"
+         "<meta name='apple-mobile-web-app-title' content='HR System'>"
+         "<link rel='manifest' href='/manifest.json'>"
+         "<link rel='apple-touch-icon' href='/icons/icon-192x192.png'>"
          "<title>" title " - " (i18n/t lang :common :title) "</title>"
          (generate-css)
          "<style>"
@@ -181,5 +199,19 @@
          content
          "<script src='/js/app.js'></script>"
          "<script src='/js/charts.js'></script>"
+         "<script>"
+         "// Регистрация Service Worker"
+         "if ('serviceWorker' in navigator) {"
+         "  window.addEventListener('load', function() {"
+         "    navigator.serviceWorker.register('/sw.js')"
+         "      .then(function(registration) {"
+         "        console.log('[PWA] Service Worker зарегистрирован:', registration.scope);"
+         "      })"
+         "      .catch(function(error) {"
+         "        console.log('[PWA] Ошибка регистрации Service Worker:', error);"
+         "      });"
+         "  });"
+         "}"
+         "</script>"
          "</body>"
          "</html>")))

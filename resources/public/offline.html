@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Нет подключения - Система управления персоналом</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .offline-container {
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+    }
+    .offline-icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 28px;
+    }
+    p {
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .retry-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .retry-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    .status {
+      margin-top: 20px;
+      padding: 10px;
+      background: #f0f4ff;
+      border-radius: 5px;
+      font-size: 14px;
+      color: #667eea;
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="offline-icon">📡</div>
+    <h1>Нет подключения к интернету</h1>
+    <p>К сожалению, в данный момент нет подключения к сети. Проверьте ваше интернет-соединение и попробуйте снова.</p>
+    
+    <button class="retry-btn" onclick="location.reload()">🔄 Попробовать снова</button>
+    
+    <div class="status" id="status">
+      💡 Некоторые функции могут работать в офлайн-режиме
+    </div>
+  </div>
+  
+  <script>
+    // Проверка подключения
+    function checkConnection() {
+      const statusEl = document.getElementById('status');
+      
+      if (navigator.onLine) {
+        statusEl.innerHTML = '✅ Подключение восстановлено! Перезагрузка...';
+        statusEl.style.background = '#e8f5e9';
+        statusEl.style.color = '#2e7d32';
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        statusEl.innerHTML = '❌ Нет подключения к сети';
+        statusEl.style.background = '#ffebee';
+        statusEl.style.color = '#c62828';
+      }
+    }
+    
+    // Слушатели событий подключения
+    window.addEventListener('online', checkConnection);
+    window.addEventListener('offline', checkConnection);
+    
+    // Первоначальная проверка
+    checkConnection();
+  </script>
+</body>
+</html>
