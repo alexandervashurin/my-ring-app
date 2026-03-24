@@ -6,12 +6,17 @@
             [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
             [ring.middleware.content-type :refer [wrap-content-type]]
             [ring.middleware.file-info :refer [wrap-file-info]]
+            [ring.middleware.session :refer [wrap-session]]
             [ring.middleware.defaults :refer [wrap-defaults api-defaults]]
             [my-ring-app.routes :refer [app-routes]]
             [my-ring-app.logger :as logger]
-            [my-ring-app.config :as config]))
+            [my-ring-app.config :as config]
+            [my-ring-app.auth :as auth]))
 
-;; Middleware для обработки ошибок
+;; ======================================================================
+;; Middleware
+;; ======================================================================
+
 (defn wrap-error-handler
   "Перехватывает необработанные исключения и возвращает 500"
   [handler]
@@ -24,7 +29,6 @@
          :body "Внутренняя ошибка сервера"
          :headers {"Content-Type" "text/html; charset=utf-8"}}))))
 
-;; Middleware для добавления заголовков безопасности
 (defn wrap-security-headers
   "Добавляет заголовки безопасности"
   [handler]
@@ -36,11 +40,29 @@
           (assoc-in [:headers "X-XSS-Protection"] "1; mode=block")
           (assoc-in [:headers "Content-Security-Policy"] "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'")))))
 
-;; Middleware для обработки параметров
+(defn wrap-logging
+  "Middleware для логирования запросов"
+  [handler]
+  (fn [request]
+    (let [method (:request-method request)
+          uri (:uri request)
+          response (handler request)
+          status (:status response)]
+      (logger/log-request request)
+      (logger/log-response status uri)
+      response)))
+
+;; ======================================================================
+;; Основное приложение
+;; ======================================================================
+
 (def app
   (-> app-routes
+      wrap-session
+      auth/wrap-authentication
       wrap-security-headers
       wrap-error-handler
+      wrap-logging
       wrap-content-type
       wrap-file-info
       wrap-keyword-params
@@ -55,7 +77,11 @@
   (logger/log-info "Запуск приложения 'Система управления персоналом'")
   (logger/log-info "========================================")
 
+  ;; Инициализация таблицы пользователей
+  (auth/init-db!)
+
   (let [port (:port config/app-config)]
     (logger/log-info (format "Сервер запускается на порту %d" port))
+    (logger/log-info "Пользователь по умолчанию: admin / admin123")
     (jetty/run-jetty app {:port port})
     (logger/log-info "Сервер остановлен")))

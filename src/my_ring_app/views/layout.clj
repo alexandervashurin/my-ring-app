@@ -104,24 +104,42 @@
     }
   </style>")
 
-(defn- generate-header []
+(defn- generate-header [user]
   "Генерация шапки страницы"
-  "<header>
-    <h1>🏭 Система управления персоналом</h1>
-    <p style='opacity: 0.9; margin-top: 5px;'>CRUD-приложение для базы данных работников</p>
-  </header>")
+  (let [user-info (when user
+                    (str "<div class='user-info'>"
+                         "<span class='user-greeting'>👤 " (html-escape (:username user)) " (" 
+                         (html-escape (get {"admin" "Администратор"
+                                            "manager" "Менеджер"
+                                            "viewer" "Наблюдатель"
+                                            "hr" "HR-специалист"} (:role user) (:role user))) ")</span>"
+                         "<a href='/profile' class='btn btn-sm btn-info' style='margin-left: 10px;'>Профиль</a>"
+                         "<a href='/logout' class='btn btn-sm btn-secondary' style='margin-left: 5px;'>Выход</a>"
+                         "</div>"))]
+    (str "<header>"
+         "<div style='display: flex; justify-content: space-between; align-items: center;'>"
+         "<div>"
+         "<h1>🏭 Система управления персоналом</h1>"
+         "<p style='opacity: 0.9; margin-top: 5px;'>CRUD-приложение для базы данных работников</p>"
+         "</div>"
+         user-info
+         "</div>"
+         "</header>")))
 
-(defn- generate-navigation [active-page]
+(defn- generate-navigation [active-page user]
   "Генерация навигационного меню"
-  (let [active-class (fn [page] (if (= page active-page) " class='active'" ""))]
+  (let [active-class (fn [page] (if (= page active-page) " class='active'" ""))
+        user-role (:role user)
+        has-salary-access (contains? #{"admin" "manager"} user-role)]
     (str "<nav>"
          "<a href='/'" (active-class "home") ">Главная</a>"
          "<a href='/dashboard'" (active-class "dashboard") ">Дашборд</a>"
          "<a href='/workers'" (active-class "workers") ">Работники</a>"
-         "<a href='/db'" (active-class "db") ">Все таблицы</a>"
+         (when has-salary-access
+           "<a href='/db'" (active-class "db") ">Все таблицы</a>")
          "</nav>")))
 
-(defn wrap-html [content title & [active-page]]
+(defn wrap-html [content title & [active-page user]]
   "Оборачивает контент в полную HTML-страницу"
   (str "<!DOCTYPE html>"
        "<html lang='ru'>"
@@ -130,11 +148,15 @@
        "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
        "<title>" title " - Управление БД работников</title>"
        (generate-css)
+       "<style>"
+       ".user-info { display: flex; align-items: center; font-size: 14px; }"
+       ".user-greeting { color: white; opacity: 0.95; }"
+       "</style>"
        "</head>"
        "<body>"
        "<div class='container'>"
-       (generate-header)
-       (generate-navigation (or active-page "home"))
+       (generate-header user)
+       (generate-navigation (or active-page "home") user)
        content
        "</div>"
        "</body>"

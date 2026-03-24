@@ -1,9 +1,23 @@
 (ns my-ring-app.routes
   (:require [compojure.core :refer [defroutes GET POST DELETE]]
             [compojure.route :as route]
-            [my-ring-app.controllers :as controllers]))
+            [my-ring-app.controllers :as controllers]
+            [my-ring-app.controllers.auth :as auth-controllers]))
 
 (defroutes app-routes
+  ;; ======================================================================
+  ;; Аутентификация
+  ;; ======================================================================
+  (GET "/login" request (auth-controllers/login-page request))
+  (POST "/login" request (auth-controllers/login-submit request))
+  (GET "/logout" request (auth-controllers/logout request))
+  (GET "/profile" request (auth-controllers/profile-page request))
+  (POST "/change-password" request (auth-controllers/change-password request))
+  (GET "/access-denied" request (auth-controllers/access-denied request))
+
+  ;; ======================================================================
+  ;; Основные страницы
+  ;; ======================================================================
   ;; Главная страница
   (GET "/" [] (controllers/home-page))
 

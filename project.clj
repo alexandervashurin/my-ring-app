@@ -17,7 +17,9 @@
                  [ch.qos.logback/logback-classic "1.4.11"]
                  [org.clojure/tools.logging "1.2.4"]
                  ;; Время и дата (Clojure wrapper for Java 8 Time API)
-                 [clojure.java-time/clojure.java-time "1.4.3"]]
+                 [clojure.java-time/clojure.java-time "1.4.3"]
+                 ;; Безопасность и аутентификация
+                 [buddy/buddy-hashers "2.0.167"]]
   :main ^:skip-aot my-ring-app.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all
