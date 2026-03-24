@@ -12,6 +12,7 @@
                  ;; JDBC и БД
                  [org.clojure/java.jdbc "0.7.12"]
                  [org.xerial/sqlite-jdbc "3.45.1.0"]
+                 [org.postgresql/postgresql "42.6.0"]  ; PostgreSQL драйвер
                  ;; Логирование — КРИТИЧЕСКИ ВАЖНО: правильные версии
                  [org.slf4j/slf4j-api "2.0.9"]
                  [ch.qos.logback/logback-classic "1.4.11"]
