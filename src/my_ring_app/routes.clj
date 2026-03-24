@@ -7,9 +7,17 @@
             [my-ring-app.api.dashboard :as api-dashboard]
             [my-ring-app.api.salary :as api-salary]
             [my-ring-app.api.export :as api-export]
-            [my-ring-app.api.audit :as api-audit]))
+            [my-ring-app.api.audit :as api-audit]
+            [my-ring-app.api.reports :as api-reports]))
 
 (defroutes app-routes
+  ;; ======================================================================
+  ;; REST API - PDF отчёты
+  ;; ======================================================================
+  (GET "/api/reports/worker/:id/pdf" [] api-reports/export-worker-pdf)
+  (GET "/api/reports/workers/pdf" [] api-reports/export-workers-list-pdf)
+  (GET "/api/reports/salary/pdf" [] api-reports/export-salary-report-pdf)
+
   ;; ======================================================================
   ;; REST API - Аудит
   ;; ======================================================================
