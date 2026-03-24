@@ -3,13 +3,30 @@
             [compojure.route :as route]
             [my-ring-app.controllers :as controllers]
             [my-ring-app.controllers.auth :as auth-controllers]
-            [my-ring-app.api.workers :as api-workers]))
+            [my-ring-app.api.workers :as api-workers]
+            [my-ring-app.api.dashboard :as api-dashboard]
+            [my-ring-app.api.salary :as api-salary]))
 
 (defroutes app-routes
   ;; ======================================================================
-  ;; REST API
+  ;; REST API - Дашборд и аналитика
   ;; ======================================================================
-  ;; Работники API
+  (GET "/api/dashboard" [] api-dashboard/get-dashboard)
+  (GET "/api/dashboard/stats" [] api-dashboard/get-dashboard-stats)
+  (GET "/api/analytics/workers-by-shop" [] api-dashboard/get-workers-by-shop)
+  (GET "/api/analytics/workers-by-category" [] api-dashboard/get-workers-by-category)
+  (GET "/api/analytics/salary-distribution" [] api-dashboard/get-salary-distribution)
+
+  ;; ======================================================================
+  ;; REST API - Зарплата и учёт времени
+  ;; ======================================================================
+  (GET "/api/salary/:worker-id" [] api-salary/get-worker-salary)
+  (GET "/api/work-time/:worker-id" [] api-salary/get-worker-work-time)
+  (PUT "/api/work-time/:id" [] api-salary/update-work-time)
+
+  ;; ======================================================================
+  ;; REST API - Работники
+  ;; ======================================================================
   (GET "/api/workers" [] api-workers/get-workers)
   (GET "/api/workers/search" [] api-workers/search-workers-api)
   (GET "/api/workers/:id" [] api-workers/get-worker-by-id)

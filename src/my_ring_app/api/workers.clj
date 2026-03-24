@@ -73,20 +73,32 @@
 ;; ======================================================================
 
 (defn get-workers
-  "GET /api/workers — получение списка работников"
+  "GET /api/workers — получение списка работников с пагинацией"
   [request]
   (try
     (let [user (:identity request)
           query-params (:params request)
           search (:search query-params)
+          page (max 1 (Integer/parseInt (or (:page query-params) "1")))
+          per-page (max 1 (min 100 (Integer/parseInt (or (:per_page query-params) "20"))))
+          offset (* (- page 1) per-page)
           workers (if (and search (not (str/blank? search)))
                     (model/search-workers search)
-                    (model/get-workers-with-details))]
-      (logger/log-info (format "API: GET /api/workers (поиск: %s, найдено: %d)"
-                               (or search "-") (count workers)))
+                    (model/get-workers-with-details))
+          total (count workers)
+          total-pages (int (Math/ceil (/ total (double per-page))))
+          paginated-workers (take per-page (drop offset workers))]
+      (logger/log-info (format "API: GET /api/workers (поиск: %s, страница: %d, размер: %d, найдено: %d)"
+                               (or search "-") page per-page (count paginated-workers)))
       (-> (resp/response (success-response
-                          (map format-worker workers)
-                          (str "Получено " (count workers) " работников")))
+                          {:workers (map format-worker paginated-workers)
+                           :pagination {:page page
+                                        :per_page per-page
+                                        :total total
+                                        :total_pages total-pages
+                                        :has_next (< page total-pages)
+                                        :has_prev (> page 1)}}
+                          (str "Получено " (count paginated-workers) " из " total " работников")))
           (resp/content-type "application/json; charset=utf-8")))
     (catch Exception e
       (logger/log-error e "API: Ошибка при получении списка работников")
