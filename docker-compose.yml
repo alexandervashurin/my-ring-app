@@ -1,59 +1,117 @@
-# Docker Compose для my-ring-app с PostgreSQL
+# Docker Compose для my-ring-app
 # Использование: docker-compose up -d
 
 version: '3.8'
 
 services:
-  # PostgreSQL база данных
-  postgres:
-    image: postgres:15-alpine
-    container_name: my-ring-app-db
-    environment:
-      POSTGRES_DB: my_ring_app
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      TZ: Europe/Moscow
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./postgres_migration.sql:/docker-entrypoint-initdb.d/01-migration.sql
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - my-ring-app-network
-
+  # ==============================================================================
   # Веб-приложение
+  # ==============================================================================
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: my-ring-app
-    environment:
-      DB_TYPE: postgresql
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: my_ring_app
-      DB_USER: postgres
-      DB_PASSWORD: postgres123
-      PORT: 3000
-      ENV: production
+    restart: unless-stopped
+    
+    # Порты
     ports:
-      - "3000:3000"
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - "${APP_PORT:-3000}:3000"
+    
+    # Переменные окружения
+    environment:
+      - PORT=3000
+      - ENV=${ENV:-production}
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      
+      # SMTP для email уведомлений
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_TLS=${SMTP_TLS:-true}
+      - SMTP_FROM=${SMTP_FROM:-noreply@example.com}
+    
+    # Тома для сохранения данных
+    volumes:
+      - app-data:/app
+      - app-logs:/app/logs
+      - ./igra.db:/app/igra.db:ro
+    
+    # Сеть
     networks:
       - my-ring-app-network
-    restart: unless-stopped
+    
+    # Зависимости
+    depends_on:
+      - sqlite-db
+    
+    # Ресурсы
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Health check (определяется в Dockerfile)
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+  # ==============================================================================
+  # SQLite (для совместимости)
+  # ==============================================================================
+  sqlite-db:
+    image: alpine:latest
+    container_name: my-ring-app-sqlite
+    restart: unless-stopped
+    volumes:
+      - sqlite-data:/data
+    networks:
+      - my-ring-app-network
+    command: tail -f /dev/null
+
+  # ==============================================================================
+  # Nginx Reverse Proxy (опционально)
+  # ==============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: my-ring-app-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx-logs:/var/log/nginx
+    networks:
+      - my-ring-app-network
+    depends_on:
+      - app
+    profiles:
+      - with-nginx
+
+# ==============================================================================
+# Тома
+# ==============================================================================
 volumes:
-  postgres_data:
+  app-data:
+    driver: local
+  app-logs:
+    driver: local
+  sqlite-data:
+    driver: local
+  nginx-logs:
     driver: local
 
+# ==============================================================================
+# Сети
+# ==============================================================================
 networks:
   my-ring-app-network:
     driver: bridge

@@ -1,0 +1,57 @@
+# Docker ignore file
+# Исключает файлы из Docker build контекста
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Clojure
+.target/
+pom.xml
+pom.xml.asc
+
+# Логи
+logs/
+*.log
+
+# Тесты
+test/
+
+# Документация
+*.md
+doc/
+screenshots/
+
+# Конфигурационные файлы
+.calva/
+.nrepl-port
+
+# Базы данных (если не нужны в образе)
+*.db
+*.db-journal
+
+# Временные файлы
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# Node modules (если есть)
+node_modules/
+
+# Python (если есть)
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
