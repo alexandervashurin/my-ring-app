@@ -10,9 +10,18 @@
             [my-ring-app.api.export :as api-export]
             [my-ring-app.api.audit :as api-audit]
             [my-ring-app.api.reports :as api-reports]
-            [my-ring-app.api.notifications :as api-notifications]))
+            [my-ring-app.api.notifications :as api-notifications]
+            [my-ring-app.api.onec :as api-onec]))
 
 (defroutes app-routes
+  ;; ======================================================================
+  ;; REST API - Интеграция с 1С
+  ;; ======================================================================
+  (GET "/api/1c/workers" [] api-onec/get-workers-export)
+  (GET "/api/1c/salary" [] api-onec/get-salary-export)
+  (POST "/api/1c/workers/import" [] api-onec/import-workers-from-1c)
+  (GET "/api/1c/docs" [] api-onec/get-1c-documentation)
+
   ;; ======================================================================
   ;; Переключение языка
   ;; ======================================================================

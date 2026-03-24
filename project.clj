@@ -23,6 +23,7 @@
                  [buddy/buddy-hashers "2.0.167"]
                  ;; Экспорт данных
                  [org.clojure/data.csv "1.0.1"]
+                 [org.clojure/data.xml "0.2.0-alpha6"]  ; XML для 1С
                  [org.apache.poi/poi "5.2.3"]  ; Excel
                  [javax.mail/javax.mail-api "1.6.2"]  ; Email API
                  [com.sun.mail/javax.mail "1.6.2"]]  ; Email реализация
