@@ -11,9 +11,19 @@
             [my-ring-app.api.audit :as api-audit]
             [my-ring-app.api.reports :as api-reports]
             [my-ring-app.api.notifications :as api-notifications]
-            [my-ring-app.api.onec :as api-onec]))
+            [my-ring-app.api.onec :as api-onec]
+            [my-ring-app.api.monitoring :as api-monitoring]))
 
 (defroutes app-routes
+  ;; ======================================================================
+  ;; REST API - Мониторинг и метрики
+  ;; ======================================================================
+  (GET "/api/health" [] api-monitoring/health-check)
+  (GET "/api/ready" [] api-monitoring/ready-check)
+  (GET "/api/live" [] api-monitoring/live-check)
+  (GET "/api/metrics" [] api-monitoring/prometheus-metrics)
+  (GET "/api/stats" [] api-monitoring/app-statistics)
+
   ;; ======================================================================
   ;; REST API - Интеграция с 1С
   ;; ======================================================================
