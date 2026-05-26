@@ -828,7 +828,7 @@ sudo systemctl restart my-ring-app
 ## 📞 Контакты
 
 - GitHub: [@alexandervashurin](https://github.com/alexandervashurin)
-- Email: [alexandervashurin@example.com](mailto:alexandervashurin@example.com)
+- Email: [alexandervashurin@yandex.ru](mailto:alexandervashurin@yandex.ru)
 
 ## 📈 Статус проекта
 
