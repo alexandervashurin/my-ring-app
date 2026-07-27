@@ -1,7 +1,7 @@
 # 🐳 Docker развёртывание
 
-**Версия:** 1.0  
-**Дата:** 24 марта 2026 г.
+**Версия:** 2.0  
+**Дата:** 27 июля 2026 г.
 
 ---
 
@@ -75,6 +75,10 @@ SMTP_FROM=noreply@example.com
 
 # Порт Nginx (если используется)
 NGINX_PORT=80
+
+# Безопасность
+SECRET_KEY=your-secret-key-here
+ADMIN_PASSWORD=your-admin-password-here
 ```
 
 ### Основные переменные
@@ -282,4 +286,4 @@ docker stats my-ring-app
 
 ---
 
-*Документация актуальна для версии 1.9.0-SNAPSHOT*
+*Документация актуальна для версии 2.0.0-SNAPSHOT*

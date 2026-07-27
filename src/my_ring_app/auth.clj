@@ -93,12 +93,15 @@
       {:success false :message "Внутренняя ошибка при создании пользователя"})))
 
 (defn update-user!
-  "Обновление данных пользователя"
+  "Обновление данных пользователя.
+   Разрешены только безопасные поля (whitelist) для защиты от mass assignment."
   [id data]
   (try
-    (let [update-data (cond-> data
-                        (:password data)
-                        (assoc :password_hash (hashers/encrypt (:password data))))
+    (let [allowed-keys #{:password :email}
+          safe-data (select-keys data allowed-keys)
+          update-data (cond-> safe-data
+                        (:password safe-data)
+                        (assoc :password_hash (hashers/encrypt (:password safe-data))))
           clean-data (dissoc update-data :password)
           result (jdbc/update! db-spec :Пользователь clean-data ["id = ?" id])]
       (if (pos? result)
@@ -173,11 +176,15 @@
 ;; ======================================================================
 
 (defn wrap-authentication
-  "Middleware для добавления пользователя из сессии в запрос"
+  "Middleware для добавления пользователя из сессии в запрос.
+   Переходит к БД для проверки is_active, чтобы деактивированные пользователи
+   теряли сессию немедленно."
   [handler]
   (fn [request]
     (let [session (:session request {})
-          user (:user session)]
+          session-user (:user session)
+          user (when session-user
+                 (get-user-by-id (:id session-user)))]
       (handler (assoc request :identity user :current-user user)))))
 
 (defn authenticated?

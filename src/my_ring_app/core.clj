@@ -84,6 +84,7 @@
       (wrap-session {:cookie-attrs {:http-only true
                                      :secure true
                                      :same-site :lax
+                                     :max-age 28800
                                      :path "/"}
                      :cookie-name "session-id"
                      :store (cookie/cookie-store {:key (or (System/getenv "SESSION_SECRET")

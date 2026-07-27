@@ -61,6 +61,11 @@
 - ✅ Аутентификация (bcrypt, сессии)
 - ✅ Авторизация (4 роли: admin, manager, viewer, hr)
 - ✅ XSS-защита, CSRF, заголовки безопасности
+- ✅ Brute-force protection (5 попыток → 15 минут блокировки)
+- ✅ Session revalidation (проверка активности при каждом запросе)
+- ✅ Mass assignment protection (whitelist полей)
+- ✅ Secure cookie флаг
+- ✅ Валидация email, year/month, ID
 
 ### REST API (15 endpoints)
 - ✅ `/api/workers` — работники с пагинацией
@@ -80,8 +85,8 @@
 - ✅ Excel (.xlsx с форматированием)
 
 ### Тестирование
-- ✅ 35+ тестов, 100+ утверждений
-- ✅ Покрытие ~55%
+- ✅ 42 теста, 165 утверждений
+- ✅ Покрытие ~58%
 
 ---
 

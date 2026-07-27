@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-EPL--2.0-green.svg)](LICENSE)
 [![Ring](https://img.shields.io/badge/Ring-1.9.6-purple.svg)](https://github.com/ring-clojure/ring)
 [![SQLite](https://img.shields.io/badge/SQLite-3.x-lightgrey.svg)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/tests-18%20tests%20%7C%2050%20assertions-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-42%20tests%20%7C%20165%20assertions-brightgreen.svg)]()
 [![Status](https://img.shields.io/badge/status-production--ready-success.svg)]()
 
 **Система управления персоналом** — полноценное веб-приложение для управления базой данных работников предприятия с поддержкой всех операций CRUD (Create, Read, Update, Delete).
@@ -349,16 +349,23 @@ sqlite3 igra.db < backup.sql
 | Механизм | Описание |
 |----------|----------|
 | **XSS-защита** | HTML-экранирование всех пользовательских данных |
+| **CSRF-защита** | Middleware для защиты от CSRF-атак |
 | **Clickjacking** | Заголовок X-Frame-Options: DENY |
 | **MIME-sniffing** | Заголовок X-Content-Type-Options: nosniff |
 | **CSP** | Content-Security-Policy для ограничения источников скриптов |
+| **SRI** | Subresource Integrity для статических ресурсов |
+| **Secure Cookie** | Флаг Secure для сессионных cookies |
+| **Session Revalidation** | Проверка активности пользователя при каждом запросе |
+| **Brute-force Protection** | Блокировка после 5 неудачных попыток (15 минут) |
+| **Mass Assignment Protection** | Валидация полей при обновлении пользователя |
+| **Input Validation** | Валидация email, year/month, ID на всех endpoint'ах |
 
 ### Рекомендации для продакшена
 
 1. **Настройте HTTPS** через обратный прокси (nginx/Apache)
-2. **Добавьте аутентификацию** для ограничения доступа
-3. **Регулярно делайте бэкапы** базы данных
-4. **Ограничьте доступ** к административным функциям
+2. **Смените пароль admin** по умолчанию
+3. **Настройте SECRET_KEY** для сессий
+4. **Регулярно делайте бэкапы** базы данных
 5. **Настройте firewall** для ограничения доступа к порту
 
 ## ⚡ Производительность
@@ -535,6 +542,8 @@ lein coverage
 - **validation_test.clj** — тесты валидации (13 тестов)
 - **model_test.clj** — тесты модели (5 тестов)
 - **core_test.clj** — интеграционные тесты (3 теста)
+- **util_test.clj** — тесты вспомогательных функций (21 тест)
+- **api/export_test.clj** — тесты экспорта (8 тестов)
 
 Пример теста:
 
@@ -554,7 +563,9 @@ lein coverage
 | validation_test.clj | 13 | 32 | ✅ |
 | model_test.clj | 5 | 8 | ✅ |
 | core_test.clj | 3 | 10 | ✅ |
-| **Итого** | **18** | **50** | **✅** |
+| util_test.clj | 21 | 63 | ✅ |
+| api/export_test.clj | 8 | 32 | ✅ |
+| **Итого** | **42** | **165** | **✅** |
 
 ## 🚀 Развёртывание
 
@@ -834,10 +845,10 @@ sudo systemctl restart my-ring-app
 
 | Параметр | Значение |
 |----------|----------|
-| **Версия** | 0.1.0-SNAPSHOT |
+| **Версия** | 2.0.0-SNAPSHOT |
 | **Статус** | Production Ready |
-| **Последнее обновление** | Февраль 2026 |
-| **Тесты** | 18 тестов, 50 утверждений ✅ |
+| **Последнее обновление** | Июль 2026 |
+| **Тесты** | 42 тестов, 165 утверждений ✅ |
 | **Сборка** | [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]() |
 
 ## 🙏 Благодарности

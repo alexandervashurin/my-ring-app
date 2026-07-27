@@ -6,7 +6,8 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [my-ring-app.model :as model]
-            [my-ring-app.logger :as logger])
+            [my-ring-app.logger :as logger]
+            [my-ring-app.util :as util])
   (:import (java.io StringWriter ByteArrayOutputStream)
            (org.apache.poi.ss.usermodel WorkbookFactory CellStyle CreationHelper)
            (org.apache.poi.xssf.usermodel XSSFWorkbook)))
@@ -15,19 +16,8 @@
 ;; Вспомогательные функции
 ;; ======================================================================
 
-(defn- success-response
-  "Стандартный ответ об успехе"
-  [data message]
-  {:success true
-   :data data
-   :message message})
-
-(defn- error-response
-  "Стандартный ответ об ошибке"
-  [code message]
-  {:success false
-   :error {:code code
-           :message message}})
+(def ^:private success-response util/success-response)
+(def ^:private error-response util/error-response)
 
 (defn- html-escape
   "Экранирование HTML-символов"

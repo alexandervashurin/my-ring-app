@@ -5,32 +5,26 @@
             [clojure.string :as str]
             [my-ring-app.email :as email]
             [my-ring-app.model :as model]
-            [my-ring-app.logger :as logger]))
+            [my-ring-app.logger :as logger]
+            [my-ring-app.util :as util]))
 
 ;; ======================================================================
 ;; Вспомогательные функции
 ;; ======================================================================
 
-(defn- parse-int [s default]
-  "Безопасное преобразование строки в число"
-  (try
-    (if (or (nil? s) (str/blank? s))
-      default
-      (Integer/parseInt (str/trim s)))
-    (catch NumberFormatException e
-      default)))
+(def ^:private parse-int util/parse-int)
+(def ^:private success-response util/success-response)
+(def ^:private error-response util/error-response)
 
-(defn- success-response
-  "Стандартный ответ об успехе"
-  ([data]
-   {:success true :data data :message "Операция выполнена успешно"})
-  ([data message]
-   {:success true :data data :message message}))
-
-(defn- error-response
-  "Стандартный ответ об ошибке"
-  [code message]
-  {:success false :error {:code code :message message}})
+(defn- parse-recipients
+  "Парсинг и валидация списка получателей email.
+   Возвращает вектор валидных email-адресов."
+  [recipients-str]
+  (->> (str/split (or recipients-str "") #",")
+       (map str/trim)
+       (filter seq)
+       (filter util/validate-email)
+       vec))
 
 ;; ======================================================================
 ;; API endpoints
@@ -56,11 +50,19 @@
   (try
     (let [params (:params request)
           worker-id (parse-int (:worker_id params) 0)
-          recipients (str/split (or (:recipients params) "") #",")]
-      (if (zero? worker-id)
+          recipients (parse-recipients (:recipients params))]
+      (cond
+        (zero? worker-id)
         (-> (resp/response (error-response "INVALID_ID" "ID работника обязателен"))
             (resp/status 400)
             (resp/content-type "application/json; charset=utf-8"))
+
+        (empty? recipients)
+        (-> (resp/response (error-response "INVALID_RECIPIENTS" "Укажите хотя бы один валидный email-адрес"))
+            (resp/status 400)
+            (resp/content-type "application/json; charset=utf-8"))
+
+        :else
         (let [worker (model/get-record-by-id "Работник" (str worker-id))]
           (if worker
             (let [result (email/notify-new-worker worker recipients)]
@@ -83,11 +85,19 @@
     (let [params (:params request)
           worker-id (parse-int (:worker_id params) 0)
           age (parse-int (:age params) 0)
-          recipients (str/split (or (:recipients params) "") #",")]
-      (if (or (zero? worker-id) (zero? age))
+          recipients (parse-recipients (:recipients params))]
+      (cond
+        (or (zero? worker-id) (zero? age))
         (-> (resp/response (error-response "INVALID_PARAMS" "ID работника и возраст обязательны"))
             (resp/status 400)
             (resp/content-type "application/json; charset=utf-8"))
+
+        (empty? recipients)
+        (-> (resp/response (error-response "INVALID_RECIPIENTS" "Укажите хотя бы один валидный email-адрес"))
+            (resp/status 400)
+            (resp/content-type "application/json; charset=utf-8"))
+
+        :else
         (let [worker (model/get-record-by-id "Работник" (str worker-id))]
           (if worker
             (let [result (email/notify-birthday worker age recipients)]
@@ -110,11 +120,19 @@
     (let [params (:params request)
           worker-id (parse-int (:worker_id params) 0)
           years (parse-int (:years params) 0)
-          recipients (str/split (or (:recipients params) "") #",")]
-      (if (or (zero? worker-id) (zero? years))
+          recipients (parse-recipients (:recipients params))]
+      (cond
+        (or (zero? worker-id) (zero? years))
         (-> (resp/response (error-response "INVALID_PARAMS" "ID работника и годы обязательны"))
             (resp/status 400)
             (resp/content-type "application/json; charset=utf-8"))
+
+        (empty? recipients)
+        (-> (resp/response (error-response "INVALID_RECIPIENTS" "Укажите хотя бы один валидный email-адрес"))
+            (resp/status 400)
+            (resp/content-type "application/json; charset=utf-8"))
+
+        :else
         (let [worker (model/get-record-by-id "Работник" (str worker-id))]
           (if worker
             (let [result (email/notify-work-anniversary worker years recipients)]

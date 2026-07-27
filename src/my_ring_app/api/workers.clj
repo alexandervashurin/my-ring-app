@@ -6,53 +6,17 @@
             [my-ring-app.model :as model]
             [my-ring-app.validation :as validation]
             [my-ring-app.auth :as auth]
+            [my-ring-app.util :as util]
             [my-ring-app.logger :as logger]))
 
 ;; ======================================================================
 ;; Вспомогательные функции
 ;; ======================================================================
 
-(defn- parse-int [s default]
-  "Безопасное преобразование строки в число"
-  (try
-    (if (or (nil? s) (str/blank? s))
-      default
-      (Integer/parseInt (str/trim s)))
-    (catch NumberFormatException e
-      default)))
-
-(defn- validate-id [id]
-  "Валидация и преобразование ID в число"
-  (try
-    (let [cleaned (str/trim (str/replace (str id) #"[^0-9]" ""))]
-      (if (seq cleaned)
-        (Integer/parseInt cleaned)
-        (throw (Exception. "Некорректный ID"))))
-    (catch Exception e
-      nil)))
-
-(defn- success-response
-  "Стандартный ответ об успехе"
-  ([data]
-   {:success true
-    :data data
-    :message "Операция выполнена успешно"})
-  ([data message]
-   {:success true
-    :data data
-    :message message}))
-
-(defn- error-response
-  "Стандартный ответ об ошибке"
-  ([code message]
-   {:success false
-    :error {:code code
-            :message message}})
-  ([code message details]
-   {:success false
-    :error {:code code
-            :message message
-            :details details}}))
+(def ^:private parse-int util/parse-int)
+(def ^:private validate-id util/validate-id)
+(def ^:private success-response util/success-response)
+(def ^:private error-response util/error-response)
 
 (defn format-worker
   "Форматирование данных работника для API"
@@ -79,8 +43,8 @@
     (let [user (:identity request)
           query-params (:params request)
           search (:search query-params)
-          page (max 1 (Integer/parseInt (or (:page query-params) "1")))
-          per-page (max 1 (min 100 (Integer/parseInt (or (:per_page query-params) "20"))))
+          page (max 1 (parse-int (:page query-params) 1))
+          per-page (max 1 (min 100 (parse-int (:per_page query-params) 20)))
           offset (* (- page 1) per-page)
           workers (if (and search (not (str/blank? search)))
                     (model/search-workers search)

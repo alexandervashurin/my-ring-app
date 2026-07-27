@@ -6,30 +6,16 @@
             [my-ring-app.model :as model]
             [my-ring-app.pdf-reports :as pdf]
             [my-ring-app.logger :as logger]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [my-ring-app.util :as util]))
 
 ;; ======================================================================
 ;; Вспомогательные функции
 ;; ======================================================================
 
-(defn- validate-id [id]
-  (and id (re-matches #"\d+" (str id))))
-
-(defn- parse-int [s default]
-  "Безопасное преобразование строки в число"
-  (try
-    (if (or (nil? s) (str/blank? s))
-      default
-      (Integer/parseInt (str/trim s)))
-    (catch NumberFormatException e
-      default)))
-
-(defn- error-response
-  "Стандартный ответ об ошибке"
-  [code message]
-  {:success false
-   :error {:code code
-           :message message}})
+(def ^:private validate-id util/validate-id)
+(def ^:private parse-int util/parse-int)
+(def ^:private error-response util/error-response)
 
 ;; ======================================================================
 ;; API endpoints

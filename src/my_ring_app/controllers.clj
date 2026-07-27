@@ -10,37 +10,21 @@
             [my-ring-app.views.tables :as tables]
             [my-ring-app.views.dashboard :as dashboard]
             [my-ring-app.validation :as validation]
-            [my-ring-app.logger :as logger]))
+            [my-ring-app.logger :as logger]
+            [my-ring-app.util :as util]))
 
 ;; ======================================================================
 ;; Вспомогательные функции
 ;; ======================================================================
 
-(defn- parse-int [s default]
-  "Безопасное преобразование строки в число"
-  (try
-    (if (or (nil? s) (str/blank? s))
-      default
-      (Integer/parseInt (str/trim s)))
-    (catch NumberFormatException e
-      default)))
+(def ^:private parse-int util/parse-int)
+(def ^:private validate-id util/validate-id)
 
 (defn- clean-id [id]
   "Очистка ID от лишних символов, оставляем только цифры"
   (when id
     (let [cleaned (str/trim (str/replace (str id) #"[^0-9]" ""))]
       (if (seq cleaned) cleaned nil))))
-
-(defn- validate-id [id]
-  "Валидация и преобразование ID в число"
-  (try
-    (let [cleaned (clean-id id)]
-      (if (seq cleaned)
-        (Integer/parseInt cleaned)
-        (throw (Exception. "Некорректный ID"))))
-    (catch Exception e
-      (logger/log-error e (format "Некорректный ID: '%s'" (str id)))
-      nil)))
 
 (defn- bad-request [message]
   "Возвращает ответ с ошибкой 400"
@@ -378,13 +362,14 @@
                            :больничные_дни (parse-int (:больничные_дни params) 0)
                            :командировочные_дни (parse-int (:командировочные_дни params) 0)}
                   result (model/update-record "Учет_рабочего_времени" work-time-id data)]
-                  (if (:success result)
+                   (if (:success result)
                     (do
-                      (let [work-time-record (model/get-work-time-by-id (str work-time-id))]
+                      (let [work-time-record (model/get-work-time-by-id (str work-time-id))
+                            worker-id (:работник_id work-time-record)]
                         (logger/log-audit "UPDATE" "WorkTime" work-time-id
-                                          (format "Обновлен учет времени для работника ID=%s" (:работник_id work-time-record)))
+                                          (format "Обновлен учет времени для работника ID=%s" (str worker-id)))
                         (logger/log-info (format "Учет времени успешно обновлен, ID=%s" work-time-id))
-                        (resp/redirect (str "/workers/" (:работник_id work-time-record) "/work-time"))))
+                        (resp/redirect (str "/workers/" (or worker-id "?error=unknown") "/work-time"))))
                    (do
                      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении учета времени")
                      (let [work-time-record (model/get-work-time-by-id (str work-time-id))

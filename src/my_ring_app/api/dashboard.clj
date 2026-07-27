@@ -3,29 +3,15 @@
   (:require [compojure.core :refer [defroutes GET]]
             [ring.util.response :as resp]
             [my-ring-app.model :as model]
-            [my-ring-app.logger :as logger]))
+            [my-ring-app.logger :as logger]
+            [my-ring-app.util :as util]))
 
 ;; ======================================================================
 ;; Вспомогательные функции
 ;; ======================================================================
 
-(defn- success-response
-  "Стандартный ответ об успехе"
-  ([data]
-   {:success true
-    :data data
-    :message "Данные получены"})
-  ([data message]
-   {:success true
-    :data data
-    :message message}))
-
-(defn- error-response
-  "Стандартный ответ об ошибке"
-  [code message]
-  {:success false
-   :error {:code code
-           :message message}})
+(def ^:private success-response util/success-response)
+(def ^:private error-response util/error-response)
 
 ;; ======================================================================
 ;; API endpoints

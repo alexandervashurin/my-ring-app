@@ -6,38 +6,16 @@
             [clojure.java.jdbc :as jdbc]
             [my-ring-app.model :as model]
             [my-ring-app.config :refer [db-spec]]
-            [my-ring-app.logger :as logger]))
+            [my-ring-app.logger :as logger]
+            [my-ring-app.util :as util]))
 
 ;; ======================================================================
 ;; Вспомогательные функции
 ;; ======================================================================
 
-(defn- parse-int [s default]
-  "Безопасное преобразование строки в число"
-  (try
-    (if (or (nil? s) (str/blank? s))
-      default
-      (Integer/parseInt (str/trim s)))
-    (catch NumberFormatException e
-      default)))
-
-(defn- success-response
-  "Стандартный ответ об успехе"
-  ([data]
-   {:success true
-    :data data
-    :message "Данные получены"})
-  ([data message]
-   {:success true
-    :data data
-    :message message}))
-
-(defn- error-response
-  "Стандартный ответ об ошибке"
-  [code message]
-  {:success false
-   :error {:code code
-           :message message}})
+(def ^:private parse-int util/parse-int)
+(def ^:private success-response util/success-response)
+(def ^:private error-response util/error-response)
 
 ;; ======================================================================
 ;; API endpoints

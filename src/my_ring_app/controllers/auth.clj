@@ -7,6 +7,41 @@
             [my-ring-app.logger :as logger]
             [clojure.string :as str]))
 
+;; ======================================================================
+;; Защита от brute-force атак
+;; ======================================================================
+
+(def ^:private max-failed-attempts 5)
+(def ^:private lockout-duration-ms (* 15 60 1000))
+
+(def ^:private failed-logins
+  "Атом для хранения неудачных попыток входа {username {:count N :last-attempt timestamp}}"
+  (atom {}))
+
+(defn- record-failed-login!
+  "Запись неудачной попытки входа"
+  [username]
+  (swap! failed-logins update username
+         (fn [entry]
+           (let [now (System/currentTimeMillis)
+                 entry (or entry {:count 0 :last-attempt 0})]
+             (if (> (- now (:last-attempt entry)) lockout-duration-ms)
+               {:count 1 :last-attempt now}
+               {:count (inc (:count entry)) :last-attempt now})))))
+
+(defn- clear-failed-logins!
+  "Очистка счётчика неудачных попыток при успешном входе"
+  [username]
+  (swap! failed-logins dissoc username))
+
+(defn- is-locked-out?
+  "Проверка, заблокирован ли аккаунт"
+  [username]
+  (let [entry (get @failed-logins username)]
+    (when entry
+      (and (>= (:count entry) max-failed-attempts)
+           (< (- (System/currentTimeMillis) (:last-attempt entry)) lockout-duration-ms)))))
+
 (defn- safe-redirect-url
   "Проверка URL для безопасного редиректа (только внутренние ссылки)"
   [url]
@@ -40,11 +75,19 @@
       (-> (resp/redirect (str "/login?error=empty"))
           (resp/status 302))
 
+      ;; Блокировка при множественных неудачных попытках
+      (is-locked-out? username)
+      (do
+        (logger/log-warn (format "Аккаунт %s заблокирован из-за множественных неудачных попыток" username))
+        (-> (resp/redirect (str "/login?error=locked"))
+            (resp/status 302)))
+
       ;; Аутентификация
       :else
       (if-let [user (auth/authenticate username password)]
         ;; Успешный вход
         (do
+          (clear-failed-logins! username)
           (logger/log-info (format "Пользователь %s успешно вошёл в систему" username))
           (-> (resp/redirect redirect-url)
               (resp/status 302)
@@ -52,6 +95,7 @@
                                :redirect-url nil})))
         ;; Ошибка аутентификации
         (do
+          (record-failed-login! username)
           (logger/log-warn (format "Неудачная попытка входа: %s" username))
           (-> (resp/redirect (str "/login?error=invalid"))
               (resp/status 302)))))))

@@ -5,53 +5,17 @@
             [clojure.string :as str]
             [my-ring-app.model :as model]
             [my-ring-app.validation :as validation]
-            [my-ring-app.logger :as logger]))
+            [my-ring-app.logger :as logger]
+            [my-ring-app.util :as util]))
 
 ;; ======================================================================
 ;; Вспомогательные функции
 ;; ======================================================================
 
-(defn- parse-int [s default]
-  "Безопасное преобразование строки в число"
-  (try
-    (if (or (nil? s) (str/blank? s))
-      default
-      (Integer/parseInt (str/trim s)))
-    (catch NumberFormatException e
-      default)))
-
-(defn- validate-id [id]
-  "Валидация и преобразование ID в число"
-  (try
-    (let [cleaned (str/trim (str/replace (str id) #"[^0-9]" ""))]
-      (if (seq cleaned)
-        (Integer/parseInt cleaned)
-        (throw (Exception. "Некорректный ID"))))
-    (catch Exception e
-      nil)))
-
-(defn- success-response
-  "Стандартный ответ об успехе"
-  ([data]
-   {:success true
-    :data data
-    :message "Операция выполнена успешно"})
-  ([data message]
-   {:success true
-    :data data
-    :message message}))
-
-(defn- error-response
-  "Стандартный ответ об ошибке"
-  ([code message]
-   {:success false
-    :error {:code code
-            :message message}})
-  ([code message details]
-   {:success false
-    :error {:code code
-            :message message
-            :details details}}))
+(def ^:private parse-int util/parse-int)
+(def ^:private validate-id util/validate-id)
+(def ^:private success-response util/success-response)
+(def ^:private error-response util/error-response)
 
 ;; ======================================================================
 ;; API endpoints - Зарплата
@@ -63,16 +27,25 @@
   (try
     (let [worker-id (-> request :route-params :worker-id validate-id)
           year (parse-int (get-in request [:params :year]) 2025)
-          month (parse-int (get-in request [:params :month]) 10)]
-      (if (nil? worker-id)
+          month (parse-int (get-in request [:params :month]) 10)
+          validation-error (util/validate-year-month year month)]
+      (cond
+        (nil? worker-id)
         (-> (resp/response (error-response "INVALID_ID" "Некорректный идентификатор работника"))
             (resp/status 400)
             (resp/content-type "application/json; charset=utf-8"))
+
+        validation-error
+        (-> (resp/response (error-response (:error validation-error) (:message validation-error)))
+            (resp/status 400)
+            (resp/content-type "application/json; charset=utf-8"))
+
+        :else
         (let [salary-info (model/get-worker-salary worker-id year month)
               salary-history (model/get-worker-salary-history worker-id)]
           (if salary-info
             (do
-              (logger/log-info (format "API: GET /api/salary/%d — зарплата за %d-%d" worker-id year month))
+              (logger/log-info (format "API: GET /api/salary/%d — зарплата за %d-%02d" worker-id year month))
               (-> (resp/response (success-response
                                   {:current salary-info
                                    :history salary-history}
