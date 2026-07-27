@@ -1,6 +1,6 @@
 (ns my-ring-app.views.auth
   "Представления аутентификации"
-  (:require [my-ring-app.views.layout :refer [wrap-html html-escape]]))
+  (:require [my-ring-app.views.layout :refer [wrap-html html-escape csrf-field]]))
 
 (defn render-login-page [error redirect-url]
   "Рендер страницы входа"
@@ -17,6 +17,7 @@
             (str "<div class='error-message'>" error-text "</div>"))
 
           "<form method='POST' action='/login' class='login-form'>"
+          (csrf-field)
           "<div class='form-group'>"
           "<label for='username'>Имя пользователя</label>"
           "<input type='text' id='username' name='username' required "
@@ -33,7 +34,6 @@
           "</form>"
 
           "<div class='login-footer'>"
-          "<p class='default-credentials'>ℹ️ По умолчанию: admin / admin123</p>"
           "</div>"
           "</div>"
           "</div>"
@@ -79,6 +79,7 @@
         "<div class='profile-card'>"
         "<h2>🔑 Смена пароля</h2>"
         "<form method='POST' action='/change-password' class='profile-form'>"
+        (csrf-field)
         "<div class='form-group'>"
         "<label for='current-password'>Текущий пароль</label>"
         "<input type='password' id='current-password' name='current-password' required>"

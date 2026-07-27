@@ -1,6 +1,7 @@
 (ns my-ring-app.views.workers
-  (:require [my-ring-app.views.layout :refer [wrap-html html-escape]]
-            [my-ring-app.views.helpers :as helpers]))
+  (:require [my-ring-app.views.layout :refer [wrap-html html-escape csrf-field]]
+            [my-ring-app.views.helpers :as helpers]
+            [clojure.string]))
 
 (defn render-workers-table [workers search-query]
   "Рендер таблицы работников"
@@ -36,7 +37,8 @@
                                            "<a href='/workers/" (html-escape (str (:id w))) "/work-time' class='btn btn-sm btn-info' title='Учет времени'>⏰</a> "
                                            "<a href='/workers/" (html-escape (str (:id w))) "/salary' class='btn btn-sm btn-success' title='Зарплата'>💰</a> "
                                            "<a href='/workers/" (html-escape (str (:id w))) "/edit' class='btn btn-sm btn-warning' title='Редактировать'>✏️</a> "
-                                           "<form method='POST' action='/workers/" (html-escape (str (:id w))) "/delete' style='display: inline;' onsubmit='return confirm(\"Удалить работника " (html-escape (:фамилия w)) " " (html-escape (:имя w)) "?\")'>"
+                                            "<form method='POST' action='/workers/" (html-escape (str (:id w))) "/delete' style='display: inline;' onsubmit='" (html-escape (str "return confirm(\"Удалить работника " (helpers/escape-js-string (:фамилия w)) " " (helpers/escape-js-string (:имя w)) "?\")")) "'>"
+                                           (csrf-field)
                                            "<button type='submit' class='btn btn-sm btn-danger' title='Удалить'>🗑️</button>"
                                            "</form>"
                                            "</td>"
@@ -55,14 +57,14 @@
          "<form method='GET' action='/workers' style='display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;'>"
          "<div style='flex: 1; min-width: 250px;'>"
          "<label style='display: block; margin-bottom: 5px; font-weight: 600; color: #1976d2;'>Поиск по ФИО или цеху:</label>"
-         "<input type='text' name='search' placeholder='Введите фамилию, имя, отчество или цех...' value='" (or search-query "") "'"
+         "<input type='text' name='search' placeholder='Введите фамилию, имя, отчество или цех...' value='" (html-escape (or search-query "")) "'"
          " style='width: 100%; padding: 12px; border: 2px solid #bbdefb; border-radius: 6px; font-size: 14px; transition: border-color 0.3s;'>"
          "</div>"
          "<button type='submit' class='btn btn-primary' style='padding: 12px 24px; white-space: nowrap;'>🔍 Найти</button>"
          (when search-query
            (str "<a href='/workers' class='btn btn-secondary' style='padding: 12px 24px; white-space: nowrap; margin-left: 10px;'>Сбросить фильтр</a>"
                 "<div style='margin-top: 15px; padding: 12px; background: #e3f2fd; border-radius: 6px; color: #1976d2; font-size: 14px;'>"
-                "<strong>Результаты поиска:</strong> найдено " (count workers) " работников по запросу: <em>\"" search-query "\"</em>"
+                 "<strong>Результаты поиска:</strong> найдено " (count workers) " работников по запросу: <em>\"" (html-escape search-query) "\"</em>"
                 "</div>"))
          "</form>"
          "</div>"
@@ -94,6 +96,7 @@
          (helpers/render-error-messages errors)
 
          "<form method='POST' action='" (html-escape form-action) "' style='background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>"
+         (csrf-field)
 
          ;; Фамилия
          "<div class='form-group'>"

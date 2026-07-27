@@ -147,8 +147,9 @@
   (try
     (let [query-params (:params request)
           format (:format query-params "json")
-          year (parse-int (:year query-params) 2025)
-          month (parse-int (:month query-params) 10)
+          [current-year current-month] (model/current-year-month)
+          year (parse-int (:year query-params) current-year)
+          month (parse-int (:month query-params) current-month)
           workers (model/get-workers-with-details)
           salary-data (map #(merge % (model/get-worker-salary (:id %) year month)) workers)
           formatted (map format-salary-json salary-data)]

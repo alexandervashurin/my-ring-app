@@ -34,7 +34,7 @@
                               (.getMessage error)
                               message
                               (or context "-"))]
-    (log/error error-message)))
+    (log/error error error-message)))
 
 (defn log-info
   "Логирование информационных сообщений"

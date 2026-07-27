@@ -90,7 +90,7 @@
     (catch Exception e
       (logger/log-error e "Ошибка при создании пользователя"
                         {:username username :email email})
-      {:success false :message (str "Ошибка при создании: " (.getMessage e))})))
+      {:success false :message "Внутренняя ошибка при создании пользователя"})))
 
 (defn update-user!
   "Обновление данных пользователя"
@@ -106,7 +106,7 @@
       {:success true :message "Пользователь обновлён"})
     (catch Exception e
       (logger/log-error e "Ошибка при обновлении пользователя" {:id id})
-      {:success false :message (str "Ошибка при обновлении: " (.getMessage e))})))
+      {:success false :message "Внутренняя ошибка при обновлении пользователя"})))
 
 (defn deactivate-user!
   "Деактивация пользователя (мягкое удаление)"
@@ -121,7 +121,7 @@
       {:success true :message "Пользователь деактивирован"})
     (catch Exception e
       (logger/log-error e "Ошибка при деактивации пользователя" {:id id})
-      {:success false :message (str "Ошибка при деактивации: " (.getMessage e))})))
+      {:success false :message "Внутренняя ошибка при деактивации пользователя"})))
 
 (defn get-all-users
   "Получение списка всех активных пользователей"
@@ -289,10 +289,14 @@
     (let [users (jdbc/query db-spec ["SELECT COUNT(*) as count FROM Пользователь"])]
       (when (or (empty? users)
                 (zero? (:count (first users))))
-        ;; Создаём админа по умолчанию
-        (let [result (create-user "admin" "admin@example.com" "admin123" "admin")]
+        ;; Создаём админа по умолчанию с безопасным паролем
+        (let [admin-password (or (System/getenv "ADMIN_PASSWORD")
+                                  (do (logger/log-warn "ADMIN_PASSWORD env var not set - using insecure default. Set ADMIN_PASSWORD in production!")
+                                      "changeme!"))
+              admin-email (or (System/getenv "ADMIN_EMAIL") "admin@example.com")
+              result (create-user "admin" admin-email admin-password "admin")]
           (if (:success result)
-            (logger/log-info "Создан пользователь admin по умолчанию (пароль: admin123)")
+            (logger/log-info "Создан пользователь admin по умолчанию. ПОЖАЛУЙСТА, смените пароль!")
             (logger/log-warn "Не удалось создать пользователя admin по умолчанию")))))
     (catch Exception e
       (logger/log-error e "Ошибка при инициализации таблицы пользователей"))))

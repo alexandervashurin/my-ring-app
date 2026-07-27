@@ -7,7 +7,8 @@
             [ring.middleware.content-type :refer [wrap-content-type]]
             [ring.middleware.file-info :refer [wrap-file-info]]
             [ring.middleware.session :refer [wrap-session]]
-            [ring.middleware.defaults :refer [wrap-defaults api-defaults]]
+            [ring.middleware.session.cookie :as cookie]
+            [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
             [my-ring-app.routes :refer [app-routes]]
             [my-ring-app.logger :as logger]
             [my-ring-app.config :as config]
@@ -38,7 +39,26 @@
           (assoc-in [:headers "X-Frame-Options"] "DENY")
           (assoc-in [:headers "X-Content-Type-Options"] "nosniff")
           (assoc-in [:headers "X-XSS-Protection"] "1; mode=block")
-          (assoc-in [:headers "Content-Security-Policy"] "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'")))))
+          (assoc-in [:headers "Strict-Transport-Security"] "max-age=31536000; includeSubDomains")
+          (assoc-in [:headers "Referrer-Policy"] "strict-origin-when-cross-origin")
+          (assoc-in [:headers "Permissions-Policy"] "camera=(), microphone=(), geolocation=()")
+          (assoc-in [:headers "Content-Security-Policy"]
+                    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'")))))
+
+(defn wrap-csrf-error
+  "Обработка ошибок CSRF"
+  [handler]
+  (fn [request]
+    (try
+      (handler request)
+      (catch clojure.lang.ExceptionInfo e
+        (if (= (:type (ex-data e)) :ring.middleware.anti-forgery/invalid-token)
+          (do
+            (logger/log-warn "CSRF token validation failed")
+            {:status 403
+             :body "CSRF проверка не пройдена. Пожалуйста, обновите страницу."
+             :headers {"Content-Type" "text/html; charset=utf-8"}})
+          (throw e))))))
 
 (defn wrap-logging
   "Middleware для логирования запросов"
@@ -58,8 +78,17 @@
 
 (def app
   (-> app-routes
-      wrap-session
+      (wrap-session {:cookie-attrs {:http-only true
+                                     :secure true
+                                     :same-site :lax
+                                     :path "/"}
+                     :cookie-name "session-id"
+                     :store (cookie/cookie-store {:key (or (System/getenv "SESSION_SECRET")
+                                                           (do (logger/log-warn "SESSION_SECRET env var not set - using insecure default. Set SESSION_SECRET in production!")
+                                                               "d3v-s3cr3t-k3y!1"))})})
       auth/wrap-authentication
+      wrap-anti-forgery
+      wrap-csrf-error
       wrap-security-headers
       wrap-error-handler
       wrap-logging
@@ -82,6 +111,5 @@
 
   (let [port (:port config/app-config)]
     (logger/log-info (format "Сервер запускается на порту %d" port))
-    (logger/log-info "Пользователь по умолчанию: admin / admin123")
     (jetty/run-jetty app {:port port})
     (logger/log-info "Сервер остановлен")))

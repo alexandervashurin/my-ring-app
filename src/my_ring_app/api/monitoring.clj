@@ -46,7 +46,7 @@
        :status "connected"})
     (catch Exception e
       {:status "disconnected"
-       :error (.getMessage e)})))
+       :error "Database connection failed"})))
 
 ;; ======================================================================
 ;; Health Check
@@ -74,7 +74,7 @@
       (-> (resp/response
            {:status "unhealthy"
             :timestamp (str (time/instant))
-            :error (.getMessage e)})
+            :error "Internal server error"})
           (resp/status 500)
           (resp/content-type "application/json; charset=utf-8")))))
 
@@ -95,7 +95,7 @@
               (resp/content-type "application/json; charset=utf-8")))))
     (catch Exception e
       (logger/log-error e "API: Ошибка ready check")
-      (-> (resp/response {:ready false :timestamp (str (time/instant)) :error (.getMessage e)})
+      (-> (resp/response {:ready false :timestamp (str (time/instant)) :error "Internal server error"})
           (resp/status 503)
           (resp/content-type "application/json; charset=utf-8")))))
 
@@ -187,7 +187,8 @@
           db-stats (get-db-stats)
           app-stats (get-app-stats)
           workers (model/get-workers-with-details)
-          salary-data (map #(merge % (model/get-worker-salary (:id %) 2025 10)) workers)
+          [current-year current-month] (model/current-year-month)
+          salary-data (map #(merge % (model/get-worker-salary (:id %) current-year current-month)) workers)
           total-payroll (reduce + (map #(or (:общая_зарплата %) 0) salary-data))
           avg-salary (if (seq salary-data) (/ total-payroll (count salary-data)) 0)]
       (logger/log-info "API: GET /api/stats")
@@ -208,7 +209,7 @@
           (resp/content-type "application/json; charset=utf-8")))
     (catch Exception e
       (logger/log-error e "API: Ошибка при получении статистики")
-      (-> (resp/response {:error (.getMessage e)})
+      (-> (resp/response {:error "Internal server error"})
           (resp/status 500)
           (resp/content-type "application/json; charset=utf-8")))))
 

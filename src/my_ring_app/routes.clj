@@ -12,140 +12,162 @@
             [my-ring-app.api.reports :as api-reports]
             [my-ring-app.api.notifications :as api-notifications]
             [my-ring-app.api.onec :as api-onec]
-            [my-ring-app.api.monitoring :as api-monitoring]))
+            [my-ring-app.api.monitoring :as api-monitoring]
+            [my-ring-app.auth :as auth]))
+
+(defn- auth-required
+  "Обёртка для маршрутов, требующих аутентификации"
+  [handler]
+  (auth/require-authentication handler))
+
+(defn- admin-only
+  "Обёртка для маршрутов, доступных только администраторам"
+  [handler]
+  (-> handler auth/require-authentication (auth/require-role "admin")))
+
+(defn- manager-or-admin
+  "Обёртка для маршрутов, доступных менеджерам и администраторам"
+  [handler]
+  (-> handler auth/require-authentication (auth/require-role "admin" "manager")))
 
 (defroutes app-routes
   ;; ======================================================================
-  ;; REST API - Мониторинг и метрики
+  ;; REST API - Мониторинг и метрики (health checks доступны без аутентификации)
   ;; ======================================================================
   (GET "/api/health" [] api-monitoring/health-check)
   (GET "/api/ready" [] api-monitoring/ready-check)
   (GET "/api/live" [] api-monitoring/live-check)
-  (GET "/api/metrics" [] api-monitoring/prometheus-metrics)
-  (GET "/api/stats" [] api-monitoring/app-statistics)
+  (GET "/api/metrics" request ((auth-required api-monitoring/prometheus-metrics) request))
+  (GET "/api/stats" request ((auth-required api-monitoring/app-statistics) request))
 
   ;; ======================================================================
-  ;; REST API - Интеграция с 1С
+  ;; REST API - Интеграция с 1С (только админ)
   ;; ======================================================================
-  (GET "/api/1c/workers" [] api-onec/get-workers-export)
-  (GET "/api/1c/salary" [] api-onec/get-salary-export)
-  (POST "/api/1c/workers/import" [] api-onec/import-workers-from-1c)
-  (GET "/api/1c/docs" [] api-onec/get-1c-documentation)
+  (GET "/api/1c/workers" request ((admin-only api-onec/get-workers-export) request))
+  (GET "/api/1c/salary" request ((admin-only api-onec/get-salary-export) request))
+  (POST "/api/1c/workers/import" request ((admin-only api-onec/import-workers-from-1c) request))
+  (GET "/api/1c/docs" request ((auth-required api-onec/get-1c-documentation) request))
 
   ;; ======================================================================
-  ;; Переключение языка
+  ;; Переключение языка (публичный маршрут)
   ;; ======================================================================
-  (GET "/lang/:lang" [lang] (-> (resp/redirect "/")
-                                 (resp/status 302)
-                                 (assoc :session {:lang lang})))
+  (GET "/lang/:lang" [lang] (let [valid-langs #{"ru" "en"}
+                                   safe-lang (if (valid-langs lang) lang "ru")]
+                               (-> (resp/redirect "/")
+                                   (resp/status 302)
+                                   (assoc :session {:lang safe-lang}))))
 
   ;; ======================================================================
   ;; REST API - Email уведомления
   ;; ======================================================================
-  (GET "/api/notifications/test" [] api-notifications/test-email-api)
-  (POST "/api/notifications/new-worker" [] api-notifications/notify-new-worker-api)
-  (POST "/api/notifications/birthday" [] api-notifications/notify-birthday-api)
-  (POST "/api/notifications/anniversary" [] api-notifications/notify-anniversary-api)
+  (GET "/api/notifications/test" request ((admin-only api-notifications/test-email-api) request))
+  (POST "/api/notifications/new-worker" request ((manager-or-admin api-notifications/notify-new-worker-api) request))
+  (POST "/api/notifications/birthday" request ((manager-or-admin api-notifications/notify-birthday-api) request))
+  (POST "/api/notifications/anniversary" request ((manager-or-admin api-notifications/notify-anniversary-api) request))
 
   ;; ======================================================================
   ;; REST API - PDF отчёты
   ;; ======================================================================
-  (GET "/api/reports/worker/:id/pdf" [] api-reports/export-worker-pdf)
-  (GET "/api/reports/workers/pdf" [] api-reports/export-workers-list-pdf)
-  (GET "/api/reports/salary/pdf" [] api-reports/export-salary-report-pdf)
+  (GET "/api/reports/worker/:id/pdf" request ((auth-required api-reports/export-worker-pdf) request))
+  (GET "/api/reports/workers/pdf" request ((auth-required api-reports/export-workers-list-pdf) request))
+  (GET "/api/reports/salary/pdf" request ((auth-required api-reports/export-salary-report-pdf) request))
 
   ;; ======================================================================
-  ;; REST API - Аудит
+  ;; REST API - Аудит (только админ)
   ;; ======================================================================
-  (GET "/api/audit" [] api-audit/get-audit-log-api)
-  (GET "/api/audit/stats" [] api-audit/get-audit-stats-api)
-  (GET "/api/audit/:entity-type/:entity-id" [] api-audit/get-audit-by-entity-api)
-  (GET "/api/audit/user/:username" [] api-audit/get-audit-by-user-api)
+  (GET "/api/audit" request ((admin-only api-audit/get-audit-log-api) request))
+  (GET "/api/audit/stats" request ((admin-only api-audit/get-audit-stats-api) request))
+  (GET "/api/audit/:entity-type/:entity-id" request ((admin-only api-audit/get-audit-by-entity-api) request))
+  (GET "/api/audit/user/:username" request ((admin-only api-audit/get-audit-by-user-api) request))
 
   ;; ======================================================================
   ;; REST API - Экспорт данных
   ;; ======================================================================
-  (GET "/api/export/workers.csv" [] api-export/export-workers-csv)
-  (GET "/api/export/salary.csv" [] api-export/export-salary-csv)
-  (GET "/api/export/workers.xlsx" [] api-export/export-workers-excel)
+  (GET "/api/export/workers.csv" request ((auth-required api-export/export-workers-csv) request))
+  (GET "/api/export/salary.csv" request ((auth-required api-export/export-salary-csv) request))
+  (GET "/api/export/workers.xlsx" request ((auth-required api-export/export-workers-excel) request))
 
   ;; ======================================================================
   ;; REST API - Дашборд и аналитика
   ;; ======================================================================
-  (GET "/api/dashboard" [] api-dashboard/get-dashboard)
-  (GET "/api/dashboard/stats" [] api-dashboard/get-dashboard-stats)
-  (GET "/api/analytics/workers-by-shop" [] api-dashboard/get-workers-by-shop)
-  (GET "/api/analytics/workers-by-category" [] api-dashboard/get-workers-by-category)
-  (GET "/api/analytics/salary-distribution" [] api-dashboard/get-salary-distribution)
+  (GET "/api/dashboard" request ((auth-required api-dashboard/get-dashboard) request))
+  (GET "/api/dashboard/stats" request ((auth-required api-dashboard/get-dashboard-stats) request))
+  (GET "/api/analytics/workers-by-shop" request ((auth-required api-dashboard/get-workers-by-shop) request))
+  (GET "/api/analytics/workers-by-category" request ((auth-required api-dashboard/get-workers-by-category) request))
+  (GET "/api/analytics/salary-distribution" request ((auth-required api-dashboard/get-salary-distribution) request))
 
   ;; ======================================================================
   ;; REST API - Зарплата и учёт времени
   ;; ======================================================================
-  (GET "/api/salary/:worker-id" [] api-salary/get-worker-salary)
-  (GET "/api/work-time/:worker-id" [] api-salary/get-worker-work-time)
-  (PUT "/api/work-time/:id" [] api-salary/update-work-time)
+  (GET "/api/salary/:worker-id" request ((auth-required api-salary/get-worker-salary) request))
+  (GET "/api/work-time/:worker-id" request ((auth-required api-salary/get-worker-work-time) request))
+  (PUT "/api/work-time/:id" request ((manager-or-admin api-salary/update-work-time) request))
 
   ;; ======================================================================
   ;; REST API - Работники
   ;; ======================================================================
-  (GET "/api/workers" [] api-workers/get-workers)
-  (GET "/api/workers/search" [] api-workers/search-workers-api)
-  (GET "/api/workers/:id" [] api-workers/get-worker-by-id)
-  (POST "/api/workers" [] api-workers/create-worker)
-  (PUT "/api/workers/:id" [] api-workers/update-worker)
-  (DELETE "/api/workers/:id" [] api-workers/delete-worker)
+  (GET "/api/workers" request ((auth-required api-workers/get-workers) request))
+  (GET "/api/workers/search" request ((auth-required api-workers/search-workers-api) request))
+  (GET "/api/workers/:id" request ((auth-required api-workers/get-worker-by-id) request))
+  (POST "/api/workers" request ((manager-or-admin api-workers/create-worker) request))
+  (PUT "/api/workers/:id" request ((manager-or-admin api-workers/update-worker) request))
+  (DELETE "/api/workers/:id" request ((admin-only api-workers/delete-worker) request))
 
   ;; ======================================================================
-  ;; Аутентификация
+  ;; Аутентификация (публичные маршруты)
   ;; ======================================================================
   (GET "/login" request (auth-controllers/login-page request))
   (POST "/login" request (auth-controllers/login-submit request))
-  (GET "/logout" request (auth-controllers/logout request))
-  (GET "/profile" request (auth-controllers/profile-page request))
-  (POST "/change-password" request (auth-controllers/change-password request))
+  (POST "/logout" request (auth-controllers/logout request))
   (GET "/access-denied" request (auth-controllers/access-denied request))
+
+  ;; ======================================================================
+  ;; Аутентификация (требуют аутентификации)
+  ;; ======================================================================
+  (GET "/profile" request ((auth-required auth-controllers/profile-page) request))
+  (POST "/change-password" request ((auth-required auth-controllers/change-password) request))
 
   ;; ======================================================================
   ;; Основные страницы
   ;; ======================================================================
-  ;; Главная страница
+  ;; Главная страница (публичная)
   (GET "/" [] (controllers/home-page))
 
   ;; Дашборд с аналитикой
-  (GET "/dashboard" [] (controllers/dashboard-page))
+  (GET "/dashboard" request ((auth-required controllers/dashboard-page) request))
 
   ;; Список работников с поиском
-  (GET "/workers" request (controllers/workers-page (:params request)))
+  (GET "/workers" request ((auth-required controllers/workers-page) request))
 
   ;; Форма создания работника
-  (GET "/workers/new" request (controllers/new-worker-form (:params request)))
+  (GET "/workers/new" request ((manager-or-admin controllers/new-worker-form) request))
 
   ;; Форма редактирования работника
-  (GET "/workers/:id/edit" [id :as request] (controllers/edit-worker-form id (:params request)))
+  (GET "/workers/:id/edit" request ((manager-or-admin controllers/edit-worker-form) request))
 
   ;; Создание работника
-  (POST "/workers/create" request (controllers/create-worker (:params request)))
+  (POST "/workers/create" request ((manager-or-admin controllers/create-worker) request))
 
   ;; Обновление работника
-  (POST "/workers/:id/update" [id :as request] (controllers/update-worker id (:params request)))
+  (POST "/workers/:id/update" request ((manager-or-admin controllers/update-worker) request))
 
   ;; Удаление работника
-  (POST "/workers/:id/delete" [id] (controllers/delete-worker id))
+  (POST "/workers/:id/delete" request ((admin-only controllers/delete-worker) request))
 
   ;; Страница зарплаты работника
-  (GET "/workers/:id/salary" [id] (controllers/worker-salary-page id))
+  (GET "/workers/:id/salary" request ((auth-required controllers/worker-salary-page) request))
 
   ;; Страница учета рабочего времени
-  (GET "/workers/:id/work-time" [id] (controllers/worker-work-time-page id))
+  (GET "/workers/:id/work-time" request ((auth-required controllers/worker-work-time-page) request))
 
   ;; Форма редактирования записи учета времени
-  (GET "/work-time/:id/edit" [id] (controllers/edit-work-time-form id))
+  (GET "/work-time/:id/edit" request ((manager-or-admin controllers/edit-work-time-form) request))
 
   ;; Обновление записи учета времени
-  (POST "/work-time/:id/update" [id :as request] (controllers/update-work-time id (:params request)))
+  (POST "/work-time/:id/update" request ((manager-or-admin controllers/update-work-time) request))
 
-  ;; Просмотр всех таблиц
-  (GET "/db" [] (controllers/all-tables-page))
+  ;; Просмотр всех таблиц (только админ)
+  (GET "/db" request ((admin-only controllers/all-tables-page) request))
 
   ;; Страница не найдена
   (route/not-found (fn [request] (controllers/not-found-page request))))

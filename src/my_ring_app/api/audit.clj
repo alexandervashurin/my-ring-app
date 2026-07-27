@@ -49,7 +49,7 @@
   (try
     (let [query-params (:params request)
           page (parse-int (:page query-params) 1)
-          per-page (parse-int (:per_page query-params) 50)
+          per-page (min (parse-int (:per_page query-params) 50) 100)
           entity-type (:entity_type query-params)
           action (:action query-params)
           offset (* (- page 1) per-page)

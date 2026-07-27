@@ -45,7 +45,8 @@
   "Стандартный ответ об ошибке"
   ([code message]
    {:success false
-    :error {:code message}})
+    :error {:code code
+            :message message}})
   ([code message details]
    {:success false
     :error {:code code

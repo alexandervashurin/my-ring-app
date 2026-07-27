@@ -1,8 +1,35 @@
 (ns my-ring-app.model
   (:require [clojure.java.jdbc :as jdbc]
-            [my-ring-app.config :refer [db-spec]]
+            [my-ring-app.config :refer [db-spec app-config]]
             [my-ring-app.logger :as logger]
-            [clojure.data.json :as json]))
+            [clojure.data.json :as json]
+            [clojure.string :as str])
+  (:import [java.time LocalDate]))
+
+;; ======================================================================
+;; Безопасность: белый список таблиц для динамических запросов
+;; ======================================================================
+
+(def ^:private allowed-tables
+  "Белый список таблиц, доступных для динамических запросов"
+  #{"Работник" "Цех" "Система_оплаты" "Категория_работника"
+    "Разряд" "Режим_работы" "Оклад" "Почасовые_ставки"
+    "Учет_рабочего_времени" "Начисление_заработной_платы"
+    "Пользователь" "Аудит_изменений"})
+
+(defn current-year-month
+  "Возвращает текущий год и месяц как вектор [год месяц]"
+  []
+  (let [now (LocalDate/now)]
+    [(.getYear now) (.getValue (.getMonth now))]))
+
+(defn- validate-table-name
+  "Проверка имени таблицы по белому списку"
+  [table-name]
+  (when-not (contains? allowed-tables (str table-name))
+    (throw (SecurityException.
+            (format "Доступ к таблице '%s' запрещён" table-name))))
+  table-name)
 
 ;; ======================================================================
 ;; Вспомогательные функции
@@ -67,15 +94,22 @@
 
 (defn get-tables []
   (try
-    (let [tables (jdbc/query db-spec ["SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"])]
+    (let [db-type (:db-type app-config)
+          query (if (= db-type :postgresql)
+                  ["SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename"]
+                  ["SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"])
+          tables (jdbc/query db-spec query)]
       (logger/log-info (format "Получено %d таблиц из БД" (count tables)))
-      (map :name tables))
+      (if (= db-type :postgresql)
+        (map :tablename tables)
+        (map :name tables)))
     (catch Exception e
       (logger/log-error e "Ошибка при получении таблиц")
       [])))
 
 (defn get-table-data [table-name]
   (try
+    (validate-table-name table-name)
     (let [result (jdbc/query db-spec [(str "SELECT * FROM \"" table-name "\"")])]
       (logger/log-info (format "Получено %d записей из таблицы %s" (count result) table-name))
       result)
@@ -85,6 +119,7 @@
 
 (defn get-record-by-id [table-name id]
   (try
+    (validate-table-name table-name)
     (let [result (first (jdbc/query db-spec [(str "SELECT * FROM \"" table-name "\" WHERE id = ?") id]))]
       (if result
         (logger/log-info (format "Найдена запись ID=%s в таблице %s" id table-name))
@@ -106,7 +141,7 @@
     (catch Exception e
       (logger/log-error e (format "Ошибка при создании записи в таблице %s" table-name)
                         {:table table-name :data data})
-      {:success false :message (str "Ошибка при создании: " (.getMessage e))})))
+      {:success false :message "Внутренняя ошибка при создании записи"})))
 
 (defn update-record [table-name id data]
   (try
@@ -121,7 +156,7 @@
     (catch Exception e
       (logger/log-error e (format "Ошибка при обновлении записи ID=%s в таблице %s" id table-name)
                         {:table table-name :id id :data data})
-      {:success false :message (str "Ошибка при обновлении: " (.getMessage e))})))
+      {:success false :message "Внутренняя ошибка при обновлении записи"})))
 
 (defn delete-record [table-name id]
   (try
@@ -136,10 +171,11 @@
     (catch Exception e
       (logger/log-error e (format "Ошибка при удалении записи ID=%s из таблицы %s" id table-name)
                         {:table table-name :id id})
-      {:success false :message (str "Ошибка при удалении: " (.getMessage e))})))
+      {:success false :message "Внутренняя ошибка при удалении записи"})))
 
 (defn get-spravochnik [table-name]
   (try
+    (validate-table-name table-name)
     (let [result (jdbc/query db-spec [(str "SELECT * FROM \"" table-name "\"")])]
       (logger/log-info (format "Получен справочник %s (%d записей)" table-name (count result)))
       result)
@@ -327,7 +363,8 @@
 (defn get-salary-distribution []
   "Распределение работников по уровню зарплаты"
   (try
-    (let [result (jdbc/query db-spec
+    (let [[year month] (current-year-month)
+          result (jdbc/query db-spec
                              ["SELECT 
                                 SUM(CASE WHEN n.общая_зарплата < 40000 THEN 1 ELSE 0 END) as low,
                                 SUM(CASE WHEN n.общая_зарплата BETWEEN 40000 AND 60000 THEN 1 ELSE 0 END) as medium,
@@ -335,7 +372,7 @@
                                 SUM(CASE WHEN n.общая_зарплата > 90000 THEN 1 ELSE 0 END) as very_high
                               FROM Начисление_заработной_платы n
                               JOIN Учет_рабочего_времени у ON n.учет_рабочего_времени_id = у.id
-                              WHERE у.год = 2025 AND у.месяц = 10"])]
+                              WHERE у.год = ? AND у.месяц = ?" year month])]
       (if-let [row (first result)]
         (do
           (logger/log-info "Получено распределение по зарплате")
@@ -351,13 +388,14 @@
 (defn get-attendance-stats []
   "Статистика посещаемости"
   (try
-    (let [result (first (jdbc/query db-spec
+    (let [[year month] (current-year-month)
+          result (first (jdbc/query db-spec
                                     ["SELECT 
                                       AVG(всего_отработанных_часов) as avg_hours,
                                       AVG(больничные_дни) as avg_sick,
                                       AVG(командировочные_дни) as avg_business
                                     FROM Учет_рабочего_времени
-                                    WHERE год = 2025 AND месяц = 10"]))]
+                                    WHERE год = ? AND месяц = ?" year month]))]
       (logger/log-info "Получена статистика посещаемости")
       {:avg-hours (or (:avg_hours result) 0)
        :avg-sick-days (or (:avg_sick result) 0)

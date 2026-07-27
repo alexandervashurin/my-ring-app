@@ -1,5 +1,6 @@
 (ns my-ring-app.views.layout
   (:require [clojure.string :as str]
+            [ring.util.anti-forgery :as af]
             [my-ring-app.i18n :as i18n]))
 
 (defn html-escape
@@ -13,6 +14,11 @@
         (str/replace ">" "&gt;")
         (str/replace "\"" "&quot;")
         (str/replace "'" "&#x27;"))))
+
+(defn csrf-field
+  "Генерация скрытого поля с CSRF-токеном для форм"
+  []
+  (af/anti-forgery-field))
 
 (defn- generate-language-switcher [current-lang]
   "Генерация переключателя языков"
@@ -137,7 +143,10 @@
                                             "viewer" "Наблюдатель"
                                             "hr" "HR-специалист"} (:role user) (:role user))) ")</span>"
                          "<a href='/profile' class='btn btn-sm btn-info' style='margin-left: 10px;'>" (i18n/t current-lang :auth :profile) "</a>"
-                         "<a href='/logout' class='btn btn-sm btn-secondary' style='margin-left: 5px;'>" (i18n/t current-lang :auth :logout) "</a>"
+                         "<form method='POST' action='/logout' style='display: inline; margin-left: 5px;'>"
+                         (csrf-field)
+                         "<button type='submit' class='btn btn-sm btn-secondary'>" (i18n/t current-lang :auth :logout) "</button>"
+                         "</form>"
                          "</div>"))
         lang-switcher (generate-language-switcher current-lang)]
     (str "<header>"
@@ -192,7 +201,7 @@
          ".user-info { display: flex; align-items: center; font-size: 14px; }"
          ".user-greeting { color: white; opacity: 0.95; }"
          "</style>"
-         "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'></script>"
+         "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js' integrity='sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g' crossorigin='anonymous'></script>"
          "</head>"
          "<body>"
          "<div class='container'>"

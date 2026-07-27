@@ -7,6 +7,16 @@
             [my-ring-app.logger :as logger]
             [clojure.string :as str]))
 
+(defn- safe-redirect-url
+  "Проверка URL для безопасного редиректа (только внутренние ссылки)"
+  [url]
+  (when url
+    (let [url (str/trim url)]
+      (when (and (str/starts-with? url "/")
+                 (not (str/starts-with? url "//"))
+                 (not (str/includes? url ":")))
+        url))))
+
 (defn login-page
   "Страница входа"
   [request]
@@ -21,7 +31,7 @@
   [request]
   (let [username (str/trim (:username (:params request)))
         password (:password (:params request))
-        redirect-url (or (:redirect-url (:session request)) "/")]
+        redirect-url (or (safe-redirect-url (:redirect-url (:session request))) "/")]
     (logger/log-info (format "Попытка входа пользователя: %s" username))
 
     (cond

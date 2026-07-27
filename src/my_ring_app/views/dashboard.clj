@@ -1,6 +1,17 @@
 (ns my-ring-app.views.dashboard
   (:require [my-ring-app.views.layout :as layout]))
 
+(defn- escape-js-string [s]
+  "Экранирование строки для безопасной вставки в JavaScript"
+  (-> (str s)
+      (clojure.string/replace "\\" "\\\\")
+      (clojure.string/replace "\"" "\\\"")
+      (clojure.string/replace "'" "\\'")
+      (clojure.string/replace "\n" "\\n")
+      (clojure.string/replace "\r" "\\r")
+      (clojure.string/replace "<" "\\x3c")
+      (clojure.string/replace ">" "\\x3e")))
+
 (defn- format-currency [amount]
   "Форматирование суммы в виде валюты"
   (if (nil? amount)
@@ -74,7 +85,7 @@
 
 (defn- render-chart-container [title chart-id chart-type labels data colors]
   "Рендеринг контейнера для диаграммы"
-  (let [labels-json (str "[" (clojure.string/join "," (map #(str "\"" % "\"") labels)) "]")
+  (let [labels-json (str "[" (clojure.string/join "," (map #(str "\"" (escape-js-string %) "\"") labels)) "]")
         data-json (str "[" (clojure.string/join "," (map str data)) "]")
         colors-json (str "[" (clojure.string/join "," (map #(str "\"" % "\"") colors)) "]")]
     (str "<div class='chart-container'>"
@@ -234,9 +245,9 @@
        "</thead>"
        "<tbody>"
        (apply str (for [w recent-hires]
-                    (str "<tr>"
-                         "<td><a href='/workers/" (:id w) "/edit' class='worker-link'>"
-                         (layout/html-escape (str (:фамилия w) " " (:имя w) " " (:отчество w))) "</a></td>"
+                     (str "<tr>"
+                          "<td><a href='/workers/" (layout/html-escape (str (:id w))) "/edit' class='worker-link'>"
+                          (layout/html-escape (str (:фамилия w) " " (:имя w) " " (:отчество w))) "</a></td>"
                          "<td>" (layout/html-escape (or (:цех w) "-")) "</td>"
                          "<td>" (layout/html-escape (:дата_приема w)) "</td>"
                          "</tr>")))
@@ -258,13 +269,13 @@
         ;; Данные для JavaScript графиков
         chart-data (str "window.DashboardData = {"
                         "byShop: [" (apply str (interpose "," (for [item by-shop]
-                                                               (str "{name: \"" (:name item) "\", count: " (:count item) "}"))) ) "],"
+                                                                (str "{name: \"" (escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
                         "byCategory: [" (apply str (interpose "," (for [item by-category]
-                                                                    (str "{name: \"" (:name item) "\", count: " (:count item) "}"))) ) "],"
+                                                                     (str "{name: \"" (escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
                         "byRank: [" (apply str (interpose "," (for [item by-rank]
-                                                              (str "{name: \"" (:name item) "\", count: " (:count item) "}"))) ) "],"
+                                                               (str "{name: \"" (escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
                         "salaryDistribution: [" (apply str (interpose "," (for [item salary-distribution]
-                                                                           (str "{name: \"" (:name item) "\", count: " (:count item) "}"))) ) "],"
+                                                                            (str "{name: \"" (escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
                         "payrollByMonth: [" (apply str (interpose "," (for [item payroll-by-month]
                                                                         (str "{month: " (:месяц item) ", year: " (:год item) ", total: " (:total item) "}"))) ) "]"
                         "};")]

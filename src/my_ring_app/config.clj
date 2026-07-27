@@ -18,17 +18,21 @@
   (let [db-type (get-db-type)]
     (if (= db-type :postgresql)
       ;; PostgreSQL конфигурация
-      {:classname "org.postgresql.Driver"
-       :subprotocol "postgresql"
-       :subname (str "//"
-                     (or (System/getenv "DB_HOST") "localhost")
-                     ":"
-                     (or (System/getenv "DB_PORT") "5432")
-                     "/"
-                     (or (System/getenv "DB_NAME") "my_ring_app"))
-       :user (or (System/getenv "DB_USER") "postgres")
-       :password (or (System/getenv "DB_PASSWORD") "postgres")
-       :connection-uri (or (System/getenv "DATABASE_URL"))}
+      (let [user (System/getenv "DB_USER")
+            password (System/getenv "DB_PASSWORD")]
+        (when (or (str/blank? user) (str/blank? password))
+          (throw (IllegalStateException. "DB_USER и DB_PASSWORD обязательны для PostgreSQL")))
+        {:classname "org.postgresql.Driver"
+         :subprotocol "postgresql"
+         :subname (str "//"
+                       (or (System/getenv "DB_HOST") "localhost")
+                       ":"
+                       (or (System/getenv "DB_PORT") "5432")
+                       "/"
+                       (or (System/getenv "DB_NAME") "my_ring_app"))
+         :user user
+         :password password
+         :connection-uri (or (System/getenv "DATABASE_URL"))})
       ;; SQLite конфигурация (по умолчанию)
       {:classname "org.sqlite.JDBC"
        :subprotocol "sqlite"
