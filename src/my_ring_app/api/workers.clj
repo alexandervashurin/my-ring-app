@@ -154,7 +154,7 @@
             (do
               (logger/log-audit "CREATE" "Worker" (:id result)
                                 (format "Создан работник %s %s (API)" (:фамилия data) (:имя data)))
-              (logger/log-info (format "API: POST /api/workers — создан работник ID=%d" (:id result)))
+              (logger/log-info (format "API: POST /api/workers — создан работник ID=%s" (str (:id result))))
               (-> (resp/response (success-response
                                   (format-worker (model/get-record-by-id "Работник" (str (:id result))))
                                   "Работник успешно создан"))
@@ -257,7 +257,7 @@
         (let [workers (model/search-workers query)]
           (logger/log-info (format "API: GET /api/workers/search (запрос: %s, найдено: %d)" query (count workers)))
           (-> (resp/response (success-response
-                              (map format-worker workers)
+                               (vec (map format-worker workers))
                               (str "Найдено " (count workers) " работников по запросу '" query "'")))
               (resp/content-type "application/json; charset=utf-8")))))
     (catch Exception e

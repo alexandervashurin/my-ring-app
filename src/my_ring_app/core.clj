@@ -24,8 +24,8 @@
   (fn [request]
     (try
       (handler request)
-      (catch Exception e
-        (logger/log-error ^Throwable e "Необработанная ошибка при обработке запроса")
+      (catch Throwable t
+        (logger/log-error ^Throwable t "Необработанная ошибка при обработке запроса")
         {:status 500
          :body "Внутренняя ошибка сервера"
          :headers {"Content-Type" "text/html; charset=utf-8"}}))))
@@ -66,10 +66,13 @@
   (fn [request]
     (let [method (:request-method request)
           uri (:uri request)
+          start-time (System/currentTimeMillis)
           response (handler request)
+          duration (- (System/currentTimeMillis) start-time)
           status (:status response)]
       (logger/log-request request)
       (logger/log-response status uri)
+      (logger/log-info (format "Запрос %s %s выполнен за %d мс" (clojure.string/upper-case (name method)) uri duration))
       response)))
 
 ;; ======================================================================

@@ -377,13 +377,14 @@
                            :сколько_должны_отработать (when (seq (:сколько_должны_отработать params)) (parse-int (:сколько_должны_отработать params) nil))
                            :больничные_дни (parse-int (:больничные_дни params) 0)
                            :командировочные_дни (parse-int (:командировочные_дни params) 0)}
-                     result (model/update-record "Учет_рабочего_времени" work-time-id data)]
-                 (if (:success result)
-                   (do
-                     (logger/log-audit "UPDATE" "WorkTime" work-time-id
-                                       (format "Обновлен учет времени для работника ID=%s" (:работник_id (model/get-work-time-by-id (str work-time-id)))))
-                     (logger/log-info (format "Учет времени успешно обновлен, ID=%s" work-time-id))
-                     (resp/redirect (str "/workers/" (:работник_id (model/get-work-time-by-id (str work-time-id))) "/work-time")))
+                  result (model/update-record "Учет_рабочего_времени" work-time-id data)]
+                  (if (:success result)
+                    (do
+                      (let [work-time-record (model/get-work-time-by-id (str work-time-id))]
+                        (logger/log-audit "UPDATE" "WorkTime" work-time-id
+                                          (format "Обновлен учет времени для работника ID=%s" (:работник_id work-time-record)))
+                        (logger/log-info (format "Учет времени успешно обновлен, ID=%s" work-time-id))
+                        (resp/redirect (str "/workers/" (:работник_id work-time-record) "/work-time"))))
                    (do
                      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении учета времени")
                      (let [work-time-record (model/get-work-time-by-id (str work-time-id))

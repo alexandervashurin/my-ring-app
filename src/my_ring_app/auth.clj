@@ -101,9 +101,11 @@
                         (assoc :password_hash (hashers/encrypt (:password data))))
           clean-data (dissoc update-data :password)
           result (jdbc/update! db-spec :Пользователь clean-data ["id = ?" id])]
-      (when (pos? result)
-        (logger/log-audit "UPDATE" "User" id "Данные пользователя обновлены"))
-      {:success true :message "Пользователь обновлён"})
+      (if (pos? result)
+        (do
+          (logger/log-audit "UPDATE" "User" id "Данные пользователя обновлены")
+          {:success true :message "Пользователь обновлён"})
+        {:success false :message "Пользователь не найден"}))
     (catch Exception e
       (logger/log-error e "Ошибка при обновлении пользователя" {:id id})
       {:success false :message "Внутренняя ошибка при обновлении пользователя"})))

@@ -140,7 +140,7 @@
     (.setFont style font)
     (.setAlignment style org.apache.poi.ss.usermodel.HorizontalAlignment/CENTER)
     (.setVerticalAlignment style org.apache.poi.ss.usermodel.VerticalAlignment/CENTER)
-    (.setFillForegroundColor style org.apache.poi.ss.usermodel.IndexedColors/LIGHT_BLUE)
+    (.setFillForegroundColor style (.getIndex org.apache.poi.ss.usermodel.IndexedColors/LIGHT_BLUE))
     (.setFillPattern style org.apache.poi.ss.usermodel.FillPatternType/SOLID_FOREGROUND)
     style))
 
@@ -148,8 +148,8 @@
   "Создание стиля для строки (чередование цветов)"
   (let [style (.createCellStyle wb)]
     (if (even? row-num)
-      (.setFillForegroundColor style org.apache.poi.ss.usermodel.IndexedColors/WHITE)
-      (.setFillForegroundColor style org.apache.poi.ss.usermodel.IndexedColors/LIGHT_YELLOW))
+      (.setFillForegroundColor style (.getIndex org.apache.poi.ss.usermodel.IndexedColors/WHITE))
+      (.setFillForegroundColor style (.getIndex org.apache.poi.ss.usermodel.IndexedColors/LIGHT_YELLOW)))
     (.setFillPattern style org.apache.poi.ss.usermodel.FillPatternType/SOLID_FOREGROUND)
     style))
 

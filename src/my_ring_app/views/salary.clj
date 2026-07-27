@@ -2,11 +2,16 @@
   (:require [my-ring-app.views.layout :refer [wrap-html html-escape]]
             [my-ring-app.views.helpers :as helpers]))
 
+(def ^:private month-names
+  {1 "январь" 2 "февраль" 3 "март" 4 "апрель"
+   5 "май" 6 "июнь" 7 "июль" 8 "август"
+   9 "сентябрь" 10 "октябрь" 11 "ноябрь" 12 "декабрь"})
+
 (defn- render-salary-details [salary-info]
   "Рендер детальной информации о зарплате"
   (if salary-info
     (str "<div style='background: #e8f5e9; padding: 25px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #4caf50;'>"
-         "<h3 style='margin-top: 0; color: #1b5e20;'>📊 Расчет за октябрь 2025</h3>"
+         (str "<h3 style='margin-top: 0; color: #1b5e20;'>📊 Расчет за " (get month-names (:месяц salary-info) "?") " " (:год salary-info) "</h3>")
          
          "<div style='display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;'>"
          

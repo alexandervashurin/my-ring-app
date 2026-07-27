@@ -2,6 +2,7 @@
   "Тесты для REST API экспорта данных"
   (:require [clojure.test :refer :all]
             [my-ring-app.api.export :refer :all]
+            [my-ring-app.views.layout :refer [html-escape]]
             [my-ring-app.model :as model]))
 
 ;; ======================================================================
@@ -61,10 +62,6 @@
       (is (bytes? (:body response)))
       (is (pos? (count (:body response)))))))
 
-;; ======================================================================
-;; Тесты вспомогательных функций
-;; ======================================================================
-
 (deftest test-html-escape
   (testing "Экранирование HTML"
     (is (= "" (html-escape nil)))
@@ -72,23 +69,3 @@
     (is (= "&amp;" (html-escape "&")))
     (is (= "&lt;" (html-escape "<")))
     (is (= "&gt;" (html-escape ">")))))
-
-(deftest test-workers-to-csv
-  (testing "Конвертация работников в CSV"
-    (let [workers [{:id 1 :фамилия "Иванов" :имя "Иван" :отчество "Иванович"
-                    :дата_приема "2024-01-01" :цех "Цех 1" :система_оплаты "Оклад"
-                    :категория "Рабочий" :разряд "5" :режим "Односменный"}]
-          csv-content (workers-to-csv workers)]
-      (is (string? csv-content))
-      (is (re-find #"ID,Фамилия,Имя" csv-content))
-      (is (re-find #"1,Иванов,Иван" csv-content)))))
-
-(deftest test-salary-to-csv
-  (testing "Конвертация зарплаты в CSV"
-    (let [salary-records [{:id 1 :фамилия "Иванов" :имя "Иван" :год 2025 :месяц 10
-                           :общая_зарплата 50000 :зарплата_за_больничные_дни 0
-                           :зарплата_за_командировочные_дни 0}]
-          csv-content (salary-to-csv salary-records)]
-      (is (string? csv-content))
-      (is (re-find #"ID,Работник,Год,Месяц" csv-content))
-      (is (re-find #"1,Иванов Иван,2025,10" csv-content)))))

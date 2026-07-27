@@ -75,7 +75,7 @@
 (defn safe-update [table data where-clause]
   (try
     (logger/log-sql (str "UPDATE " table " SET ...") where-clause)
-    (jdbc/update! db-spec table data where-clause)
+    (long (jdbc/update! db-spec table data where-clause))
     (catch Exception e
       (logger/log-error e (format "Ошибка обновления %s" table) {:table table :data data})
       0)))
@@ -83,7 +83,7 @@
 (defn safe-delete [table where-clause]
   (try
     (logger/log-sql (str "DELETE FROM " table) where-clause)
-    (jdbc/delete! db-spec table where-clause)
+    (long (jdbc/delete! db-spec table where-clause))
     (catch Exception e
       (logger/log-error e (format "Ошибка удаления из %s" table) {:table table :where where-clause})
       0)))
@@ -132,11 +132,16 @@
 
 (defn create-record [table-name data]
   (try
-    (let [result (safe-insert table-name data)]
+    (validate-table-name table-name)
+    (let [result (safe-insert table-name data)
+          row (first result)
+          record-id (when (map? row)
+                      (let [v (first (vals row))]
+                        (if (number? v) v (str v))))]
       (if result
         (do
-          (logger/log-info (format "Создана запись в таблице %s" table-name))
-          {:success true :message "Запись успешно создана" :id (first result)})
+          (logger/log-info (format "Создана запись в таблице %s, ID=%s" table-name (str record-id)))
+          {:success true :message "Запись успешно создана" :id record-id})
         {:success false :message "Ошибка при создании записи"}))
     (catch Exception e
       (logger/log-error e (format "Ошибка при создании записи в таблице %s" table-name)
@@ -145,6 +150,7 @@
 
 (defn update-record [table-name id data]
   (try
+    (validate-table-name table-name)
     (let [result (safe-update table-name data ["id = ?" id])]
       (if (> result 0)
         (do
@@ -160,6 +166,7 @@
 
 (defn delete-record [table-name id]
   (try
+    (validate-table-name table-name)
     (let [result (safe-delete table-name ["id = ?" id])]
       (if (> result 0)
         (do
@@ -211,7 +218,10 @@
 
 (defn search-workers [query]
   (try
-    (let [search-term (str "%" query "%")
+    (when (and query (> (count (str query)) 100))
+      (logger/log-warn (format "Поисковый запрос слишком длинный (%d символов)" (count (str query))))
+      (throw (IllegalArgumentException. "Поисковый запрос слишком длинный")))
+    (let [search-term (str "%" (str query) "%")
           result (jdbc/query db-spec
                              ["SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
                      ц.название_цеха as цех,

@@ -12,6 +12,9 @@
 ;; Вспомогательные функции
 ;; ======================================================================
 
+(defn- validate-id [id]
+  (and id (re-matches #"\d+" (str id))))
+
 (defn- parse-int [s default]
   "Безопасное преобразование строки в число"
   (try
@@ -38,22 +41,27 @@
   (let [temp-file (java.io.File/createTempFile "worker_" ".pdf")]
     (try
       (let [worker-id (-> request :route-params :id)]
-        (if-let [result (pdf/generate-worker-pdf worker-id (.getAbsolutePath temp-file))]
-          (if (:success result)
-            (do
-              (logger/log-info (format "API: GET /api/reports/worker/%s/pdf — сгенерирован PDF" worker-id))
-              (.deleteOnExit temp-file)
-              (-> (resp/response temp-file)
-                  (resp/header "Content-Type" "application/pdf")
-                  (resp/header "Content-Disposition" (str "attachment; filename=\"worker_" worker-id ".pdf\""))))
-            (do (.delete temp-file)
-                (-> (resp/response (error-response "NOT_FOUND" (:message result)))
-                    (resp/status 404)
-                    (resp/content-type "application/json; charset=utf-8"))))
+        (if-not (validate-id worker-id)
           (do (.delete temp-file)
-              (-> (resp/response (error-response "GENERATION_ERROR" "Ошибка при генерации PDF"))
-                  (resp/status 500)
-                  (resp/content-type "application/json; charset=utf-8")))))
+              (-> (resp/response (error-response "INVALID_ID" "Неверный формат ID работника"))
+                  (resp/status 400)
+                  (resp/content-type "application/json; charset=utf-8")))
+          (if-let [result (pdf/generate-worker-pdf worker-id (.getAbsolutePath temp-file))]
+            (if (:success result)
+              (do
+                (logger/log-info (format "API: GET /api/reports/worker/%s/pdf — сгенерирован PDF" worker-id))
+                (.deleteOnExit temp-file)
+                (-> (resp/response temp-file)
+                    (resp/header "Content-Type" "application/pdf")
+                    (resp/header "Content-Disposition" (str "attachment; filename=\"worker_" worker-id ".pdf\""))))
+              (do (.delete temp-file)
+                  (-> (resp/response (error-response "NOT_FOUND" (:message result)))
+                      (resp/status 404)
+                      (resp/content-type "application/json; charset=utf-8"))))
+            (do (.delete temp-file)
+                (-> (resp/response (error-response "GENERATION_ERROR" "Ошибка при генерации PDF"))
+                    (resp/status 500)
+                    (resp/content-type "application/json; charset=utf-8"))))))
       (catch Exception e
         (.delete temp-file)
         (logger/log-error e "API: Ошибка при экспорте работника в PDF")
