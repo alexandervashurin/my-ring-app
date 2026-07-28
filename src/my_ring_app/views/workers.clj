@@ -196,32 +196,7 @@
          "</div>"
          
          "</form>"
-         "</div>"
-
-         "<script>
-           function togglePaymentFields(systemId) {
-             const okladField = document.getElementById('oklad-field');
-             const stavkaField = document.getElementById('stavka-field');
-             
-             if (systemId == '1') {
-               okladField.style.display = 'block';
-               stavkaField.style.display = 'none';
-             } else if (systemId == '2') {
-               okladField.style.display = 'none';
-               stavkaField.style.display = 'block';
-             } else {
-               okladField.style.display = 'none';
-               stavkaField.style.display = 'none';
-             }
-           }
-           
-           window.onload = function() {
-             const systemSelect = document.querySelector('select[name=\"система_оплаты_id\"]');
-             if (systemSelect && systemSelect.value) {
-               togglePaymentFields(systemSelect.value);
-             }
-           };
-         </script>")))
+         "</div>")))
 
 (defn render-new-worker-page
   "Рендер страницы создания нового работника"

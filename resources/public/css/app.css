@@ -709,6 +709,27 @@ nav a.active {
   margin-bottom: 30px;
 }
 
+/* ======================================================================
+   Валидация форм (клиентская)
+   ====================================================================== */
+
+.field-error {
+  color: #c62828;
+  font-size: 13px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.input-error {
+  border-color: #F44336 !important;
+  box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.15) !important;
+}
+
+.input-error:focus {
+  outline: none;
+  border-color: #F44336 !important;
+}
+
 /* Мобильная адаптивность */
 @media (max-width: 768px) {
   body {

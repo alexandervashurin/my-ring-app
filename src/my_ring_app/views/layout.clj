@@ -106,8 +106,9 @@
          (generate-header user lang)
          (generate-navigation (or active-page "home") user lang)
          content
-         "<script src='/js/app.js'></script>"
-         "<script src='/js/charts.js'></script>"
+          "<script src='/js/validation.js'></script>"
+          "<script src='/js/app.js'></script>"
+          "<script src='/js/charts.js'></script>"
          "<script>"
          "// Регистрация Service Worker"
          "if ('serviceWorker' in navigator) {"
