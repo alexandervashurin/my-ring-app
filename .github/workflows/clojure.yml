@@ -21,9 +21,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Install Leiningen
-      uses: DeLaGuardo/setup-graalvm@master
-      if: false
-    - run: |
+      run: |
         curl -fsSL https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -o /usr/local/bin/lein
         chmod +x /usr/local/bin/lein
         lein version
@@ -32,17 +30,17 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-lein-${{ hashFiles('project.clj') }}
+        key: ${{ runner.os }}-maven-${{ hashFiles('project.clj') }}
         restore-keys: |
-          ${{ runner.os }}-lein-
+          ${{ runner.os }}-maven-
 
     - name: Cache Leiningen
       uses: actions/cache@v4
       with:
         path: ~/.lein
-        key: ${{ runner.os }}-lein-deps-${{ hashFiles('project.clj') }}
+        key: ${{ runner.os }}-lein-${{ hashFiles('project.clj') }}
         restore-keys: |
-          ${{ runner.os }}-lein-deps-
+          ${{ runner.os }}-lein-
 
     - name: Install dependencies
       run: lein deps
@@ -74,9 +72,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-lein-${{ hashFiles('project.clj') }}
+        key: ${{ runner.os }}-maven-${{ hashFiles('project.clj') }}
         restore-keys: |
-          ${{ runner.os }}-lein-
+          ${{ runner.os }}-maven-
 
     - name: Build uberjar
       run: lein uberjar
@@ -85,5 +83,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: uberjar
-        path: target/uberjar/my-ring-app-*.jar
+        path: target/uberjar/my-ring-app-*-standalone.jar
         retention-days: 7
