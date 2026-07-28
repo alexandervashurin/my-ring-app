@@ -36,15 +36,14 @@ services:
     volumes:
       - app-data:/app
       - app-logs:/app/logs
-      - ./igra.db:/app/igra.db:ro
+      - ./igra.db:/app/igra.db
     
     # Сеть
     networks:
       - my-ring-app-network
     
     # Зависимости
-    depends_on:
-      - sqlite-db
+    depends_on: []
     
     # Ресурсы
     deploy:
@@ -63,19 +62,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  # ==============================================================================
-  # SQLite (для совместимости)
-  # ==============================================================================
-  sqlite-db:
-    image: alpine:latest
-    container_name: my-ring-app-sqlite
-    restart: unless-stopped
-    volumes:
-      - sqlite-data:/data
-    networks:
-      - my-ring-app-network
-    command: tail -f /dev/null
 
   # ==============================================================================
   # Nginx Reverse Proxy (опционально)
@@ -103,8 +89,6 @@ volumes:
   app-data:
     driver: local
   app-logs:
-    driver: local
-  sqlite-data:
     driver: local
   nginx-logs:
     driver: local

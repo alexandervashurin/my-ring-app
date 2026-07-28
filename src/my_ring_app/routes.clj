@@ -4,6 +4,7 @@
             [ring.util.response :as resp]
             [my-ring-app.controllers :as controllers]
             [my-ring-app.controllers.auth :as auth-controllers]
+            [my-ring-app.controllers.organizations :as org-controllers]
             [my-ring-app.api.workers :as api-workers]
             [my-ring-app.api.dashboard :as api-dashboard]
             [my-ring-app.api.salary :as api-salary]
@@ -13,6 +14,7 @@
             [my-ring-app.api.notifications :as api-notifications]
             [my-ring-app.api.onec :as api-onec]
             [my-ring-app.api.monitoring :as api-monitoring]
+            [my-ring-app.api.organizations :as api-organizations]
             [my-ring-app.sse :as sse]
             [my-ring-app.auth :as auth]))
 
@@ -50,6 +52,15 @@
   (POST "/api/cache/refresh" request ((admin-only api-monitoring/refresh-cache) request))
 
   ;; ======================================================================
+  ;; REST API - Организации (мульти-тенантность)
+  ;; ======================================================================
+  (GET "/api/organizations" request ((auth-required api-organizations/get-organizations) request))
+  (GET "/api/organizations/:id" request ((auth-required api-organizations/get-organization-by-id) request))
+  (POST "/api/organizations" request ((admin-only api-organizations/create-organization) request))
+  (PUT "/api/organizations/:id" request ((admin-only api-organizations/update-organization) request))
+  (DELETE "/api/organizations/:id" request ((admin-only api-organizations/deactivate-organization) request))
+
+  ;; ======================================================================
   ;; REST API - Интеграция с 1С (только админ)
   ;; ======================================================================
   (GET "/api/1c/workers" request ((admin-only api-onec/get-workers-export) request))
@@ -60,11 +71,12 @@
   ;; ======================================================================
   ;; Переключение языка (публичный маршрут)
   ;; ======================================================================
-  (GET "/lang/:lang" [lang] (let [valid-langs #{"ru" "en"}
-                                   safe-lang (if (valid-langs lang) lang "ru")]
-                               (-> (resp/redirect "/")
-                                   (resp/status 302)
-                                   (assoc :session {:lang safe-lang}))))
+  (GET "/lang/:lang" [lang :as request] (let [valid-langs #{"ru" "en"}
+                                               safe-lang (if (valid-langs lang) lang "ru")
+                                               current-session (:session request {})]
+                                           (-> (resp/redirect "/")
+                                               (resp/status 302)
+                                               (assoc :session (assoc current-session :lang safe-lang)))))
 
   ;; ======================================================================
   ;; REST API - Email уведомления
@@ -144,6 +156,15 @@
 
   ;; Дашборд с аналитикой
   (GET "/dashboard" request ((auth-required controllers/dashboard-page) request))
+
+  ;; Организации (только админ)
+  (GET "/organizations" request ((admin-only org-controllers/organizations-page) request))
+  (GET "/organizations/new" request ((admin-only org-controllers/new-organization-form) request))
+  (POST "/organizations/create" request ((admin-only org-controllers/create-organization) request))
+  (GET "/organizations/:id" request ((admin-only org-controllers/organization-detail) request))
+  (GET "/organizations/:id/edit" request ((admin-only org-controllers/edit-organization-form) request))
+  (POST "/organizations/:id/update" request ((admin-only org-controllers/update-organization) request))
+  (POST "/organizations/:id/delete" request ((admin-only org-controllers/delete-organization) request))
 
   ;; Список работников с поиском
   (GET "/workers" request ((auth-required controllers/workers-page) request))

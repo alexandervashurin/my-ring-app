@@ -41,19 +41,20 @@
   [request]
   (try
     (let [user (:identity request)
+          org-id (:org-id request)
           query-params (:params request)
           search (:search query-params)
           page (max 1 (parse-int (:page query-params) 1))
           per-page (max 1 (min 100 (parse-int (:per_page query-params) 20)))
           offset (* (- page 1) per-page)
           workers (if (and search (not (str/blank? search)))
-                    (model/search-workers search)
-                    (model/get-workers-with-details))
+                    (model/search-workers search org-id)
+                    (model/get-workers-with-details org-id))
           total (count workers)
           total-pages (int (Math/ceil (/ total (double per-page))))
           paginated-workers (take per-page (drop offset workers))]
-      (logger/log-info (format "API: GET /api/workers (поиск: %s, страница: %d, размер: %d, найдено: %d)"
-                               (or search "-") page per-page (count paginated-workers)))
+      (logger/log-info (format "API: GET /api/workers (поиск: %s, страница: %d, размер: %d, найдено: %d, org: %s)"
+                               (or search "-") page per-page (count paginated-workers) (str org-id)))
       (-> (resp/response (success-response
                           {:workers (map format-worker paginated-workers)
                            :pagination {:page page
@@ -99,16 +100,17 @@
   [request]
   (try
     (let [user (:identity request)
+          org-id (:org-id request)
           worker-data (:params request)
           validation-result (validation/validate-worker worker-data)]
       (if (:valid? validation-result)
         (let [data (parse-worker-params worker-data)
-              result (model/create-record "Работник" data)]
+              result (model/create-record "Работник" data org-id)]
           (if (:success result)
             (do
               (logger/log-audit "CREATE" "Worker" (:id result)
-                                (format "Создан работник %s %s (API)" (:фамилия data) (:имя data)))
-              (logger/log-info (format "API: POST /api/workers — создан работник ID=%s" (str (:id result))))
+                                (format "Создан работник %s %s (API, org: %s)" (:фамилия data) (:имя data) (str org-id)))
+              (logger/log-info (format "API: POST /api/workers — создан работник ID=%s (org: %s)" (str (:id result)) (str org-id)))
               (-> (resp/response (success-response
                                   (format-worker (model/get-record-by-id "Работник" (str (:id result))))
                                   "Работник успешно создан"))
@@ -192,14 +194,15 @@
   "GET /api/workers/search — поиск работников"
   [request]
   (try
-    (let [query-params (:params request)
+    (let [org-id (:org-id request)
+          query-params (:params request)
           query (:q query-params)]
       (if (or (nil? query) (str/blank? query))
         (-> (resp/response (error-response "MISSING_QUERY" "Параметр поиска 'q' обязателен"))
             (resp/status 400)
             (resp/content-type "application/json; charset=utf-8"))
-        (let [workers (model/search-workers query)]
-          (logger/log-info (format "API: GET /api/workers/search (запрос: %s, найдено: %d)" query (count workers)))
+        (let [workers (model/search-workers query org-id)]
+          (logger/log-info (format "API: GET /api/workers/search (запрос: %s, найдено: %d, org: %s)" query (count workers) (str org-id)))
           (-> (resp/response (success-response
                                (vec (map format-worker workers))
                               (str "Найдено " (count workers) " работников по запросу '" query "'")))

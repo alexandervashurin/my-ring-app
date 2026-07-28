@@ -71,7 +71,7 @@
          "<div class='stat-card stat-card--blue'>"
          "<div class='stat-card__icon'>🏥</div>"
          "<div class='stat-card__content'>"
-         "<div class='stat-card__value'>" (format "%.1f" avg-sick-days) "</div>"
+          "<div class='stat-card__value'>" (format "%.1f" (double avg-sick-days)) "</div>"
          "<div class='stat-card__label'>Больничные дни (ср)</div>"
          "</div>"
          "</div>"

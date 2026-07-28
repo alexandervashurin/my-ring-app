@@ -1,40 +1,21 @@
 (ns my-ring-app.api.workers-test
   "Тесты для REST API работников"
   (:require [clojure.test :refer :all]
+            [clojure.edn :as edn]
             [my-ring-app.api.workers :refer :all :reload true]
-            [my-ring-app.model :as model]))
+            [my-ring-app.model :as model]
+            [my-ring-app.test-helper :refer [make-request]]))
 
 ;; ======================================================================
 ;; Вспомогательные функции
 ;; ======================================================================
-
-(defn- make-request
-  "Создание тестового запроса"
-  ([method uri]
-   {:request-method method
-    :uri uri
-    :params {}
-    :route-params {}
-    :identity nil})
-  ([method uri params]
-   {:request-method method
-    :uri uri
-    :params params
-    :route-params {}
-    :identity nil})
-  ([method uri params route-params identity]
-   {:request-method method
-    :uri uri
-    :params params
-    :route-params route-params
-    :identity identity}))
 
 (defn- get-body
   "Получение тела ответа (map или JSON)"
   [response]
   (let [body (:body response)]
     (if (string? body)
-      (read-string body)
+      (edn/read-string body)
       body)))
 
 ;; ======================================================================

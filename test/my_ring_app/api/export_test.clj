@@ -3,26 +3,8 @@
   (:require [clojure.test :refer :all]
             [my-ring-app.api.export :refer :all]
             [my-ring-app.views.layout :refer [html-escape]]
-            [my-ring-app.model :as model]))
-
-;; ======================================================================
-;; Вспомогательные функции
-;; ======================================================================
-
-(defn- make-request
-  "Создание тестового запроса"
-  ([method uri]
-   {:request-method method
-    :uri uri
-    :params {}
-    :route-params {}
-    :identity nil})
-  ([method uri params]
-   {:request-method method
-    :uri uri
-    :params params
-    :route-params {}
-    :identity nil}))
+            [my-ring-app.model :as model]
+            [my-ring-app.test-helper :refer [make-request]]))
 
 ;; ======================================================================
 ;; Тесты для CSV экспорта

@@ -71,11 +71,14 @@
   [active-page user lang]
   (let [active-class (fn [page] (if (= page active-page) " class='active'" ""))
         user-role (:role user)
-        has-salary-access (contains? #{"admin" "manager"} user-role)]
+        has-salary-access (contains? #{"admin" "manager"} user-role)
+        is-admin (= user-role "admin")]
     (str "<nav>"
          "<a href='/'" (active-class "home") ">Главная</a>"
          "<a href='/dashboard'" (active-class "dashboard") ">Дашборд</a>"
          "<a href='/workers'" (active-class "workers") ">Работники</a>"
+         (when is-admin
+           "<a href='/organizations'" (active-class "organizations") ">Организации</a>")
          (when has-salary-access
            "<a href='/db'" (active-class "db") ">Все таблицы</a>")
          "</nav>")))

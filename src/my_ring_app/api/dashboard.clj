@@ -20,8 +20,9 @@
   "GET /api/dashboard — получение данных дашборда"
   [request]
   (try
-    (let [dashboard-data (model/get-dashboard-data)]
-      (logger/log-info "API: GET /api/dashboard")
+    (let [org-id (:org-id request)
+          dashboard-data (model/get-dashboard-data org-id)]
+      (logger/log-info (format "API: GET /api/dashboard (org: %s)" (str org-id)))
       (-> (resp/response (success-response dashboard-data "Данные дашборда получены"))
           (resp/content-type "application/json; charset=utf-8")))
     (catch Exception e
@@ -34,8 +35,9 @@
   "GET /api/dashboard/stats — получение основной статистики"
   [request]
   (try
-    (let [stats (model/get-dashboard-stats)]
-      (logger/log-info "API: GET /api/dashboard/stats")
+    (let [org-id (:org-id request)
+          stats (model/get-dashboard-stats org-id)]
+      (logger/log-info (format "API: GET /api/dashboard/stats (org: %s)" (str org-id)))
       (-> (resp/response (success-response stats "Статистика получена"))
           (resp/content-type "application/json; charset=utf-8")))
     (catch Exception e
@@ -48,8 +50,9 @@
   "GET /api/analytics/workers-by-shop — распределение по цехам"
   [request]
   (try
-    (let [data (model/get-workers-by-shop)]
-      (logger/log-info "API: GET /api/analytics/workers-by-shop")
+    (let [org-id (:org-id request)
+          data (model/get-workers-by-shop org-id)]
+      (logger/log-info (format "API: GET /api/analytics/workers-by-shop (org: %s)" (str org-id)))
       (-> (resp/response (success-response data "Данные получены"))
           (resp/content-type "application/json; charset=utf-8")))
     (catch Exception e
@@ -62,8 +65,9 @@
   "GET /api/analytics/workers-by-category — распределение по категориям"
   [request]
   (try
-    (let [data (model/get-workers-by-category)]
-      (logger/log-info "API: GET /api/analytics/workers-by-category")
+    (let [org-id (:org-id request)
+          data (model/get-workers-by-category org-id)]
+      (logger/log-info (format "API: GET /api/analytics/workers-by-category (org: %s)" (str org-id)))
       (-> (resp/response (success-response data "Данные получены"))
           (resp/content-type "application/json; charset=utf-8")))
     (catch Exception e
@@ -76,8 +80,9 @@
   "GET /api/analytics/salary-distribution — распределение по зарплате"
   [request]
   (try
-    (let [data (model/get-salary-distribution)]
-      (logger/log-info "API: GET /api/analytics/salary-distribution")
+    (let [org-id (:org-id request)
+          data (model/get-salary-distribution org-id)]
+      (logger/log-info (format "API: GET /api/analytics/salary-distribution (org: %s)" (str org-id)))
       (-> (resp/response (success-response data "Данные получены"))
           (resp/content-type "application/json; charset=utf-8")))
     (catch Exception e

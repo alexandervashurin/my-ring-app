@@ -7,6 +7,8 @@
             [my-ring-app.logger :as logger]
             [java-time :as time]))
 
+(declare get-app-stats)
+
 ;; Время запуска приложения
 (def ^:private app-start-time (System/currentTimeMillis))
 
@@ -38,16 +40,17 @@
 
 (defn- get-db-stats
   "Статистика базы данных"
-  []
-  (try
-    (let [stats (model/get-dashboard-stats)]
-      {:tables (count (model/get-tables))
-       :workers (:total-workers stats)
-       :shops (:total-shops stats)
-       :status "connected"})
-    (catch Exception e
-      {:status "disconnected"
-       :error "Database connection failed"})))
+  ([] (get-db-stats nil))
+  ([org-id]
+   (try
+     (let [stats (model/get-dashboard-stats org-id)]
+       {:tables (count (model/get-tables))
+        :workers (:total-workers stats)
+        :shops (:total-shops stats)
+        :status "connected"})
+     (catch Exception e
+       {:status "disconnected"
+        :error "Database connection failed"}))))
 
 ;; ======================================================================
 ;; Health Check
@@ -228,7 +231,7 @@
     (logger/log-info "API: POST /api/cache/refresh — кэш обновлён")
     (-> (resp/response {:message "Кэш справочников обновлён"
                         :status (cache/cache-status)})
-        (resp/content-type "application/json; charset=utf-8")))
+        (resp/content-type "application/json; charset=utf-8"))
     (catch Exception e
       (logger/log-error e "API: Ошибка обновления кэша")
       (-> (resp/response {:error "Internal server error"})

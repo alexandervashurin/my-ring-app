@@ -24,7 +24,7 @@
     (migration/run-migrations!)
     (let [status (migration/migration-status)
           applied (count (filter :applied status))]
-      (is (= 2 applied) "Должны быть применены все миграции (001 + 002)"))))
+      (is (= (count status) applied) "Должны быть применены все миграции"))))
 
 (deftest test-rollback-migration
   (testing "Откат миграции работает"

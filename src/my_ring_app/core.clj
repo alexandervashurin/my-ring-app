@@ -9,6 +9,7 @@
             [ring.middleware.session :refer [wrap-session]]
             [ring.middleware.session.cookie :as cookie]
             [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
+            [clojure.string :as str]
             [my-ring-app.routes :refer [app-routes]]
             [my-ring-app.logger :as logger]
             [my-ring-app.config :as config]
@@ -76,7 +77,7 @@
           status (:status response)]
       (logger/log-request request)
       (logger/log-response status uri)
-      (logger/log-info (format "Запрос %s %s выполнен за %d мс" (clojure.string/upper-case (name method)) uri duration))
+      (logger/log-info (format "Запрос %s %s выполнен за %d мс" (str/upper-case (name method)) uri duration))
       response)))
 
 ;; ======================================================================
@@ -94,8 +95,9 @@
                      :store (cookie/cookie-store {:key (or (System/getenv "SESSION_SECRET")
                                                             (when (= "production" (:env config/app-config))
                                                               (throw (IllegalStateException. "SESSION_SECRET env var is required in production")))
-                                                            "d3v-s3cr3t-k3y!1"))})})
+                                                             "d3v-s3cr3t-k3y!1")})})
       auth/wrap-authentication
+      auth/wrap-org-context
       wrap-anti-forgery
       wrap-csrf-error
       wrap-security-headers

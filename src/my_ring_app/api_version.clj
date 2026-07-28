@@ -2,7 +2,8 @@
   "API versioning middleware.
    Поддерживает /api/v1/ префикс с обратной совместимостью /api/.
    /api/v1/* запросы перезаписываются в /api/* перед обработкой."
-  (:require [my-ring-app.logger :as logger]))
+  (:require [clojure.string :as str]
+            [my-ring-app.logger :as logger]))
 
 (def ^:private current-api-version "v1")
 
@@ -18,7 +19,7 @@
   [handler]
   (fn [request]
     (let [uri (:uri request)
-          new-uri (if (clojure.string/starts-with? uri "/api/v1/")
+          new-uri (if (str/starts-with? uri "/api/v1/")
                     (str "/api/" (subs uri 7))
                     uri)]
       (handler (assoc request :uri new-uri)))))

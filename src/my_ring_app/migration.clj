@@ -41,6 +41,16 @@
 ;; Парсинг SQL файлов миграций
 ;; ======================================================================
 
+(defn- split-sql-statements
+  "Разделение SQL-строки на отдельные операторы по ';'.
+   Фильтрует пустые операторы и операторы-комментарии."
+  [sql]
+  (->> (str/split sql #";")
+       (map str/trim)
+       (remove str/blank?)
+       (remove #(str/starts-with? % "--"))
+       vec))
+
 (defn- parse-migration-file
   "Парсинг SQL файла миграции. Возвращает {:up [...] :down [...]}"
   [content]
@@ -64,6 +74,14 @@
                          lines)]
     {:up (str/join "\n" (:up sections))
      :down (str/join "\n" (:down sections))}))
+
+(defn- execute-sql!
+  "Выполнение SQL-строки, разбитой на отдельные операторы.
+   SQLite не поддерживает несколько операторов в одном execute! call."
+  [sql]
+  (let [stmts (split-sql-statements sql)]
+    (doseq [stmt stmts]
+      (jdbc/execute! db-spec [stmt]))))
 
 (defn- load-migration-files
   "Загрузка всех файлов миграций из resources/migrations/"
@@ -103,7 +121,7 @@
         (doseq [{:keys [version filename parsed]} pending]
           (logger/log-info (format "Применение миграции: %s" filename))
           (try
-            (jdbc/execute! db-spec [(:up parsed)])
+            (execute-sql! (:up parsed))
             (mark-applied! version)
             (logger/log-info (format "Миграция %s применена успешно" version))
             (catch Exception e
@@ -124,7 +142,7 @@
       (do
         (logger/log-info (format "Откат миграции: %s" (:filename last-applied)))
         (try
-          (jdbc/execute! db-spec [(:down (:parsed last-applied))])
+          (execute-sql! (:down (:parsed last-applied)))
           (mark-rolled-back! (:version last-applied))
           (logger/log-info (format "Миграция %s откачена" (:version last-applied)))
           (catch Exception e

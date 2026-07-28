@@ -46,6 +46,85 @@
     {}))
 
 ;; ======================================================================
+;; Константы и настройки организации
+;; ======================================================================
+
+(def ^:private default-org-id 1)
+
+;; ======================================================================
+;; Функции работы с организациями
+;; ======================================================================
+
+(defn get-organization-by-id
+  "Получение организации по ID"
+  [org-id]
+  (try
+    (first (jdbc/query db-spec ["SELECT * FROM Организация WHERE id = ? AND is_active = 1" org-id]))
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении организации" {:org-id org-id})
+      nil)))
+
+(defn get-all-organizations
+  "Получение списка всех активных организаций"
+  []
+  (try
+    (vec (jdbc/query db-spec ["SELECT * FROM Организация WHERE is_active = 1 ORDER BY name"]))
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении списка организаций")
+      [])))
+
+(defn create-organization
+  "Создание новой организации"
+  [{:keys [name inn phone email address]}]
+  (try
+    (let [result (jdbc/insert! db-spec :Организация
+                               {:name name
+                                :inn inn
+                                :phone phone
+                                :email email
+                                :address address
+                                :is_active 1})
+          new-id (val (first (first result)))]
+      (logger/log-audit "CREATE" "Organization" new-id
+                        (format "Создана организация '%s'" name))
+      {:success true :id new-id :message "Организация создана"})
+    (catch Exception e
+      (logger/log-error e "Ошибка при создании организации" {:name name})
+      {:success false :message "Ошибка при создании организации"})))
+
+(defn update-organization
+  "Обновление данных организации"
+  [org-id data]
+  (try
+    (let [allowed-keys #{:name :inn :phone :email :address}
+          safe-data (select-keys data allowed-keys)
+          result (jdbc/update! db-spec :Организация safe-data ["id = ?" org-id])
+          affected (first result)]
+      (if (pos? affected)
+        (do
+          (logger/log-audit "UPDATE" "Organization" org-id "Организация обновлена")
+          {:success true :message "Организация обновлена"})
+        {:success false :message "Организация не найдена"}))
+    (catch Exception e
+      (logger/log-error e "Ошибка при обновлении организации" {:org-id org-id})
+      {:success false :message "Ошибка при обновлении организации"})))
+
+(defn deactivate-organization
+  "Деактивация организации (мягкое удаление)"
+  [org-id]
+  (try
+    (let [result (jdbc/update! db-spec :Организация
+                                     {:is_active 0 :updated_at (str (java.time.LocalDateTime/now))}
+                                     ["id = ?" org-id])
+          affected (first result)]
+      (when (pos? affected)
+        (logger/log-audit "DELETE" "Organization" org-id "Организация деактивирована"))
+      {:success true :message "Организация деактивирована"})
+    (catch Exception e
+      (logger/log-error e "Ошибка при деактивации организации" {:org-id org-id})
+      {:success false :message "Ошибка при деактивации организации"})))
+
+;; ======================================================================
 ;; Функции работы с пользователями
 ;; ======================================================================
 
@@ -54,7 +133,10 @@
   [username]
   (try
     (let [result (jdbc/query db-spec
-                             ["SELECT * FROM Пользователь WHERE username = ? AND is_active = 1"
+                             ["SELECT u.*, o.name as org_name
+                              FROM Пользователь u
+                              LEFT JOIN Организация o ON u.organization_id = o.id
+                              WHERE u.username = ? AND u.is_active = 1"
                               username])]
       (first result))
     (catch Exception e
@@ -66,7 +148,10 @@
   [id]
   (try
     (let [result (jdbc/query db-spec
-                             ["SELECT * FROM Пользователь WHERE id = ? AND is_active = 1"
+                             ["SELECT u.*, o.name as org_name
+                              FROM Пользователь u
+                              LEFT JOIN Организация o ON u.organization_id = o.id
+                              WHERE u.id = ? AND u.is_active = 1"
                               id])]
       (first result))
     (catch Exception e
@@ -75,7 +160,7 @@
 
 (defn create-user
   "Создание нового пользователя"
-  [username email password role]
+  [username email password role & [org-id]]
   (try
     (let [password-hash (hashers/encrypt password)
           result (jdbc/insert! db-spec :Пользователь
@@ -83,10 +168,12 @@
                                 :email email
                                 :password_hash password-hash
                                 :role role
-                                :is_active 1})]
-      (logger/log-audit "CREATE" "User" (first result)
-                        (format "Создан пользователь %s (роль: %s)" username role))
-      {:success true :id (first result) :message "Пользователь создан"})
+                                :organization_id (or org-id default-org-id)
+                                :is_active 1})
+          new-id (val (first (first result)))]
+      (logger/log-audit "CREATE" "User" new-id
+                        (format "Создан пользователь %s (роль: %s, org: %d)" username role (or org-id default-org-id)))
+      {:success true :id new-id :message "Пользователь создан"})
     (catch Exception e
       (logger/log-error e "Ошибка при создании пользователя"
                         {:username username :email email})
@@ -103,8 +190,9 @@
                         (:password safe-data)
                         (assoc :password_hash (hashers/encrypt (:password safe-data))))
           clean-data (dissoc update-data :password)
-          result (jdbc/update! db-spec :Пользователь clean-data ["id = ?" id])]
-      (if (pos? result)
+          result (jdbc/update! db-spec :Пользователь clean-data ["id = ?" id])
+          affected (first result)]
+      (if (and affected (pos? affected))
         (do
           (logger/log-audit "UPDATE" "User" id "Данные пользователя обновлены")
           {:success true :message "Пользователь обновлён"})
@@ -118,10 +206,11 @@
   [id]
   (try
     (let [result (jdbc/update! db-spec :Пользователь
-                               {:is_active 0
-                                :updated_at (str (time/local-date-time))}
-                               ["id = ?" id])]
-      (when (pos? result)
+                                     {:is_active 0
+                                      :updated_at (str (time/local-date-time))}
+                                     ["id = ?" id])
+          affected (first result)]
+      (when (pos? affected)
         (logger/log-audit "DELETE" "User" id "Пользователь деактивирован"))
       {:success true :message "Пользователь деактивирован"})
     (catch Exception e
@@ -129,14 +218,20 @@
       {:success false :message "Внутренняя ошибка при деактивации пользователя"})))
 
 (defn get-all-users
-  "Получение списка всех активных пользователей"
-  []
-  (try
-    (jdbc/query db-spec ["SELECT id, username, email, role, is_active, created_at, last_login
-                          FROM Пользователь WHERE is_active = 1 ORDER BY username"])
-    (catch Exception e
-      (logger/log-error e "Ошибка при получении списка пользователей")
-      [])))
+  "Получение списка активных пользователей. Если org-id не nil — фильтрует по организации."
+  ([] (get-all-users nil))
+  ([org-id]
+   (try
+     (vec
+       (if org-id
+         (jdbc/query db-spec ["SELECT id, username, email, role, organization_id, is_active, created_at, last_login
+                               FROM Пользователь WHERE is_active = 1 AND organization_id = ? ORDER BY username"
+                              org-id])
+         (jdbc/query db-spec ["SELECT id, username, email, role, organization_id, is_active, created_at, last_login
+                               FROM Пользователь WHERE is_active = 1 ORDER BY username"])))
+     (catch Exception e
+       (logger/log-error e "Ошибка при получении списка пользователей")
+       []))))
 
 ;; ======================================================================
 ;; Аутентификация
@@ -156,12 +251,15 @@
                         {:last_login (str (time/local-date-time))}
                         ["id = ?" (:id user)])
           (logger/log-audit "LOGIN" "User" (:id user)
-                            (format "Пользователь %s вошёл в систему" username))
-          (logger/log-info (format "Успешная аутентификация: %s" username))
+                            (format "Пользователь %s вошёл в систему (org: %s)"
+                                    username (or (:org_name user) "default")))
+          (logger/log-info (format "Успешная аутентификация: %s (org: %s)" username (or (:org_name user) "default")))
           {:id (:id user)
            :username (:username user)
            :email (:email user)
            :role (:role user)
+           :organization_id (:organization_id user)
+           :org_name (:org_name user)
            :permissions (get-role-permissions (:role user))})
         (do
           (when user
@@ -174,6 +272,19 @@
 ;; ======================================================================
 ;; Middleware для сессионной аутентификации
 ;; ======================================================================
+
+(defn get-org-id
+  "Получение organization_id из запроса (из текущего пользователя)"
+  [request]
+  (or (get-in request [:identity :organization_id]) default-org-id))
+
+(defn wrap-org-context
+  "Middleware для добавления organization_id в request из сессии пользователя.
+   Все модули, работающие с данными организации, должны использовать (:org-id request)."
+  [handler]
+  (fn [request]
+    (let [org-id (get-org-id request)]
+      (handler (assoc request :org-id org-id)))))
 
 (defn wrap-authentication
   "Middleware для добавления пользователя из сессии в запрос.
@@ -196,14 +307,6 @@
 ;; Авторизация
 ;; ======================================================================
 
-(defn has-permission?
-  "Проверка наличия права у пользователя"
-  [user resource action]
-  (let [role (:role user)
-        permissions (get-role-permissions role)
-        resource-permissions (get permissions resource)]
-    (boolean (some #{action} resource-permissions))))
-
 (defn require-authentication
   "Middleware требующий аутентификации"
   [handler]
@@ -224,17 +327,6 @@
           (-> (resp/response "Доступ запрещён: недостаточно прав")
               (resp/status 403)
               (resp/content-type "text/html; charset=utf-8")))))))
-
-(defn require-permission
-  "Middleware требующий определённого права"
-  [handler resource action]
-  (fn [request]
-    (let [user (:identity request)]
-      (if (and user (has-permission? user resource action))
-        (handler request)
-        (-> (resp/response "Доступ запрещён: недостаточно прав")
-            (resp/status 403)
-            (resp/content-type "text/html; charset=utf-8"))))))
 
 ;; ======================================================================
 ;; Вспомогательные функции
@@ -295,9 +387,14 @@
                                     (throw (IllegalStateException. "ADMIN_PASSWORD env var is required in production")))
                                   "changeme!")
               admin-email (or (System/getenv "ADMIN_EMAIL") "admin@example.com")
-              result (create-user "admin" admin-email admin-password "admin")]
+              is-default-password (and (nil? (System/getenv "ADMIN_PASSWORD"))
+                                       (not= "production" (:env config/app-config)))
+              result (create-user "admin" admin-email admin-password "admin" default-org-id)]
           (if (:success result)
-            (logger/log-info "Создан пользователь admin по умолчанию. ПОЖАЛУЙСТА, смените пароль!")
+            (do
+              (logger/log-info "Создан пользователь admin по умолчанию (org: 1)")
+              (when is-default-password
+                (logger/log-warn "Используется пароль по умолчанию 'changeme!'. Задайте переменную окружения ADMIN_PASSWORD или смените пароль после первого входа!")))
             (logger/log-warn "Не удалось создать пользователя admin по умолчанию")))))
     (catch Exception e
       (logger/log-error e "Ошибка при инициализации таблицы пользователей"))))

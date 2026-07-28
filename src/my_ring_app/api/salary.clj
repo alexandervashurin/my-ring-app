@@ -40,8 +40,9 @@
             (resp/content-type "application/json; charset=utf-8"))
 
         :else
-        (let [salary-info (model/get-worker-salary worker-id year month)
-              salary-history (model/get-worker-salary-history worker-id)]
+        (let [org-id (:org-id request)
+              salary-info (model/get-worker-salary worker-id year month org-id)
+              salary-history (model/get-worker-salary-history worker-id org-id)]
           (if salary-info
             (do
               (logger/log-info (format "API: GET /api/salary/%d — зарплата за %d-%02d" worker-id year month))
@@ -72,7 +73,8 @@
         (-> (resp/response (error-response "INVALID_ID" "Некорректный идентификатор работника"))
             (resp/status 400)
             (resp/content-type "application/json; charset=utf-8"))
-        (let [work-time-records (model/get-worker-work-time worker-id)]
+        (let [org-id (:org-id request)
+              work-time-records (model/get-worker-work-time worker-id org-id)]
           (logger/log-info (format "API: GET /api/work-time/%d — найдено %d записей" worker-id (count work-time-records)))
           (-> (resp/response (success-response
                               work-time-records

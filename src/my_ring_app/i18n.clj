@@ -1,8 +1,7 @@
 (ns my-ring-app.i18n
   "Интернационализация (i18n) — поддержка нескольких языков"
   (:require [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.string :as str]))
+            [clojure.java.io :as io]))
 
 ;; ======================================================================
 ;; Загрузка переводов
@@ -73,17 +72,6 @@
     "ru" "Русский"
     "en" "English"
     (name lang)))
-
-(defn wrap-i18n
-  "Middleware для определения языка пользователя"
-  [handler]
-  (fn [request]
-    (let [session (:session request {})
-          lang (or (:lang session)
-                   (get-in request [:headers "accept-language"])
-                   "ru")
-          request-with-lang (assoc-in request [:session :lang] lang)]
-      (handler request-with-lang))))
 
 (defn get-current-lang
   "Получение текущего языка из запроса"

@@ -12,6 +12,7 @@
             [my-ring-app.validation :as validation]
             [my-ring-app.logger :as logger]
             [my-ring-app.util :as util]
+            [my-ring-app.auth :as auth]
             [my-ring-app.cache :as cache]))
 
 ;; ======================================================================
@@ -23,11 +24,19 @@
 (def ^:private parse-worker-params util/parse-worker-params)
 (def ^:private parse-work-time-params util/parse-work-time-params)
 
-(defn- bad-request [message]
+(defn- bad-request
   "Возвращает ответ с ошибкой 400"
+  [message]
   (-> (resp/response message)
       (resp/status 400)
       (resp/content-type "text/html; charset=utf-8")))
+
+(defn- extract-org-id
+  "Извлечение organization_id из запроса"
+  [request]
+  (when (map? request)
+    (or (:org-id request)
+        (get-in request [:identity :organization_id]))))
 
 (defn- extract-params
   "Извлекает params из request или возвращает как есть, если это уже map"
@@ -89,7 +98,8 @@
   ([] (dashboard-page nil))
   ([request]
    (logger/log-info "Открыта страница дашборда")
-   (let [dashboard-data (model/get-dashboard-data)]
+   (let [org-id (extract-org-id request)
+         dashboard-data (model/get-dashboard-data org-id)]
      (-> (resp/response (dashboard/render-dashboard-page dashboard-data))
          (resp/content-type "text/html; charset=utf-8")))))
 
@@ -101,12 +111,13 @@
   ([] (workers-page nil))
   ([request-or-params]
    (let [params (extract-params request-or-params)
+         org-id (extract-org-id request-or-params)
          query (:search params)
          workers (if (and query (not (str/blank? query)))
-                   (model/search-workers query)
-                   (model/get-workers-with-details))]
-     (logger/log-info (format "Открыт список работников (поиск: %s, найдено: %d)"
-                              (or query "-") (count workers)))
+                   (model/search-workers query org-id)
+                   (model/get-workers-with-details org-id))]
+     (logger/log-info (format "Открыт список работников (поиск: %s, найдено: %d, org: %s)"
+                              (or query "-") (count workers) (str org-id)))
      (-> (resp/response (workers/render-workers-page workers query))
          (resp/content-type "text/html; charset=utf-8")))))
 
@@ -152,18 +163,19 @@
 (defn create-worker
   ([] (create-worker nil))
   ([request-or-params]
-   (let [params (extract-params request-or-params)]
+   (let [params (extract-params request-or-params)
+         org-id (extract-org-id request-or-params)]
      (logger/log-info "Попытка создания работника")
      (let [validation-result (validation/validate-worker params)]
        (if (:valid? validation-result)
           (try
             (let [data (parse-worker-params params)
-                  result (model/create-record "Работник" data)]
+                  result (model/create-record "Работник" data org-id)]
              (if (:success result)
                (do
                  (logger/log-audit "CREATE" "Worker" (:id result)
-                                   (format "Создан работник %s %s" (:фамилия params) (:имя params)))
-                 (logger/log-info (format "Работник успешно создан, ID=%s" (:id result)))
+                                   (format "Создан работник %s %s (org: %s)" (:фамилия params) (:имя params) (str org-id)))
+                 (logger/log-info (format "Работник успешно создан, ID=%s (org: %s)" (:id result) (str org-id)))
                  (resp/redirect "/workers"))
                (do
                  (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при создании работника")
@@ -203,7 +215,7 @@
                 (do
                    (logger/log-warn (format "Валидация не пройдена: %s" (str/join ", " (:errors validation-result))))
                    (render-edit-worker-error-response (merge (model/get-record-by-id "Работник" (str worker-id)) params)
-                                                     (load-worker-form-data) (:errors validation-result))))))))))
+                                                     (load-worker-form-data) (:errors validation-result)))))))))))
 
 (defn delete-worker
   ([] (delete-worker nil))
@@ -233,16 +245,17 @@
   ([] (worker-salary-page nil))
   ([id-or-request]
    (let [id (if (number? id-or-request) id-or-request
-              (extract-id-from-request id-or-request))]
+              (extract-id-from-request id-or-request))
+         org-id (extract-org-id id-or-request)]
      (let [worker-id (validate-id id)]
        (if (nil? worker-id)
          (bad-request "Некорректный идентификатор работника")
          (do
-           (logger/log-info (format "Открыта страница зарплаты работника ID=%s" worker-id))
+           (logger/log-info (format "Открыта страница зарплаты работника ID=%s (org: %s)" worker-id (str org-id)))
            (let [worker (model/get-record-by-id "Работник" (str worker-id))
                  [current-year current-month] (model/current-year-month)
-                 salary-info (model/get-worker-salary worker-id current-year current-month)
-                 salary-history (model/get-worker-salary-history worker-id)]
+                 salary-info (model/get-worker-salary worker-id current-year current-month org-id)
+                 salary-history (model/get-worker-salary-history worker-id org-id)]
              (if worker
                (-> (resp/response (salary/render-salary-page worker salary-info salary-history))
                    (resp/content-type "text/html; charset=utf-8"))
@@ -256,14 +269,15 @@
   ([] (worker-work-time-page nil))
   ([id-or-request]
    (let [id (if (number? id-or-request) id-or-request
-              (extract-id-from-request id-or-request))]
+              (extract-id-from-request id-or-request))
+         org-id (extract-org-id id-or-request)]
      (let [worker-id (validate-id id)]
        (if (nil? worker-id)
          (bad-request "Некорректный идентификатор работника")
          (do
-           (logger/log-info (format "Открыта страница учета времени работника ID=%s" worker-id))
+           (logger/log-info (format "Открыта страница учета времени работника ID=%s (org: %s)" worker-id (str org-id)))
            (let [worker (model/get-record-by-id "Работник" (str worker-id))
-                 work-time-records (model/get-worker-work-time worker-id)]
+                 work-time-records (model/get-worker-work-time worker-id org-id)]
              (if worker
                (-> (resp/response (work-time/render-work-time-page worker work-time-records))
                    (resp/content-type "text/html; charset=utf-8"))
@@ -345,6 +359,14 @@
 
 (defn not-found-page [request]
   (logger/log-warn "Страница не найдена")
-  (-> (resp/response "Страница не найдена")
-      (resp/status 404)
-      (resp/content-type "text/html; charset=utf-8")))
+  (let [lang (get-in request [:session :lang] "ru")
+        user (get-in request [:session :user])
+        content (layout/wrap-html
+                  "<div class='alert alert-danger'><h2>404</h2><p>Страница не найдена</p><a href='/' class='btn btn-primary'>На главную</a></div>"
+                  "Не найдено"
+                  nil
+                  user
+                  lang)]
+    (-> (resp/response content)
+        (resp/status 404)
+        (resp/content-type "text/html; charset=utf-8"))))

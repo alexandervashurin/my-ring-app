@@ -15,16 +15,18 @@
 (def ^:private success-response util/success-response)
 (def ^:private error-response util/error-response)
 
-(defn- format-date [date-str]
+(defn- format-date
   "Форматирование даты для 1С (YYYY-MM-DD)"
+  [date-str]
   (or date-str "2000-01-01"))
 
 ;; ======================================================================
 ;; XML экспорт для 1С
 ;; ======================================================================
 
-(defn- worker-to-xml [worker]
+(defn- worker-to-xml
   "Конвертация работника в XML формат для 1С"
+  [worker]
   [:Работник
    [:ID (:id worker)]
    [:Фамилия (or (:фамилия worker) "")]
@@ -37,8 +39,9 @@
    [:Разряд (or (:разряд worker) "")]
    [:РежимРаботы (or (:режим worker) "")]])
 
-(defn- workers-to-xml [workers]
+(defn- workers-to-xml
   "Конвертация списка работников в XML"
+  [workers]
   (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
        (xml/emit-str
         [:ЭкспортРаботников
@@ -46,8 +49,9 @@
          [:ВерсияФормата "1.0"]
          (into [:Работники] (map worker-to-xml workers))])))
 
-(defn- salary-to-xml [salary]
+(defn- salary-to-xml
   "Конвертация зарплаты в XML для 1С"
+  [salary]
   [:Начисление
    [:ID (:id salary)]
    [:РаботникID (:работник_id salary)]
@@ -57,8 +61,9 @@
    [:Больничные (or (:зарплата_за_больничные_дни salary) 0)]
    [:Командировочные (or (:зарплата_за_командировочные_дни salary) 0)]])
 
-(defn- salary-to-xml-doc [salary-data]
+(defn- salary-to-xml-doc
   "Конвертация списка зарплаты в XML документ"
+  [salary-data]
   (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
        (xml/emit-str
         [:ЭкспортЗарплаты
@@ -70,8 +75,9 @@
 ;; JSON экспорт для 1С (современный формат)
 ;; ======================================================================
 
-(defn- format-worker-json [worker]
+(defn- format-worker-json
   "Форматирование работника для JSON экспорта"
+  [worker]
   {:id (:id worker)
    :surname (:фамилия worker)
    :name (:имя worker)
@@ -83,8 +89,9 @@
    :rank (:разряд worker)
    :workMode (:режим worker)})
 
-(defn- format-salary-json [salary]
+(defn- format-salary-json
   "Форматирование зарплаты для JSON экспорта"
+  [salary]
   {:id (:id salary)
    :workerId (:работник_id salary)
    :year (:год salary)

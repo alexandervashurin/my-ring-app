@@ -1,13 +1,16 @@
 (ns my-ring-app.rate-limit
   "Rate limiting middleware — скользящее окно по IP-адресу.
    Защита от DDoS и абуза API."
-  (:require [my-ring-app.logger :as logger]))
+  (:require [clojure.string :as str]
+            [my-ring-app.logger :as logger]))
 
 ;; ======================================================================
 ;; Хранилище запросов (Atom -> {ip [timestamp ...]})
 ;; ======================================================================
 
 (defonce ^:private request-store (atom {}))
+
+(defonce ^:private last-cleanup-time (atom 0))
 
 ;; ======================================================================
 ;; Конфигурация
@@ -43,12 +46,12 @@
 (defn- maybe-cleanup!
   "Очистка каждые cleanup-interval-ms"
   [config]
-  (let [last-cleanup (:last-cleanup config)]
-    (when (or (nil? last-cleanup)
-              (> (- (System/currentTimeMillis) last-cleanup)
-                 (:cleanup-interval-ms default-config)))
+  (let [now (System/currentTimeMillis)
+        last-cleanup @last-cleanup-time]
+    (when (> (- now last-cleanup) (:cleanup-interval-ms config))
       (cleanup! (:window-ms config))
-      (cleanup! (:api-window-ms config)))))
+      (cleanup! (:api-window-ms config))
+      (reset! last-cleanup-time now))))
 
 ;; ======================================================================
 ;; Проверка лимита
@@ -82,7 +85,7 @@
     (let [ip (or (get-in request [:headers "x-forwarded-for"])
                  (get-in request [:headers "x-real-ip"])
                  (:remote-addr request))
-          is-api? (or api-routes? (clojure.string/starts-with? (:uri request) "/api/"))
+          is-api? (or api-routes? (str/starts-with? (:uri request) "/api/"))
           window (if is-api? (:api-window-ms default-config) (:window-ms default-config))
           max-req (if is-api? (:api-max-requests default-config) (:max-requests default-config))]
       (maybe-cleanup! default-config)
