@@ -20,8 +20,9 @@
   []
   (af/anti-forgery-field))
 
-(defn- generate-language-switcher [current-lang]
+(defn- generate-language-switcher
   "Генерация переключателя языков"
+  [current-lang]
   (let [languages (i18n/get-available-languages)]
     (str "<div class='language-switcher'>"
          (apply str (for [lang languages]
@@ -30,12 +31,14 @@
                         (str "<a href='/lang/" lang "' class='lang-link'>" (i18n/get-language-name lang) "</a>"))))
          "</div>")))
 
-(defn- generate-css []
+(defn- generate-css
   "Генерация ссылки на внешний CSS-файл"
+  []
   "<link rel='stylesheet' href='/css/app.css'>")
 
-(defn- generate-header [user current-lang]
+(defn- generate-header
   "Генерация шапки страницы"
+  [user current-lang]
   (let [user-info (when user
                     (str "<div class='user-info'>"
                          "<span class='user-greeting'>👤 " (html-escape (:username user)) " ("
@@ -63,8 +66,9 @@
          "</div>"
          "</header>")))
 
-(defn- generate-navigation [active-page user lang]
+(defn- generate-navigation
   "Генерация навигационного меню"
+  [active-page user lang]
   (let [active-class (fn [page] (if (= page active-page) " class='active'" ""))
         user-role (:role user)
         has-salary-access (contains? #{"admin" "manager"} user-role)]
@@ -76,8 +80,9 @@
            "<a href='/db'" (active-class "db") ">Все таблицы</a>")
          "</nav>")))
 
-(defn wrap-html [content title & [active-page user current-lang]]
+(defn wrap-html
   "Оборачивает контент в полную HTML-страницу"
+  [content title & [active-page user current-lang]]
   (let [lang (or current-lang "ru")]
     (str "<!DOCTYPE html>"
          "<html lang='" lang "'>"

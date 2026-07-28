@@ -13,8 +13,9 @@
       :postgresql
       :sqlite)))
 
-(defn- get-db-spec []
+(defn- get-db-spec
   "Конфигурация подключения к БД"
+  []
   (let [db-type (get-db-type)]
     (if (= db-type :postgresql)
       ;; PostgreSQL конфигурация

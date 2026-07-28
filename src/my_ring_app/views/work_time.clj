@@ -2,8 +2,9 @@
   (:require [my-ring-app.views.layout :refer [wrap-html html-escape csrf-field]]
             [my-ring-app.views.helpers :as helpers]))
 
-(defn- render-work-time-table [records worker-id]
+(defn- render-work-time-table
   "Рендер таблицы учета рабочего времени"
+  [records worker-id]
   (if (empty? records)
     "<div class='empty-state'>Нет записей учета рабочего времени</div>"
     (str "<table class='data-table'>"
@@ -42,8 +43,9 @@
          "</tbody>"
          "</table>")))
 
-(defn render-work-time-page [worker records]
+(defn render-work-time-page
   "Рендер страницы учета рабочего времени работника"
+  [worker records]
   (wrap-html
     (str "<div class='form-container'>"
          "<h2>⏰ Учет рабочего времени</h2>"
@@ -69,8 +71,9 @@
     (str "Учет времени: " (html-escape (:фамилия worker)) " " (html-escape (:имя worker)))
     "workers"))
 
-(defn render-edit-work-time-form [work-time-record worker & [options]]
+(defn render-edit-work-time-form
   "Рендер формы редактирования записи учета рабочего времени"
+  [work-time-record worker & [options]]
   (let [errors (:errors options)]
     (wrap-html
       (str "<div class='form-container'>"

@@ -19,6 +19,8 @@
 
 (def ^:private parse-int util/parse-int)
 (def ^:private validate-id util/validate-id)
+(def ^:private parse-worker-params util/parse-worker-params)
+(def ^:private parse-work-time-params util/parse-work-time-params)
 
 (defn- bad-request [message]
   "Возвращает ответ с ошибкой 400"
@@ -43,13 +45,31 @@
 (defn- load-worker-form-data
   "Загрузка всех справочников для формы работника"
   []
-  {:цеха (model/get-spravochnik "Цех")
-   :системы_оплаты (model/get-spravochnik "Система_оплаты")
-   :категории (model/get-spravochnik "Категория_работника")
-   :разряды (model/get-spravochnik "Разряд")
-   :режимы (model/get-spravochnik "Режим_работы")
-   :оклады (model/get-spravochnik "Оклад")
-   :ставки (model/get-spravochnik "Почасовые_ставки")})
+  {:цеха (model/get-table-data "Цех")
+   :системы_оплаты (model/get-table-data "Система_оплаты")
+   :категории (model/get-table-data "Категория_работника")
+   :разряды (model/get-table-data "Разряд")
+   :режимы (model/get-table-data "Режим_работы")
+   :оклады (model/get-table-data "Оклад")
+   :ставки (model/get-table-data "Почасовые_ставки")})
+
+(defn- render-new-worker-error-response
+  "Рендер ответа с ошибкой для формы создания работника"
+  [form-data errors params]
+  (-> (resp/response (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
+                                                    (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
+                                                    :errors errors
+                                                    :worker-data params))
+      (resp/content-type "text/html; charset=utf-8")))
+
+(defn- render-edit-worker-error-response
+  "Рендер ответа с ошибкой для формы редактирования работника"
+  [worker form-data errors]
+  (-> (resp/response (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
+                                                       (:категории form-data) (:разряды form-data)
+                                                       (:режимы form-data) (:оклады form-data) (:ставки form-data)
+                                                       :errors errors))
+      (resp/content-type "text/html; charset=utf-8")))
 
 ;; ======================================================================
 ;; Контроллер главной страницы
@@ -94,8 +114,8 @@
   ([request-or-params]
    (let [params (extract-params request-or-params)
          form-data (load-worker-form-data)
-         errors (when-let [err-str (:errors params)]
-                  (clojure.string/split err-str #","))]
+          errors (when-let [err-str (:errors params)]
+                   (str/split err-str #","))]
      (logger/log-info "Открыта форма создания работника")
      (-> (resp/response (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
                                                        (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
@@ -116,8 +136,8 @@
            (logger/log-info (format "Открыта форма редактирования работника ID=%s" worker-id))
            (let [worker (model/get-record-by-id "Работник" (str worker-id))
                  form-data (load-worker-form-data)
-                 errors (when-let [err-str (:errors params)]
-                          (clojure.string/split err-str #","))]
+          errors (when-let [err-str (:errors params)]
+                           (str/split err-str #","))]
              (if worker
                (-> (resp/response (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
                                                                     (:категории form-data) (:разряды form-data)
@@ -135,19 +155,9 @@
      (logger/log-info "Попытка создания работника")
      (let [validation-result (validation/validate-worker params)]
        (if (:valid? validation-result)
-         (try
-           (let [data {:фамилия (:фамилия params)
-                       :имя (:имя params)
-                       :отчество (:отчество params)
-                       :дата_приема (:дата_приема params)
-                       :цех_id (parse-int (:цех_id params) 0)
-                       :система_оплаты_id (parse-int (:система_оплаты_id params) 0)
-                       :категория_работника_id (parse-int (:категория_работника_id params) 0)
-                       :разряд_id (parse-int (:разряд_id params) 0)
-                       :режим_работы_id (parse-int (:режим_работы_id params) 0)
-                       :оклад_id (when (seq (:оклад_id params)) (parse-int (:оклад_id params) nil))
-                       :почасовая_ставка_id (when (seq (:почасовая_ставка_id params)) (parse-int (:почасовая_ставка_id params) nil))}
-                 result (model/create-record "Работник" data)]
+          (try
+            (let [data (parse-worker-params params)
+                  result (model/create-record "Работник" data)]
              (if (:success result)
                (do
                  (logger/log-audit "CREATE" "Worker" (:id result)
@@ -156,28 +166,13 @@
                  (resp/redirect "/workers"))
                (do
                  (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при создании работника")
-                 (let [form-data (load-worker-form-data)]
-                   (-> (resp/response (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
-                                                                     (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
-                                                                     :errors [(:message result)]
-                                                                     :worker-data params))
-                       (resp/content-type "text/html; charset=utf-8"))))))
+                 (render-new-worker-error-response (load-worker-form-data) [(:message result)] params))))
            (catch Exception e
              (logger/log-error ^Throwable e "Критическая ошибка при создании работника")
-             (let [form-data (load-worker-form-data)]
-               (-> (resp/response (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
-                                                                 (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
-                                                                 :errors ["Внутренняя ошибка при создании работника"]
-                                                                 :worker-data params))
-                   (resp/content-type "text/html; charset=utf-8")))))
-         (do
-           (logger/log-warn (format "Валидация не пройдена: %s" (clojure.string/join ", " (:errors validation-result))))
-           (let [form-data (load-worker-form-data)]
-             (-> (resp/response (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
-                                                               (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
-                                                               :errors (:errors validation-result)
-                                                               :worker-data params))
-                 (resp/content-type "text/html; charset=utf-8")))))))))
+             (render-new-worker-error-response (load-worker-form-data) ["Внутренняя ошибка при создании работника"] params))))
+       (do
+          (logger/log-warn (format "Валидация не пройдена: %s" (str/join ", " (:errors validation-result))))
+          (render-new-worker-error-response (load-worker-form-data) (:errors validation-result) params))))))
 
 (defn update-worker
   ([id] (update-worker id nil))
@@ -190,20 +185,10 @@
          (bad-request "Некорректный идентификатор работника")
          (do
            (logger/log-info (format "Попытка обновления работника ID=%s" worker-id))
-           (let [validation-result (validation/validate-worker-update params)]
-             (if (:valid? validation-result)
-               (let [data {:фамилия (:фамилия params)
-                           :имя (:имя params)
-                           :отчество (:отчество params)
-                           :дата_приема (:дата_приема params)
-                           :цех_id (parse-int (:цех_id params) nil)
-                           :система_оплаты_id (parse-int (:система_оплаты_id params) nil)
-                           :категория_работника_id (parse-int (:категория_работника_id params) nil)
-                           :разряд_id (parse-int (:разряд_id params) nil)
-                           :режим_работы_id (parse-int (:режим_работы_id params) nil)
-                           :оклад_id (when (seq (:оклад_id params)) (parse-int (:оклад_id params) nil))
-                           :почасовая_ставка_id (when (seq (:почасовая_ставка_id params)) (parse-int (:почасовая_ставка_id params) nil))}
-                     result (model/update-record "Работник" worker-id data)]
+             (let [validation-result (validation/validate-worker params)]
+              (if (:valid? validation-result)
+                (let [data (parse-worker-params params)
+                      result (model/update-record "Работник" worker-id data)]
                  (if (:success result)
                    (do
                      (logger/log-audit "UPDATE" "Worker" worker-id
@@ -212,22 +197,12 @@
                      (resp/redirect "/workers"))
                    (do
                      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении работника")
-                     (let [form-data (load-worker-form-data)
-                           worker (model/get-record-by-id "Работник" (str worker-id))]
-                       (-> (resp/response (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
-                                                                            (:категории form-data) (:разряды form-data)
-                                                                            (:режимы form-data) (:оклады form-data) (:ставки form-data)
-                                                                            :errors [(:message result)]))
-                           (resp/content-type "text/html; charset=utf-8"))))))
-               (do
-                 (logger/log-warn (format "Валидация не пройдена: %s" (clojure.string/join ", " (:errors validation-result))))
-                 (let [form-data (load-worker-form-data)
-                       worker (merge (model/get-record-by-id "Работник" (str worker-id)) params)]
-                   (-> (resp/response (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
-                                                                        (:категории form-data) (:разряды form-data)
-                                                                        (:режимы form-data) (:оклады form-data) (:ставки form-data)
-                                                                        :errors (:errors validation-result)))
-                       (resp/content-type "text/html; charset=utf-8"))))))))))))
+                     (render-edit-worker-error-response (model/get-record-by-id "Работник" (str worker-id))
+                                                        (load-worker-form-data) [(:message result)]))))
+                (do
+                   (logger/log-warn (format "Валидация не пройдена: %s" (str/join ", " (:errors validation-result))))
+                   (render-edit-worker-error-response (merge (model/get-record-by-id "Работник" (str worker-id)) params)
+                                                     (load-worker-form-data) (:errors validation-result))))))))))
 
 (defn delete-worker
   ([] (delete-worker nil))
@@ -323,17 +298,8 @@
          (do
            (logger/log-info (format "Попытка обновления учета времени ID=%s" work-time-id))
            (let [validation-result (validation/validate-work-time params)]
-             (if (:valid? validation-result)
-               (let [data {:год (parse-int (:год params) nil)
-                           :месяц (parse-int (:месяц params) nil)
-                           :всего_часов_за_месяц_по_плану (parse-int (:всего_часов_за_месяц_по_плану params) nil)
-                           :всего_часов_в_месяц_по_факту (parse-int (:всего_часов_в_месяц_по_факту params) nil)
-                           :количество_отработанных_дней (when (seq (:количество_отработанных_дней params)) (parse-int (:количество_отработанных_дней params) nil))
-                           :количество_рабочих_часов_в_день (when (seq (:количество_рабочих_часов_в_день params)) (parse-int (:количество_рабочих_часов_в_день params) nil))
-                           :всего_отработанных_часов (when (seq (:всего_отработанных_часов params)) (parse-int (:всего_отработанных_часов params) nil))
-                           :сколько_должны_отработать (when (seq (:сколько_должны_отработать params)) (parse-int (:сколько_должны_отработать params) nil))
-                           :больничные_дни (parse-int (:больничные_дни params) 0)
-                           :командировочные_дни (parse-int (:командировочные_дни params) 0)}
+              (if (:valid? validation-result)
+                (let [data (parse-work-time-params params)
                   result (model/update-record "Учет_рабочего_времени" work-time-id data)]
                    (if (:success result)
                     (do
@@ -350,7 +316,7 @@
                        (-> (resp/response (work-time/render-edit-work-time-form work-time-record worker :errors [(:message result)]))
                            (resp/content-type "text/html; charset=utf-8"))))))
                (do
-                 (logger/log-warn (format "Валидация учета времени не пройдена: %s" (clojure.string/join ", " (:errors validation-result))))
+                  (logger/log-warn (format "Валидация учета времени не пройдена: %s" (str/join ", " (:errors validation-result))))
                  (let [work-time-record (merge (model/get-work-time-by-id (str work-time-id)) params)
                        worker (model/get-record-by-id "Работник" (:работник_id work-time-record))]
                    (-> (resp/response (work-time/render-edit-work-time-form work-time-record worker :errors (:errors validation-result)))

@@ -1,9 +1,10 @@
 (ns my-ring-app.validation
   (:require [clojure.string :as str]))
 
-(defn validate-worker [data]
+(defn validate-worker
   "Валидация данных работника
    Возвращает {:valid? true} или {:valid? false :errors [...]}"
+  [data]
 
   (let [errors (atom [])]
     
@@ -84,13 +85,10 @@
       {:valid? true}
       {:valid? false :errors @errors})))
 
-(def validate-worker-update
-  "Валидация данных при обновлении работника. Идентична validate-worker."
-  validate-worker)
-
 ;; НОВАЯ ФУНКЦИЯ: Валидация учета рабочего времени
-(defn validate-work-time [data]
+(defn validate-work-time
   "Валидация данных учета рабочего времени"
+  [data]
   (let [errors (atom [])]
     
     ;; Проверка года

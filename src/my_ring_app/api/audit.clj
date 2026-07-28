@@ -3,9 +3,7 @@
   (:require [compojure.core :refer [defroutes GET]]
             [ring.util.response :as resp]
             [clojure.string :as str]
-            [clojure.java.jdbc :as jdbc]
             [my-ring-app.model :as model]
-            [my-ring-app.config :refer [db-spec]]
             [my-ring-app.logger :as logger]
             [my-ring-app.util :as util]))
 
@@ -105,13 +103,8 @@
   [request]
   (try
     (let [total (model/get-audit-log-count)
-          by-action (jdbc/query db-spec ["SELECT action, COUNT(*) as count
-                                          FROM Аудит_изменений
-                                          GROUP BY action"])
-          by-entity (jdbc/query db-spec ["SELECT entity_type, COUNT(*) as count
-                                          FROM Аудит_изменений
-                                          GROUP BY entity_type
-                                          ORDER BY count DESC"])
+          by-action (model/get-audit-count-by-action)
+          by-entity (model/get-audit-count-by-entity)
           recent (model/get-audit-log 10 0)]
       (logger/log-info "API: GET /api/audit/stats")
       (-> (resp/response (success-response

@@ -17,6 +17,7 @@
 (def ^:private validate-id util/validate-id)
 (def ^:private success-response util/success-response)
 (def ^:private error-response util/error-response)
+(def ^:private parse-worker-params util/parse-worker-params)
 
 (defn format-worker
   "Форматирование данных работника для API"
@@ -102,17 +103,7 @@
           worker-data (:params request)
           validation-result (validation/validate-worker worker-data)]
       (if (:valid? validation-result)
-        (let [data {:фамилия (:фамилия worker-data)
-                    :имя (:имя worker-data)
-                    :отчество (:отчество worker-data)
-                    :дата_приема (:дата_приема worker-data)
-                    :цех_id (parse-int (:цех_id worker-data) 0)
-                    :система_оплаты_id (parse-int (:система_оплаты_id worker-data) 0)
-                    :категория_работника_id (parse-int (:категория_работника_id worker-data) 0)
-                    :разряд_id (parse-int (:разряд_id worker-data) 0)
-                    :режим_работы_id (parse-int (:режим_работы_id worker-data) 0)
-                    :оклад_id (when (seq (:оклад_id worker-data)) (parse-int (:оклад_id worker-data) nil))
-                    :почасовая_ставка_id (when (seq (:почасовая_ставка_id worker-data)) (parse-int (:почасовая_ставка_id worker-data) nil))}
+        (let [data (parse-worker-params worker-data)
               result (model/create-record "Работник" data)]
           (if (:success result)
             (do
@@ -128,7 +119,7 @@
                 (resp/status 500)
                 (resp/content-type "application/json; charset=utf-8"))))
         (do
-          (logger/log-warn (format "API: Валидация не пройдена: %s" (clojure.string/join ", " (:errors validation-result))))
+          (logger/log-warn (format "API: Валидация не пройдена: %s" (str/join ", " (:errors validation-result))))
           (-> (resp/response (error-response "VALIDATION_ERROR" "Ошибка валидации данных" (:errors validation-result)))
               (resp/status 400)
               (resp/content-type "application/json; charset=utf-8")))))
@@ -148,19 +139,9 @@
         (-> (resp/response (error-response "INVALID_ID" "Некорректный идентификатор"))
             (resp/status 400)
             (resp/content-type "application/json; charset=utf-8"))
-        (let [validation-result (validation/validate-worker-update worker-data)]
+            (let [validation-result (validation/validate-worker worker-data)]
           (if (:valid? validation-result)
-            (let [data {:фамилия (:фамилия worker-data)
-                        :имя (:имя worker-data)
-                        :отчество (:отчество worker-data)
-                        :дата_приема (:дата_приема worker-data)
-                        :цех_id (parse-int (:цех_id worker-data) 0)
-                        :система_оплаты_id (parse-int (:система_оплаты_id worker-data) 0)
-                        :категория_работника_id (parse-int (:категория_работника_id worker-data) 0)
-                        :разряд_id (parse-int (:разряд_id worker-data) 0)
-                        :режим_работы_id (parse-int (:режим_работы_id worker-data) 0)
-                        :оклад_id (when (seq (:оклад_id worker-data)) (parse-int (:оклад_id worker-data) nil))
-                        :почасовая_ставка_id (when (seq (:почасовая_ставка_id worker-data)) (parse-int (:почасовая_ставка_id worker-data) nil))}
+            (let [data (parse-worker-params worker-data)
                   result (model/update-record "Работник" id data)]
               (if (:success result)
                 (do

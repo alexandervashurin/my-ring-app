@@ -14,15 +14,17 @@
 ;; Вспомогательные функции
 ;; ======================================================================
 
-(defn- format-uptime [seconds]
+(defn- format-uptime
   "Форматирование uptime"
+  [seconds]
   (let [days (int (/ seconds 86400))
         hours (int (mod (/ seconds 3600) 24))
         minutes (int (mod (/ seconds 60) 60))]
     (str days "d " hours "h " minutes "m")))
 
-(defn- get-memory-info []
+(defn- get-memory-info
   "Получение информации о памяти"
+  []
   (let [runtime (Runtime/getRuntime)
         total-mem (.totalMemory runtime)
         free-mem (.freeMemory runtime)
@@ -34,12 +36,13 @@
      :max (int (/ max-mem 1048576))
      :percent (int (* 100 (/ (double used-mem) (double total-mem))))}))
 
-(defn- get-db-stats []
+(defn- get-db-stats
   "Статистика базы данных"
+  []
   (try
     (let [tables (model/get-tables)
           workers-count (count (model/get-workers-with-details))
-          shops-count (count (model/get-spravochnik "Цех"))]
+          shops-count (count (model/get-table-data "Цех"))]
       {:tables (count tables)
        :workers workers-count
        :shops shops-count
@@ -110,8 +113,9 @@
 ;; Prometheus Metrics
 ;; ======================================================================
 
-(defn- format-prometheus-metric [name value help & [labels]]
+(defn- format-prometheus-metric
   "Форматирование метрики Prometheus"
+  [name value help & [labels]]
   (str (when help (str "# HELP " name " " help "\n"))
        "# TYPE " name " gauge\n"
        name (when labels (str "{" labels "}")) " " value "\n"))
@@ -123,10 +127,7 @@
     (let [memory (get-memory-info)
           uptime (/ (- (System/currentTimeMillis) app-start-time) 1000)
           db-stats (get-db-stats)
-          app-stats {:version "1.8.0-SNAPSHOT"
-                     :clojure-version (str (clojure-version))
-                     :uptime-seconds (- (System/currentTimeMillis) app-start-time)
-                     :environment (or (System/getenv "ENV") "development")}
+          app-stats (get-app-stats)
           metrics (str
                    "# HELP app_uptime_seconds Время работы приложения (секунды)\n"
                    "# TYPE app_uptime_seconds counter\n"
@@ -172,8 +173,9 @@
 ;; Статистика приложения
 ;; ======================================================================
 
-(defn- get-app-stats []
+(defn- get-app-stats
   "Статистика приложения"
+  []
   {:version "1.8.0-SNAPSHOT"
    :clojure-version (str (clojure-version))
    :uptime-seconds (- (System/currentTimeMillis) app-start-time)

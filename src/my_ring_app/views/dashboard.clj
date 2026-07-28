@@ -1,31 +1,25 @@
 (ns my-ring-app.views.dashboard
-  (:require [my-ring-app.views.layout :as layout]))
+  (:require [clojure.string :as str]
+            [my-ring-app.views.layout :as layout]
+            [my-ring-app.views.helpers :as helpers]))
 
-(defn- escape-js-string [s]
-  "Экранирование строки для безопасной вставки в JavaScript"
-  (-> (str s)
-      (clojure.string/replace "\\" "\\\\")
-      (clojure.string/replace "\"" "\\\"")
-      (clojure.string/replace "'" "\\'")
-      (clojure.string/replace "\n" "\\n")
-      (clojure.string/replace "\r" "\\r")
-      (clojure.string/replace "<" "\\x3c")
-      (clojure.string/replace ">" "\\x3e")))
-
-(defn- format-currency [amount]
+(defn- format-currency
   "Форматирование суммы в виде валюты"
+  [amount]
   (if (nil? amount)
     "0 ₽"
     (format "%,.2f ₽" (double amount))))
 
-(defn- format-number [num]
+(defn- format-number
   "Форматирование числа с разделителями"
+  [num]
   (if (nil? num)
     "0"
     (format "%,d" (int num))))
 
-(defn- render-stats-cards [stats attendance]
+(defn- render-stats-cards
   "Рендеринг карточек со статистикой"
+  [stats attendance]
   (let [total-workers (:total-workers stats 0)
         total-shops (:total-shops stats 0)
         avg-salary (:avg-salary stats 0)
@@ -83,11 +77,12 @@
          "</div>"
          "</div>")))
 
-(defn- render-chart-container [title chart-id chart-type labels data colors]
+(defn- render-chart-container
   "Рендеринг контейнера для диаграммы"
-  (let [labels-json (str "[" (clojure.string/join "," (map #(str "\"" (escape-js-string %) "\"") labels)) "]")
-        data-json (str "[" (clojure.string/join "," (map str data)) "]")
-        colors-json (str "[" (clojure.string/join "," (map #(str "\"" % "\"") colors)) "]")]
+  [title chart-id chart-type labels data colors]
+  (let [labels-json (str "[" (str/join "," (map #(str "\"" (helpers/escape-js-string %) "\"") labels)) "]")
+        data-json (str "[" (str/join "," (map str data)) "]")
+        colors-json (str "[" (str/join "," (map #(str "\"" % "\"") colors)) "]")]
     (str "<div class='chart-container'>"
          "<h3 class='chart-title'>" title "</h3>"
          "<canvas id='" chart-id "'></canvas>"
@@ -117,13 +112,15 @@
          "</script>"
          "</div>")))
 
-(defn- render-bar-chart [title chart-id labels data]
+(defn- render-bar-chart
   "Рендеринг столбчатой диаграммы"
+  [title chart-id labels data]
   (let [colors (vec (repeat (count labels) "rgba(102, 126, 234, 0.8)"))]
     (render-chart-container title chart-id "bar" labels data colors)))
 
-(defn- render-pie-chart [title chart-id labels data]
+(defn- render-pie-chart
   "Рендеринг круговой диаграммы"
+  [title chart-id labels data]
   (let [colors ["#667eea" "#764ba2" "#f093fb" "#f5576c" "#4facfe" "#00f2fe" "#43e97b" "#38f9d7"]]
     (render-chart-container title chart-id "pie" labels data (vec (take (count labels) colors)))))
 
@@ -163,42 +160,9 @@
        "</div>"
        "</div>"))
 
-(defn- render-distribution-charts [by-shop by-category by-rank salary-distribution]
-  "Рендеринг диаграмм распределения"
-  (str "<div class='dashboard-header'>"
-       "<h1 style='margin-bottom: 30px;'>📊 Дашборд аналитики</h1>"
-       "<div class='dashboard-actions'>"
-       "<button onclick='location.reload()' class='btn btn-refresh' title='Обновить данные'>🔄 Обновить</button>"
-       "<button onclick='exportToCSV()' class='btn btn-export' title='Экспорт в CSV'>📥 Экспорт CSV</button>"
-       "</div>"
-       "</div>"
-       "<div class='charts-row'>"
-       ;; По цехам
-       (render-bar-chart "Распределение по цехам"
-                         "shopChart"
-                         (vec (map :name by-shop))
-                         (vec (map :count by-shop)))
-       ;; По категориям
-       (render-pie-chart "Распределение по категориям"
-                         "categoryChart"
-                         (vec (map :name by-category))
-                         (vec (map :count by-category)))
-       "</div>"
-       "<div class='charts-row'>"
-       ;; По разрядам
-       (render-bar-chart "Распределение по разрядам"
-                         "rankChart"
-                         (vec (map :name by-rank))
-                         (vec (map :count by-rank)))
-       ;; По уровню зарплаты
-       (render-pie-chart "Распределение по зарплате"
-                         "salaryChart"
-                         (vec (map :name salary-distribution))
-                         (vec (map :count salary-distribution)))
-       "</div>"))
-
-(defn- render-payroll-chart [payroll-by-month]
+(defn- render-payroll-chart
   "Рендеринг графика фонда оплаты труда"
+  [payroll-by-month]
   (let [labels (vec (map #(str (:год %) "-" (format "%02d" (:месяц %))) payroll-by-month))
         data (vec (map :total payroll-by-month))]
     (render-chart-container "Фонд оплаты труда по месяцам"
@@ -208,8 +172,9 @@
                             data
                             ["rgba(76, 175, 80, 0.8)"])))
 
-(defn- render-top-workers [top-workers]
+(defn- render-top-workers
   "Рендеринг таблицы топ работников"
+  [top-workers]
   (str "<div class='dashboard-table'>"
        "<h3 class='table-title'>🏆 Топ-5 работников по зарплате</h3>"
        "<table class='data-table'>"
@@ -231,8 +196,9 @@
        "</table>"
        "</div>"))
 
-(defn- render-recent-hires [recent-hires]
+(defn- render-recent-hires
   "Рендеринг таблицы последних принятых"
+  [recent-hires]
   (str "<div class='dashboard-table'>"
        "<h3 class='table-title'>📋 Последние принятые работники</h3>"
        "<table class='data-table'>"
@@ -255,8 +221,9 @@
        "</table>"
        "</div>"))
 
-(defn render-dashboard-page [dashboard-data]
+(defn render-dashboard-page
   "Рендеринг полной страницы дашборда"
+  [dashboard-data]
   (let [stats (:stats dashboard-data)
         by-shop (:by-shop dashboard-data)
         by-category (:by-category dashboard-data)
@@ -269,13 +236,13 @@
         ;; Данные для JavaScript графиков
         chart-data (str "window.DashboardData = {"
                         "byShop: [" (apply str (interpose "," (for [item by-shop]
-                                                                (str "{name: \"" (escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
+                                                                (str "{name: \"" (helpers/escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
                         "byCategory: [" (apply str (interpose "," (for [item by-category]
-                                                                     (str "{name: \"" (escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
+                                                                     (str "{name: \"" (helpers/escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
                         "byRank: [" (apply str (interpose "," (for [item by-rank]
-                                                               (str "{name: \"" (escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
+                                                               (str "{name: \"" (helpers/escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
                         "salaryDistribution: [" (apply str (interpose "," (for [item salary-distribution]
-                                                                            (str "{name: \"" (escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
+                                                                            (str "{name: \"" (helpers/escape-js-string (:name item)) "\", count: " (:count item) "}"))) ) "],"
                         "payrollByMonth: [" (apply str (interpose "," (for [item payroll-by-month]
                                                                         (str "{month: " (:месяц item) ", year: " (:год item) ", total: " (:total item) "}"))) ) "]"
                         "};")]

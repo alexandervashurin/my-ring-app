@@ -6,6 +6,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [my-ring-app.model :as model]
+            [my-ring-app.views.layout :as layout]
             [my-ring-app.logger :as logger]
             [my-ring-app.util :as util])
   (:import (java.io StringWriter ByteArrayOutputStream)
@@ -18,17 +19,6 @@
 
 (def ^:private success-response util/success-response)
 (def ^:private error-response util/error-response)
-
-(defn- html-escape
-  "Экранирование HTML-символов"
-  [s]
-  (if (nil? s)
-    ""
-    (-> (str s)
-        (str/replace "&" "&amp;")
-        (str/replace "<" "&lt;")
-        (str/replace ">" "&gt;")
-        (str/replace "\"" "&quot;"))))
 
 ;; ======================================================================
 ;; CSV экспорт
@@ -92,18 +82,7 @@
   "GET /api/export/salary.csv — экспорт зарплаты в CSV"
   [request]
   (try
-    (let [;; Получаем все начисления
-          salary-data (model/get-table-data "Начисление_заработной_платы")
-          ;; Добавляем информацию о работниках
-          enriched-data (map (fn [s]
-                               (let [worker (model/get-record-by-id "Работник" (str (:учет_рабочего_времени_id s)))
-                                     work-time (model/get-record-by-id "Учет_рабочего_времени" (str (:учет_рабочего_времени_id s)))]
-                                 (merge s
-                                        {:фамилия (:фамилия worker)
-                                         :имя (:имя worker)
-                                         :год (:год work-time)
-                                         :месяц (:месяц work-time)})))
-                             salary-data)
+    (let [enriched-data (model/get-salary-with-details)
           csv-content (salary-to-csv enriched-data)
           filename (format "salary_%s.csv" (java.time.LocalDate/now))]
       (logger/log-info (format "API: GET /api/export/salary.csv — экспортировано %d записей" (count enriched-data)))
@@ -120,8 +99,9 @@
 ;; Excel экспорт
 ;; ======================================================================
 
-(defn- create-header-style [wb]
+(defn- create-header-style
   "Создание стиля для заголовков"
+  [wb]
   (let [style (.createCellStyle wb)
         font (.createFont wb)]
     (.setBold font true)
@@ -134,8 +114,9 @@
     (.setFillPattern style org.apache.poi.ss.usermodel.FillPatternType/SOLID_FOREGROUND)
     style))
 
-(defn- create-row-style [wb ^long row-num]
+(defn- create-row-style
   "Создание стиля для строки (чередование цветов)"
+  [wb ^long row-num]
   (let [style (.createCellStyle wb)]
     (if (even? row-num)
       (.setFillForegroundColor style (.getIndex org.apache.poi.ss.usermodel.IndexedColors/WHITE))

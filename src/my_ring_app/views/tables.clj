@@ -1,8 +1,9 @@
 (ns my-ring-app.views.tables
   (:require [my-ring-app.views.layout :refer [wrap-html html-escape]]))
 
-(defn render-all-tables-page [tables-data]
+(defn render-all-tables-page
   "Рендер страницы со всеми таблицами БД"
+  [tables-data]
   (let [content (apply str 
                 (map (fn [tbl]
                        (str "<h3>" (html-escape (:table tbl)) "</h3>"

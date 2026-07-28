@@ -14,9 +14,9 @@
     (let [tables (get-tables)]
       (is (seqable? tables)))))
 
-(deftest test-get-spravochnik
-  (testing "Получение справочника Цех"
-    (let [result (get-spravochnik "Цех")]
+(deftest test-get-table-data
+  (testing "Получение данных таблицы Цех"
+    (let [result (get-table-data "Цех")]
       (is (seqable? result)))))
 
 (deftest test-get-workers-with-details

@@ -26,8 +26,9 @@
   [request]
   (try
     (let [worker-id (-> request :route-params :worker-id validate-id)
-          year (parse-int (get-in request [:params :year]) 2025)
-          month (parse-int (get-in request [:params :month]) 10)
+          [current-year current-month] (model/current-year-month)
+          year (parse-int (get-in request [:params :year]) current-year)
+          month (parse-int (get-in request [:params :month]) current-month)
           validation-error (util/validate-year-month year month)]
       (cond
         (nil? worker-id)
@@ -95,18 +96,9 @@
         (-> (resp/response (error-response "INVALID_ID" "Некорректный идентификатор"))
             (resp/status 400)
             (resp/content-type "application/json; charset=utf-8"))
-        (let [validation-result (validation/validate-work-time data)]
+            (let [validation-result (validation/validate-work-time data)]
           (if (:valid? validation-result)
-            (let [update-data {:год (Integer/parseInt (:год data))
-                               :месяц (Integer/parseInt (:месяц data))
-                               :всего_часов_за_месяц_по_плану (Integer/parseInt (:всего_часов_за_месяц_по_плану data))
-                               :всего_часов_в_месяц_по_факту (Integer/parseInt (:всего_часов_в_месяц_по_факту data))
-                               :количество_отработанных_дней (when (seq (:количество_отработанных_дней data)) (Integer/parseInt (:количество_отработанных_дней data)))
-                               :количество_рабочих_часов_в_день (when (seq (:количество_рабочих_часов_в_день data)) (Integer/parseInt (:количество_рабочих_часов_в_день data)))
-                               :всего_отработанных_часов (when (seq (:всего_отработанных_часов data)) (Integer/parseInt (:всего_отработанных_часов data)))
-                               :сколько_должны_отработать (when (seq (:сколько_должны_отработать data)) (Integer/parseInt (:сколько_должны_отработать data)))
-                               :больничные_дни (Integer/parseInt (or (:больничные_дни data) "0"))
-                               :командировочные_дни (Integer/parseInt (or (:командировочные_дни data) "0"))}
+            (let [update-data (util/parse-work-time-params data)
                   result (model/update-record "Учет_рабочего_времени" work-time-id update-data)]
               (if (:success result)
                 (do

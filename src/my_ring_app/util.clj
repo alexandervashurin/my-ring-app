@@ -52,6 +52,35 @@
    (and (string? email)
         (re-matches #"^[^@\s]+@[^@\s]+\.[^@\s]+$" (str/trim email)))))
 
+(defn parse-worker-params
+  "Парсинг параметров работника из request params"
+  [params]
+  {:фамилия (:фамилия params)
+   :имя (:имя params)
+   :отчество (:отчество params)
+   :дата_приема (:дата_приема params)
+   :цех_id (parse-int (:цех_id params) nil)
+   :система_оплаты_id (parse-int (:система_оплаты_id params) nil)
+   :категория_работника_id (parse-int (:категория_работника_id params) nil)
+   :разряд_id (parse-int (:разряд_id params) nil)
+   :режим_работы_id (parse-int (:режим_работы_id params) nil)
+   :оклад_id (when (seq (:оклад_id params)) (parse-int (:оклад_id params) nil))
+   :почасовая_ставка_id (when (seq (:почасовая_ставка_id params)) (parse-int (:почасовая_ставка_id params) nil))})
+
+(defn parse-work-time-params
+  "Парсинг параметров учета рабочего времени из request params"
+  [params]
+  {:год (parse-int (:год params) nil)
+   :месяц (parse-int (:месяц params) nil)
+   :всего_часов_за_месяц_по_плану (parse-int (:всего_часов_за_месяц_по_плану params) nil)
+   :всего_часов_в_месяц_по_факту (parse-int (:всего_часов_в_месяц_по_факту params) nil)
+   :количество_отработанных_дней (when (seq (:количество_отработанных_дней params)) (parse-int (:количество_отработанных_дней params) nil))
+   :количество_рабочих_часов_в_день (when (seq (:количество_рабочих_часов_в_день params)) (parse-int (:количество_рабочих_часов_в_день params) nil))
+   :всего_отработанных_часов (when (seq (:всего_отработанных_часов params)) (parse-int (:всего_отработанных_часов params) nil))
+   :сколько_должны_отработать (when (seq (:сколько_должны_отработать params)) (parse-int (:сколько_должны_отработать params) nil))
+   :больничные_дни (parse-int (:больничные_дни params) 0)
+   :командировочные_дни (parse-int (:командировочные_дни params) 0)})
+
 (defn validate-year-month
   "Валидация года и месяца. Возвращает nil или карту с ошибкой"
   [year month]

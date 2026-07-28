@@ -180,16 +180,6 @@
                         {:table table-name :id id})
       {:success false :message "Внутренняя ошибка при удалении записи"})))
 
-(defn get-spravochnik [table-name]
-  (try
-    (validate-table-name table-name)
-    (let [result (jdbc/query db-spec [(str "SELECT * FROM \"" table-name "\"")])]
-      (logger/log-info (format "Получен справочник %s (%d записей)" table-name (count result)))
-      result)
-    (catch Exception e
-      (logger/log-error e (format "Ошибка при получении справочника %s" table-name) {:table table-name})
-      [])))
-
 ;; ======================================================================
 ;; Модель работников
 ;; ======================================================================
@@ -346,8 +336,9 @@
 ;; Dashboard Analytics
 ;; ======================================================================
 
-(defn get-dashboard-stats []
+(defn get-dashboard-stats
   "Получение общей статистики для дашборда"
+  []
   (try
     (let [total-workers (first (jdbc/query db-spec ["SELECT COUNT(*) as count FROM Работник"]))
           total-shops (first (jdbc/query db-spec ["SELECT COUNT(*) as count FROM Цех"]))
@@ -370,8 +361,9 @@
       (logger/log-error e "Ошибка при получении статистики дашборда")
       {})))
 
-(defn get-salary-distribution []
+(defn get-salary-distribution
   "Распределение работников по уровню зарплаты"
+  []
   (try
     (let [[year month] (current-year-month)
           result (jdbc/query db-spec
@@ -395,8 +387,9 @@
       (logger/log-error e "Ошибка при получении распределения по зарплате")
       [])))
 
-(defn get-attendance-stats []
+(defn get-attendance-stats
   "Статистика посещаемости"
+  []
   (try
     (let [[year month] (current-year-month)
           result (first (jdbc/query db-spec
@@ -414,8 +407,9 @@
       (logger/log-error e "Ошибка при получении статистики посещаемости")
       {})))
 
-(defn get-workers-by-shop []
+(defn get-workers-by-shop
   "Распределение работников по цехам"
+  []
   (try
     (let [result (jdbc/query db-spec
                              ["SELECT ц.название_цеха as name, COUNT(r.id) as count
@@ -429,8 +423,9 @@
       (logger/log-error e "Ошибка при получении распределения по цехам")
       [])))
 
-(defn get-workers-by-category []
+(defn get-workers-by-category
   "Распределение работников по категориям"
+  []
   (try
     (let [result (jdbc/query db-spec
                              ["SELECT к.название_категории as name, COUNT(r.id) as count
@@ -444,8 +439,9 @@
       (logger/log-error e "Ошибка при получении распределения по категориям")
       [])))
 
-(defn get-workers-by-rank []
+(defn get-workers-by-rank
   "Распределение работников по разрядам"
+  []
   (try
     (let [result (jdbc/query db-spec
                              ["SELECT рз.номер_разряда as name, COUNT(r.id) as count
@@ -459,8 +455,9 @@
       (logger/log-error e "Ошибка при получении распределения по разрядам")
       [])))
 
-(defn get-payroll-by-month []
+(defn get-payroll-by-month
   "Фонд оплаты труда по месяцам"
+  []
   (try
     (let [result (jdbc/query db-spec
                              ["SELECT n.год, n.месяц, SUM(n.общая_зарплата) as total
@@ -475,8 +472,9 @@
       (logger/log-error e "Ошибка при получении фонда оплаты труда по месяцам")
       [])))
 
-(defn get-top-workers-by-salary []
+(defn get-top-workers-by-salary
   "Топ-5 работников по зарплате"
+  []
   (try
     (let [result (jdbc/query db-spec
                              ["SELECT r.фамилия, r.имя, r.отчество, ц.название_цеха,
@@ -494,8 +492,9 @@
       (logger/log-error e "Ошибка при получении топа работников по зарплате")
       [])))
 
-(defn get-recent-hires []
+(defn get-recent-hires
   "Последние принятые работники (топ-5)"
+  []
   (try
     (let [result (jdbc/query db-spec
                              ["SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
@@ -510,8 +509,9 @@
       (logger/log-error e "Ошибка при получении последних принятых работников")
       [])))
 
-(defn get-dashboard-data []
+(defn get-dashboard-data
   "Получение всех данных для дашборда"
+  []
   (logger/log-info "Запрос данных для дашборда")
   {:stats (get-dashboard-stats)
    :by-shop (get-workers-by-shop)
@@ -522,6 +522,26 @@
    :recent-hires (get-recent-hires)
    :salary-distribution (get-salary-distribution)
    :attendance (get-attendance-stats)})
+
+(defn get-salary-with-details
+  "Получение всех начислений с именами работников и данными учета времени (JOIN)"
+  []
+  (try
+    (let [result (jdbc/query db-spec
+                             ["SELECT н.id, н.учет_рабочего_времени_id,
+               у.год, у.месяц,
+               н.общая_зарплата,
+               н.зарплата_за_больничные_дни,
+               н.зарплата_за_командировочные_дни,
+               р.фамилия, р.имя
+        FROM Начисление_заработной_платы н
+        JOIN Учет_рабочего_времени у ON н.учет_рабочего_времени_id = у.id
+        JOIN Работник р ON у.работник_id = р.id"])]
+      (logger/log-info (format "Получены начисления с деталями (%d записей)" (count result)))
+      result)
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении начислений с деталями")
+      [])))
 
 ;; ======================================================================
 ;; Аудит изменений
@@ -571,6 +591,31 @@
      (catch Exception e
        (logger/log-error e "Ошибка при подсчёте записей аудита")
        0))))
+
+(defn get-audit-count-by-action
+  "Получение количества записей аудита по действиям"
+  []
+  (try
+    (let [result (jdbc/query db-spec ["SELECT action, COUNT(*) as count
+                                       FROM Аудит_изменений
+                                       GROUP BY action"])]
+      result)
+    (catch Exception e
+      (logger/log-error e "Ошибка при подсчёте записей аудита по действиям")
+      [])))
+
+(defn get-audit-count-by-entity
+  "Получение количества записей аудита по типам сущностей"
+  []
+  (try
+    (let [result (jdbc/query db-spec ["SELECT entity_type, COUNT(*) as count
+                                       FROM Аудит_изменений
+                                       GROUP BY entity_type
+                                       ORDER BY count DESC"])]
+      result)
+    (catch Exception e
+      (logger/log-error e "Ошибка при подсчёте записей аудита по сущностям")
+      [])))
 
 (defn get-audit-by-entity
   "Получение истории изменений конкретной сущности"

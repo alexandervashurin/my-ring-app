@@ -7,8 +7,9 @@
    5 "май" 6 "июнь" 7 "июль" 8 "август"
    9 "сентябрь" 10 "октябрь" 11 "ноябрь" 12 "декабрь"})
 
-(defn- render-salary-details [salary-info]
+(defn- render-salary-details
   "Рендер детальной информации о зарплате"
+  [salary-info]
   (if salary-info
     (str "<div style='background: #e8f5e9; padding: 25px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #4caf50;'>"
          (str "<h3 style='margin-top: 0; color: #1b5e20;'>📊 Расчет за " (get month-names (:месяц salary-info) "?") " " (:год salary-info) "</h3>")
@@ -45,8 +46,9 @@
          "</div>")
     "<div class='alert alert-error'>Данные о зарплате не найдены</div>"))
 
-(defn- render-salary-history [history]
+(defn- render-salary-history
   "Рендер истории зарплат"
+  [history]
   (if (empty? history)
     ""
     (str "<div class='table-container' style='margin-top: 30px;'>"
@@ -80,8 +82,9 @@
          "</table>"
          "</div>")))
 
-(defn render-salary-page [worker salary-info salary-history]
+(defn render-salary-page
   "Рендер страницы зарплаты работника"
+  [worker salary-info salary-history]
   (wrap-html
     (str "<div class='form-container'>"
          "<h2>💰 Расчет зарплаты</h2>"

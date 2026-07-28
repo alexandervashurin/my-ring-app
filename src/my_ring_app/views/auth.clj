@@ -2,8 +2,9 @@
   "Представления аутентификации"
   (:require [my-ring-app.views.layout :refer [wrap-html html-escape csrf-field]]))
 
-(defn render-login-page [error redirect-url]
+(defn render-login-page
   "Рендер страницы входа"
+  [error redirect-url]
   (let [error-messages {:empty "Введите имя пользователя и пароль"
                         :invalid "Неверное имя пользователя или пароль"}
         error-text (when error (get error-messages (keyword error)))]
@@ -56,8 +57,9 @@
      nil
      true)))
 
-(defn render-profile-page [user]
+(defn render-profile-page
   "Рендер страницы профиля"
+  [user]
   (wrap-html
    (str "<div class='profile-container'>"
         "<h1>👤 Профиль пользователя</h1>"
@@ -108,8 +110,9 @@
    "Профиль"
    nil))
 
-(defn render-access-denied [user]
+(defn render-access-denied
   "Рендер страницы доступа запрещён"
+  [user]
   (wrap-html
    (str "<div class='access-denied'>"
         "<h1>🚫 Доступ запрещён</h1>"

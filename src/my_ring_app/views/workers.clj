@@ -1,10 +1,10 @@
 (ns my-ring-app.views.workers
   (:require [my-ring-app.views.layout :refer [wrap-html html-escape csrf-field]]
-            [my-ring-app.views.helpers :as helpers]
-            [clojure.string]))
+            [my-ring-app.views.helpers :as helpers]))
 
-(defn render-workers-table [workers search-query]
+(defn render-workers-table
   "Рендер таблицы работников"
+  [workers search-query]
   (let [table-content (if (empty? workers)
                         "<div class='empty-state'>Нет работников в базе данных</div>"
                         (str "<table class='data-table'>"
@@ -72,12 +72,14 @@
          table-content
          "</div>")))
 
-(defn render-workers-page [workers search-query]
+(defn render-workers-page
   "Рендер страницы списка работников"
+  [workers search-query]
   (wrap-html (render-workers-table workers search-query) "Работники" "workers"))
 
-(defn render-worker-form [mode worker-data цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
+(defn render-worker-form
   "Рендер формы создания/редактирования работника"
+  [mode worker-data цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
   (let [цех-id (:цех_id worker-data)
         система-id (:система_оплаты_id worker-data)
         категория-id (:категория_работника_id worker-data)
@@ -221,8 +223,9 @@
            };
          </script>")))
 
-(defn render-new-worker-page [цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
+(defn render-new-worker-page
   "Рендер страницы создания нового работника"
+  [цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
   (let [errors (:errors options)
         worker-data (:worker-data options)]
     (wrap-html 
@@ -230,8 +233,9 @@
       "Новый работник"
       "workers")))
 
-(defn render-edit-worker-page [worker цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
+(defn render-edit-worker-page
   "Рендер страницы редактирования работника"
+  [worker цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
   (let [errors (:errors options)]
     (wrap-html 
       (render-worker-form :edit worker цеха системы_оплаты категории разряды режимы оклады ставки {:errors errors})

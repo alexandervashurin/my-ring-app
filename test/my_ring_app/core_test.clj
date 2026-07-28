@@ -25,7 +25,7 @@
     (is (seqable? (model/get-tables)))
     
     ;; Получение справочников
-    (is (seqable? (model/get-spravochnik "Цех")))
+    (is (seqable? (model/get-table-data "Цех")))
     
     ;; Получение работников
     (is (seqable? (model/get-workers-with-details)))))
