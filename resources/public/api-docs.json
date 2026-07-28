@@ -1,0 +1,372 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Система управления персоналом — REST API",
+    "description": "API для управления работниками, зарплатой, учётом рабочего времени и аналитикой.",
+    "version": "2.0.0",
+    "contact": {
+      "name": "HR System API Support"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Versioned API (recommended)"
+    },
+    {
+      "url": "/api",
+      "description": "Unversioned API (backward compatible)"
+    }
+  ],
+  "security": [
+    {"sessionAuth": []}
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Health check",
+        "description": "Проверка работоспособности приложения",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Приложение работает",
+            "content": {"application/json": {"schema": {"type": "object"}}}
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Readiness check",
+        "description": "Проверка готовности к обслуживанию (включая БД)",
+        "security": [],
+        "responses": {
+          "200": {"description": "Готово"},
+          "503": {"description": "Не готово"}
+        }
+      }
+    },
+    "/live": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Liveness check",
+        "security": [],
+        "responses": {
+          "200": {"description": "Жив"}
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Prometheus метрики",
+        "responses": {
+          "200": {"description": "Метрики в формате Prometheus"}
+        }
+      }
+    },
+    "/stats": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Статистика приложения",
+        "responses": {
+          "200": {"description": "Системная и бизнес-статистика"}
+        }
+      }
+    },
+    "/migrations": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Статус миграций БД",
+        "responses": {
+          "200": {"description": "Список миграций и их статус"}
+        }
+      }
+    },
+    "/cache/refresh": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Принудительное обновление кэша справочников",
+        "responses": {
+          "200": {"description": "Кэш обновлён"}
+        }
+      }
+    },
+    "/workers": {
+      "get": {
+        "tags": ["Workers"],
+        "summary": "Список работников с пагинацией и поиском",
+        "parameters": [
+          {"name": "search", "in": "query", "schema": {"type": "string"}, "description": "Поиск по ФИО или цеху"},
+          {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+          {"name": "per_page", "in": "query", "schema": {"type": "integer", "default": 20}}
+        ],
+        "responses": {
+          "200": {"description": "Список работников"}
+        }
+      },
+      "post": {
+        "tags": ["Workers"],
+        "summary": "Создание работника",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/WorkerInput"}
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Работник создан"},
+          "400": {"description": "Ошибка валидации"}
+        }
+      }
+    },
+    "/workers/search": {
+      "get": {
+        "tags": ["Workers"],
+        "summary": "Поиск работников",
+        "parameters": [
+          {"name": "q", "in": "query", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Результаты поиска"}
+        }
+      }
+    },
+    "/workers/{id}": {
+      "get": {
+        "tags": ["Workers"],
+        "summary": "Получение работника по ID",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {"description": "Данные работника"},
+          "404": {"description": "Не найден"}
+        }
+      },
+      "put": {
+        "tags": ["Workers"],
+        "summary": "Обновление работника",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/WorkerInput"}}
+          }
+        },
+        "responses": {
+          "200": {"description": "Обновлён"},
+          "400": {"description": "Ошибка валидации"}
+        }
+      },
+      "delete": {
+        "tags": ["Workers"],
+        "summary": "Удаление работника (admin only)",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {"description": "Удалён"},
+          "403": {"description": "Нет прав"}
+        }
+      }
+    },
+    "/salary/{worker-id}": {
+      "get": {
+        "tags": ["Salary"],
+        "summary": "Зарплата работника за период",
+        "parameters": [
+          {"name": "worker-id", "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "year", "in": "query", "schema": {"type": "integer"}},
+          {"name": "month", "in": "query", "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {"description": "Данные зарплаты"}
+        }
+      }
+    },
+    "/work-time/{worker-id}": {
+      "get": {
+        "tags": ["Work Time"],
+        "summary": "Учёт рабочего времени работника",
+        "parameters": [
+          {"name": "worker-id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {"description": "Записи учёта времени"}
+        }
+      }
+    },
+    "/work-time/{id}": {
+      "put": {
+        "tags": ["Work Time"],
+        "summary": "Обновление записи учёта времени",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/WorkTimeInput"}}
+          }
+        },
+        "responses": {
+          "200": {"description": "Обновлено"}
+        }
+      }
+    },
+    "/dashboard": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Полные данные дашборда",
+        "responses": {
+          "200": {"description": "Все данные для дашборда"}
+        }
+      }
+    },
+    "/dashboard/poll": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Быстрый polling дашборда (для реалтайм обновлений)",
+        "responses": {
+          "200": {"description": "Метрики + флаг changed"}
+        }
+      }
+    },
+    "/analytics/workers-by-shop": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Распределение работников по цехам",
+        "responses": {"200": {"description": "Статистика"}}
+      }
+    },
+    "/analytics/workers-by-category": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Распределение по категориям",
+        "responses": {"200": {"description": "Статистика"}}
+      }
+    },
+    "/analytics/salary-distribution": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Распределение по уровню зарплаты",
+        "responses": {"200": {"description": "Статистика"}}
+      }
+    },
+    "/audit": {
+      "get": {
+        "tags": ["Audit"],
+        "summary": "Журнал аудита (admin only)",
+        "parameters": [
+          {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 50}},
+          {"name": "offset", "in": "query", "schema": {"type": "integer", "default": 0}}
+        ],
+        "responses": {"200": {"description": "Записи аудита"}}
+      }
+    },
+    "/export/workers.csv": {
+      "get": {
+        "tags": ["Export"],
+        "summary": "Экспорт работников в CSV",
+        "responses": {"200": {"description": "CSV файл"}}
+      }
+    },
+    "/export/salary.csv": {
+      "get": {
+        "tags": ["Export"],
+        "summary": "Экспорт зарплаты в CSV",
+        "responses": {"200": {"description": "CSV файл"}}
+      }
+    },
+    "/export/workers.xlsx": {
+      "get": {
+        "tags": ["Export"],
+        "summary": "Экспорт работников в Excel",
+        "responses": {"200": {"description": "XLSX файл"}}
+      }
+    },
+    "/1c/workers": {
+      "get": {
+        "tags": ["1C Integration"],
+        "summary": "Экспорт работников для 1С (admin only)",
+        "responses": {"200": {"description": "Данные для импорта в 1С"}}
+      }
+    },
+    "/1c/workers/import": {
+      "post": {
+        "tags": ["1C Integration"],
+        "summary": "Импорт работников из 1С (admin only)",
+        "responses": {"200": {"description": "Результат импорта"}}
+      }
+    },
+    "/notifications/test": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Тест email уведомлений (admin only)",
+        "responses": {"200": {"description": "Результат теста"}}
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session-id",
+        "description": "Сессионная аутентификация (cookie-based)"
+      }
+    },
+    "schemas": {
+      "WorkerInput": {
+        "type": "object",
+        "required": ["фамилия", "имя", "дата_приема", "цех_id", "система_оплаты_id", "категория_работника_id", "разряд_id", "режим_работы_id"],
+        "properties": {
+          "фамилия": {"type": "string", "maxLength": 50},
+          "имя": {"type": "string", "maxLength": 50},
+          "отчество": {"type": "string", "maxLength": 50},
+          "дата_приема": {"type": "string", "format": "date"},
+          "цех_id": {"type": "integer"},
+          "система_оплаты_id": {"type": "integer"},
+          "категория_работника_id": {"type": "integer"},
+          "разряд_id": {"type": "integer"},
+          "режим_работы_id": {"type": "integer"},
+          "оклад_id": {"type": "integer", "description": "Обязательно для окладной системы"},
+          "почасовая_ставка_id": {"type": "integer", "description": "Обязательно для почасовой системы"}
+        }
+      },
+      "WorkTimeInput": {
+        "type": "object",
+        "required": ["год", "месяц", "всего_часов_за_месяц_по_плану", "всего_часов_в_месяц_по_факту"],
+        "properties": {
+          "год": {"type": "integer"},
+          "месяц": {"type": "integer", "minimum": 1, "maximum": 12},
+          "всего_часов_за_месяц_по_плану": {"type": "integer"},
+          "всего_часов_в_месяц_по_факту": {"type": "integer"},
+          "количество_отработанных_дней": {"type": "integer"},
+          "количество_рабочих_часов_в_день": {"type": "integer"},
+          "больничные_дни": {"type": "integer"},
+          "командировочные_дни": {"type": "integer"}
+        }
+      }
+    }
+  },
+  "tags": [
+    {"name": "Monitoring", "description": "Health checks и метрики"},
+    {"name": "Admin", "description": "Административные операции"},
+    {"name": "Workers", "description": "Управление работниками"},
+    {"name": "Salary", "description": "Зарплата и начисления"},
+    {"name": "Work Time", "description": "Учёт рабочего времени"},
+    {"name": "Dashboard", "description": "Дашборд и аналитика"},
+    {"name": "Analytics", "description": "Аналитические отчёты"},
+    {"name": "Audit", "description": "Журнал аудита"},
+    {"name": "Export", "description": "Экспорт данных"},
+    {"name": "1C Integration", "description": "Интеграция с 1С:ЗУП"},
+    {"name": "Notifications", "description": "Email уведомления"}
+  ]
+}
