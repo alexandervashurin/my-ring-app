@@ -13,6 +13,7 @@
             [my-ring-app.api.notifications :as api-notifications]
             [my-ring-app.api.onec :as api-onec]
             [my-ring-app.api.monitoring :as api-monitoring]
+            [my-ring-app.sse :as sse]
             [my-ring-app.auth :as auth]))
 
 (defn- auth-required
@@ -39,6 +40,7 @@
   (GET "/api/live" [] api-monitoring/live-check)
   (GET "/api/metrics" request ((auth-required api-monitoring/prometheus-metrics) request))
   (GET "/api/stats" request ((auth-required api-monitoring/app-statistics) request))
+  (GET "/api/dashboard/poll" request ((auth-required sse/dashboard-poll) request))
   (GET "/api/migrations" request ((admin-only api-monitoring/migration-status) request))
   (POST "/api/cache/refresh" request ((admin-only api-monitoring/refresh-cache) request))
 
