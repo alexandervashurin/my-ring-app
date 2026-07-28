@@ -276,34 +276,58 @@ docker run -p 3000:3000 -v $(pwd)/logs:/app/logs my-ring-app
 my-ring-app/
 ├── src/
 │   └── my_ring_app/
-│       ├── core.clj           # Точка входа, основной middleware
+│       ├── core.clj           # Точка входа, middleware
 │       ├── routes.clj         # Маршруты (Compojure)
 │       ├── controllers.clj    # Контроллеры (обработка запросов)
 │       ├── model.clj          # Модель данных (работа с БД)
 │       ├── validation.clj     # Валидация данных
+│       ├── util.clj           # Общие вспомогательные функции
+│       ├── auth.clj           # Аутентификация и авторизация
+│       ├── config.clj         # Конфигурация
 │       ├── logger.clj         # Логирование
-│       └── config.clj         # Конфигурация
+│       ├── i18n.clj           # Мультиязычность (ru/en)
+│       ├── email.clj          # Email уведомления
+│       ├── pdf_reorts.clj     # Генерация PDF отчётов
+│       ├── api/
+│       │   ├── dashboard.clj  # API дашборда
+│       │   ├── workers.clj    # API работников
+│       │   ├── salary.clj     # API зарплаты
+│       │   ├── export.clj     # API экспорта (CSV/Excel)
+│       │   ├── reports.clj    # API PDF отчётов
+│       │   ├── audit.clj      # API аудита
+│       │   ├── monitoring.clj # API мониторинга
+│       │   ├── notifications.clj # API уведомлений
+│       │   └── onec.clj       # API интеграции с 1С
 │       └── views/
 │           ├── layout.clj     # Общий HTML-шаблон
 │           ├── home.clj       # Главная страница
+│           ├── dashboard.clj  # Дашборд с аналитикой
 │           ├── workers.clj    # Страница работников
 │           ├── salary.clj     # Страница зарплаты
 │           ├── work_time.clj  # Учёт рабочего времени
-│           └── tables.clj     # Просмотр таблиц БД
-├── resources/
-│   └── logback.xml            # Конфигурация логгера
+│           ├── tables.clj     # Просмотр таблиц БД
+│           ├── auth.clj       # Страницы входа/регистрации
+│           └── helpers.clj    # Вспомогательные функции
 ├── test/
 │   └── my_ring_app/
 │       ├── core_test.clj      # Интеграционные тесты
 │       ├── model_test.clj     # Тесты модели
-│       └── validation_test.clj # Тесты валидации
-├── doc/
-│   └── intro.md               # Документация
-├── screenshots/               # Скриншоты интерфейса
-├── logs/                      # Файлы логов (создаётся при запуске)
+│       ├── validation_test.clj # Тесты валидации
+│       ├── util_test.clj      # Тесты util.clj
+│       └── api/
+│           ├── export_test.clj # Тесты экспорта
+│           └── workers_test.clj # Тесты API работников
+├── .github/workflows/
+│   ├── clojure.yml            # CI: тесты + uberjar
+│   ├── docker.yml             # CD: Docker build + push
+│   └── deploy.yml             # Deploy: SSH
+├── resources/
+│   └── logback.xml            # Конфигурация логгера
 ├── igra.db                    # База данных SQLite
 ├── igra.db.sql                # Дамп базы данных
 ├── project.clj                # Конфигурация Leiningen
+├── Dockerfile                 # Docker-образ
+├── docker-compose.yml         # Docker Compose (app + PostgreSQL)
 └── README.md                  # Этот файл
 ```
 
@@ -433,13 +457,16 @@ tail -f logs/audit.log
 
 ## 🧮 API Endpoints
 
+### HTML Routes
+
 | Метод | Путь | Описание |
 |-------|------|----------|
 | `GET` | `/` | Главная страница |
-| `GET` | `/workers` | Список всех работников (с поиском) |
+| `GET` | `/dashboard` | Дашборд с аналитикой |
+| `GET` | `/workers` | Список работников (с поиском) |
 | `GET` | `/workers/new` | Форма создания работника |
 | `POST` | `/workers/create` | Создание работника |
-| `GET` | `/workers/:id/edit` | Форма редактирования работника |
+| `GET` | `/workers/:id/edit` | Форма редактирования |
 | `POST` | `/workers/:id/update` | Обновление работника |
 | `POST` | `/workers/:id/delete` | Удаление работника |
 | `GET` | `/workers/:id/salary` | Зарплата работника |
@@ -447,6 +474,45 @@ tail -f logs/audit.log
 | `GET` | `/work-time/:id/edit` | Редактирование учёта времени |
 | `POST` | `/work-time/:id/update` | Обновление учёта времени |
 | `GET` | `/db` | Просмотр всех таблиц БД |
+
+### REST API
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/workers` | Список работников (JSON) |
+| `GET` | `/api/workers/:id` | Работник по ID |
+| `POST` | `/api/workers` | Создание работника |
+| `PUT` | `/api/workers/:id` | Обновление работника |
+| `DELETE` | `/api/workers/:id` | Удаление работника |
+| `GET` | `/api/workers/search` | Поиск работников |
+| `GET` | `/api/dashboard` | Данные дашборда |
+| `GET` | `/api/export/workers.csv` | Экспорт в CSV |
+| `GET` | `/api/export/workers.xlsx` | Экспорт в Excel |
+| `GET` | `/api/export/salary.csv` | Экспорт зарплаты |
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/ready` | Readiness check |
+| `GET` | `/api/live` | Liveness check |
+| `GET` | `/api/metrics` | Prometheus метрики |
+| `GET` | `/api/stats` | Статистика приложения |
+| `GET` | `/api/audit` | Журнал аудита |
+| `GET` | `/api/reports/worker/:id/pdf` | PDF отчёт по работнику |
+| `POST` | `/api/notifications/test` | Тест SMTP |
+
+### Auth API
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/auth/login` | Вход в систему |
+| `POST` | `/api/auth/logout` | Выход из системы |
+| `GET` | `/api/auth/profile` | Профиль пользователя |
+
+### 1С Integration API
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/api/1c/workers` | Выгрузка работников для 1С |
+| `GET` | `/api/1c/salary` | Выгрузка зарплаты для 1С |
+| `POST` | `/api/1c/workers/import` | Импорт работников из 1С |
 
 ## 🔧 Устранение проблем
 
@@ -820,13 +886,18 @@ sudo systemctl restart my-ring-app
 
 ### Идеи для улучшения
 
-- [ ] Добавить аутентификацию и авторизацию
-- [ ] Реализовать REST API для интеграции
-- [ ] Добавить экспорт данных в CSV/Excel
-- [ ] Реализовать печать отчётов
-- [ ] Добавить дашборд с метриками
-- [ ] Поддержка мультиязычности
-- [ ] Миграция на PostgreSQL
+- [x] Аутентификация и авторизация
+- [x] REST API для интеграций
+- [x] Экспорт данных в CSV/Excel
+- [x] Печать отчётов (PDF)
+- [x] Дашборд с метриками
+- [x] Поддержка мультиязычности
+- [x] Миграция на PostgreSQL
+- [ ] Миграции БД (Liquibase/Flyway)
+- [ ] Кэширование справочников
+- [ ] CSS в отдельных файлах
+- [ ] Покрытие тестами > 70%
+- [ ] Connection pooling (HikariCP)
 
 ## 📄 Лицензия
 

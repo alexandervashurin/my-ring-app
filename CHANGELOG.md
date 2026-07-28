@@ -1,6 +1,43 @@
 # Change Log
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
+## [Unreleased] - 2026-07-28
+
+### 🔧 Refactoring (массовый)
+- Удалён мёртвый код `defroutes api-routes` из всех 9 API namespace'ов (dashboard, monitoring, workers, salary, export, audit, reports, onec, notifications)
+- Удалены неиспользуемые require: `compojure.core` (defroutes/GET/POST), `clojure.string` (из monitoring, salary, export), `views.layout` (из export)
+- Созданы общие хелперы в `util.clj`: `json-response`, `pagination-meta`
+- Извлечён `parse-work-time-params` в `util.clj` (убрано дублирование controllers.clj + api/salary.clj)
+- Удалён `get-spravochnik` (дублировал `get-table-data`), все вызовы заменены
+- Удалён алиас `validate-worker-update` (вызовы используют `validate-worker` напрямую)
+- Удалены неиспользуемые функции из `auth.clj`: `logged-in?`, `get-current-user`
+- Удалён мёртвый `render-distribution-charts` из `views/dashboard.clj`
+- Удалена неиспользуемая зависимость `clojure.string` из `views/workers.clj`
+
+### ⚡ Performance
+- Исправлен N+1 запрос в `monitoring.clj` app-statistics — теперь использует `get-salary-with-details` вместо пофраерных запросов
+- `get-db-stats` переиспользует `get-dashboard-stats` (COUNT-запросы) вместо загрузки всех работников
+- `require-role` предвычисляет `allowed-roles` как set (аллоцировался per-request)
+
+### 🔒 Security
+- `SESSION_SECRET` и `ADMIN_PASSWORD` теперь выбрасывают `IllegalStateException` в production если не заданы (вместо дефолтных значений)
+
+### 🐛 Bug Fixes
+- Исправлен unsafe `Integer/parseInt` → `util/parse-int` в `api/salary.clj` update-work-time
+- Исправлена несогласованность `clojure.string` full-path vs alias (helpers.clj, dashboard.clj, controllers.clj, api/workers.clj)
+- Исправлен double-read в `i18n.clj` (лишний `with-open` + `slurp`)
+- Перенесён прямой JDBC из `api/audit.clj` в model layer (новые функции `get-audit-count-by-action`, `get-audit-count-by-entity`)
+- Добавлен `get-salary-with-details` в model.clj (JOIN запрос для экспорта и мониторинга)
+
+### 📝 Documentation
+- Обновлён DEVELOPMENT_PLAN.md — план на Q1 2027
+- Обновлён CHANGELOG.md
+
+### 🏗️ Infrastructure
+- Добавлены GitHub Actions workflow'и: тесты + uberjar, Docker build + push to GHCR, SSH deploy
+
+---
+
 ## [Unreleased] - 2026-07-27
 
 ### 🔒 Security
