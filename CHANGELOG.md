@@ -3,6 +3,24 @@ All notable changes to this project will be documented in this file. This change
 
 ## [Unreleased] - 2026-07-28
 
+### ✨ New Features (Q1 2027)
+- **DB миграции**: `migration.clj` — лёгкая система миграций с таблицей `schema_migrations`, поддержка Up/Down, идемпотентный запуск
+- **Миграция 001**: `001_initial_schema.sql` — фиксирует схему таблиц Пользователь + Аудит_изменений
+- **Кэш справочников**: `cache.clj` — Atom-based кэш для 7 справочных таблиц, автообновление ~1 раз/день, ручной refresh
+- **API миграций**: `GET /api/migrations` (admin) — статус всех миграций
+- **API кэша**: `POST /api/cache/refresh` (admin) — принудительное обновление кэша
+- **Клиентская валидация**: `validation.js` — валидация форм работника и учета времени на клиенте (длина полей, формат даты, условная валидация оклад/ставка)
+- **Извлечение CSS**: инлайн-стили из `views/auth.clj` перенесены в `app.css`
+
+### ⚡ Performance
+- **Reflection warnings**: все reflection warnings устранены (type hints в `export.clj` для Apache POI, `migration.clj` для File I/O)
+- **Кэш справочников**: `load-worker-form-data` читает из кэша вместо 7 запросов к БД при каждом рендер формы
+
+### 🧪 Tests
+- Новые тесты: `cache_test.clj` (load-all!, getters, cache-status, data consistency) — 5 тестов, 18 утверждений
+- Новые тесты: `migration_test.clj` (status, applied detection, idempotent run, rollback) — 4 теста
+- Итого: **51 тест, 192 утверждения, 0 ошибок**
+
 ### 🔧 Refactoring (массовый)
 - Удалён мёртвый код `defroutes api-routes` из всех 9 API namespace'ов (dashboard, monitoring, workers, salary, export, audit, reports, onec, notifications)
 - Удалены неиспользуемые require: `compojure.core` (defroutes/GET/POST), `clojure.string` (из monitoring, salary, export), `views.layout` (из export)

@@ -32,10 +32,21 @@
 | Метрика | Значение |
 |---------|----------|
 | Версия | 2.0.0-SNAPSHOT |
-| Тесты | 42 теста, 165 утверждений |
-| API endpoints | 25+ (REST + HTML) |
-| Модули | 15+ namespace'ов |
+| Тесты | **51 тест, 192 утверждения** |
+| Reflection warnings | **0** |
+| API endpoints | **28+** (REST + HTML) |
+| Модули | **18+ namespace'ов** |
 | Зависимости | 15 (core) + 3 (test) |
+
+### Q1 2027 — ВЫПОЛНЕНО ✅
+
+**Задачи Q1 2027 (6/6 выполнено):**
+- ✅ DB миграции (migration.clj + 001_initial_schema.sql)
+- ✅ Кэш справочников (cache.clj — 7 таблиц в Atom, автообновление)
+- ✅ CSS extraction (инлайн-стили → app.css)
+- ✅ Клиентская валидация (validation.js)
+- ✅ Тесты: cache_test.clj + migration_test.clj (+9 тестов)
+- ✅ Type hints: все reflection warnings устранены
 
 ### Последние улучшения (июль 2026 — рефакторинг)
 
