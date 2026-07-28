@@ -14,7 +14,8 @@
             [my-ring-app.config :as config]
             [my-ring-app.auth :as auth]
             [my-ring-app.migration :as migration]
-            [my-ring-app.cache :as cache]))
+            [my-ring-app.cache :as cache]
+            [my-ring-app.rate-limit :as rate-limit]))
 
 ;; ======================================================================
 ;; Middleware
@@ -98,6 +99,7 @@
       wrap-csrf-error
       wrap-security-headers
       wrap-error-handler
+      (rate-limit/wrap-rate-limit)
       wrap-logging
       wrap-content-type
       wrap-file-info
