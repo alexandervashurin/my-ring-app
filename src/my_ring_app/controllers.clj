@@ -20,12 +20,6 @@
 (def ^:private parse-int util/parse-int)
 (def ^:private validate-id util/validate-id)
 
-(defn- clean-id [id]
-  "Очистка ID от лишних символов, оставляем только цифры"
-  (when id
-    (let [cleaned (str/trim (str/replace (str id) #"[^0-9]" ""))]
-      (if (seq cleaned) cleaned nil))))
-
 (defn- bad-request [message]
   "Возвращает ответ с ошибкой 400"
   (-> (resp/response message)
@@ -45,6 +39,17 @@
   "Извлекает id из params request"
   [request]
   (get-in request [:params :id]))
+
+(defn- load-worker-form-data
+  "Загрузка всех справочников для формы работника"
+  []
+  {:цеха (model/get-spravochnik "Цех")
+   :системы_оплаты (model/get-spravochnik "Система_оплаты")
+   :категории (model/get-spravochnik "Категория_работника")
+   :разряды (model/get-spravochnik "Разряд")
+   :режимы (model/get-spravochnik "Режим_работы")
+   :оклады (model/get-spravochnik "Оклад")
+   :ставки (model/get-spravochnik "Почасовые_ставки")})
 
 ;; ======================================================================
 ;; Контроллер главной страницы
@@ -87,21 +92,16 @@
 (defn new-worker-form
   ([] (new-worker-form nil))
   ([request-or-params]
-   (let [params (extract-params request-or-params)]
+   (let [params (extract-params request-or-params)
+         form-data (load-worker-form-data)
+         errors (when-let [err-str (:errors params)]
+                  (clojure.string/split err-str #","))]
      (logger/log-info "Открыта форма создания работника")
-     (let [цеха (model/get-spravochnik "Цех")
-           системы_оплаты (model/get-spravochnik "Система_оплаты")
-           категории (model/get-spravochnik "Категория_работника")
-           разряды (model/get-spravochnik "Разряд")
-           режимы (model/get-spravochnik "Режим_работы")
-           оклады (model/get-spravochnik "Оклад")
-           ставки (model/get-spravochnik "Почасовые_ставки")
-           errors (when-let [err-str (:errors params)]
-                    (clojure.string/split err-str #","))]
-       (-> (resp/response (workers/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
-                                                          :errors errors
-                                                          :worker-data params))
-           (resp/content-type "text/html; charset=utf-8"))))))
+     (-> (resp/response (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
+                                                       (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
+                                                       :errors errors
+                                                       :worker-data params))
+         (resp/content-type "text/html; charset=utf-8")))))
 
 (defn edit-worker-form
   ([id] (edit-worker-form id nil))
@@ -115,17 +115,13 @@
          (do
            (logger/log-info (format "Открыта форма редактирования работника ID=%s" worker-id))
            (let [worker (model/get-record-by-id "Работник" (str worker-id))
-                 цеха (model/get-spravochnik "Цех")
-                 системы_оплаты (model/get-spravochnik "Система_оплаты")
-                 категории (model/get-spravochnik "Категория_работника")
-                 разряды (model/get-spravochnik "Разряд")
-                 режимы (model/get-spravochnik "Режим_работы")
-                 оклады (model/get-spravochnik "Оклад")
-                 ставки (model/get-spravochnik "Почасовые_ставки")
+                 form-data (load-worker-form-data)
                  errors (when-let [err-str (:errors params)]
                           (clojure.string/split err-str #","))]
              (if worker
-               (-> (resp/response (workers/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
+               (-> (resp/response (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
+                                                                    (:категории form-data) (:разряды form-data)
+                                                                    (:режимы form-data) (:оклады form-data) (:ставки form-data)
                                                                     :errors errors))
                    (resp/content-type "text/html; charset=utf-8"))
                (-> (resp/response "Работник не найден")
@@ -160,42 +156,27 @@
                  (resp/redirect "/workers"))
                (do
                  (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при создании работника")
-                 (let [цеха (model/get-spravochnik "Цех")
-                       системы_оплаты (model/get-spravochnik "Система_оплаты")
-                       категории (model/get-spravochnik "Категория_работника")
-                       разряды (model/get-spravochnik "Разряд")
-                       режимы (model/get-spravochnik "Режим_работы")
-                       оклады (model/get-spravochnik "Оклад")
-                       ставки (model/get-spravochnik "Почасовые_ставки")]
-                   (-> (resp/response (workers/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
-                                                                      :errors [(:message result)]
-                                                                      :worker-data params))
+                 (let [form-data (load-worker-form-data)]
+                   (-> (resp/response (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
+                                                                     (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
+                                                                     :errors [(:message result)]
+                                                                     :worker-data params))
                        (resp/content-type "text/html; charset=utf-8"))))))
            (catch Exception e
              (logger/log-error ^Throwable e "Критическая ошибка при создании работника")
-             (let [цеха (model/get-spravochnik "Цех")
-                   системы_оплаты (model/get-spravochnik "Система_оплаты")
-                   категории (model/get-spravochnik "Категория_работника")
-                   разряды (model/get-spravochnik "Разряд")
-                   режимы (model/get-spravochnik "Режим_работы")
-                   оклады (model/get-spravochnik "Оклад")
-                   ставки (model/get-spravochnik "Почасовые_ставки")]
-               (-> (resp/response (workers/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
-                                                                  :errors ["Внутренняя ошибка при создании работника"]
-                                                                  :worker-data params))
+             (let [form-data (load-worker-form-data)]
+               (-> (resp/response (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
+                                                                 (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
+                                                                 :errors ["Внутренняя ошибка при создании работника"]
+                                                                 :worker-data params))
                    (resp/content-type "text/html; charset=utf-8")))))
          (do
            (logger/log-warn (format "Валидация не пройдена: %s" (clojure.string/join ", " (:errors validation-result))))
-           (let [цеха (model/get-spravochnik "Цех")
-                 системы_оплаты (model/get-spravochnik "Система_оплаты")
-                 категории (model/get-spravochnik "Категория_работника")
-                 разряды (model/get-spravochnik "Разряд")
-                 режимы (model/get-spravochnik "Режим_работы")
-                 оклады (model/get-spravochnik "Оклад")
-                 ставки (model/get-spravochnik "Почасовые_ставки")]
-             (-> (resp/response (workers/render-new-worker-page цеха системы_оплаты категории разряды режимы оклады ставки
-                                                                :errors (:errors validation-result)
-                                                                :worker-data params))
+           (let [form-data (load-worker-form-data)]
+             (-> (resp/response (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
+                                                               (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
+                                                               :errors (:errors validation-result)
+                                                               :worker-data params))
                  (resp/content-type "text/html; charset=utf-8")))))))))
 
 (defn update-worker
@@ -231,28 +212,20 @@
                      (resp/redirect "/workers"))
                    (do
                      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении работника")
-                     (let [цеха (model/get-spravochnik "Цех")
-                           системы_оплаты (model/get-spravochnik "Система_оплаты")
-                           категории (model/get-spravochnik "Категория_работника")
-                           разряды (model/get-spravochnik "Разряд")
-                           режимы (model/get-spravochnik "Режим_работы")
-                           оклады (model/get-spravochnik "Оклад")
-                           ставки (model/get-spravochnik "Почасовые_ставки")
+                     (let [form-data (load-worker-form-data)
                            worker (model/get-record-by-id "Работник" (str worker-id))]
-                       (-> (resp/response (workers/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
+                       (-> (resp/response (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
+                                                                            (:категории form-data) (:разряды form-data)
+                                                                            (:режимы form-data) (:оклады form-data) (:ставки form-data)
                                                                             :errors [(:message result)]))
                            (resp/content-type "text/html; charset=utf-8"))))))
                (do
                  (logger/log-warn (format "Валидация не пройдена: %s" (clojure.string/join ", " (:errors validation-result))))
-                 (let [цеха (model/get-spravochnik "Цех")
-                       системы_оплаты (model/get-spravochnik "Система_оплаты")
-                       категории (model/get-spravochnik "Категория_работника")
-                       разряды (model/get-spravochnik "Разряд")
-                       режимы (model/get-spravochnik "Режим_работы")
-                       оклады (model/get-spravochnik "Оклад")
-                       ставки (model/get-spravochnik "Почасовые_ставки")
+                 (let [form-data (load-worker-form-data)
                        worker (merge (model/get-record-by-id "Работник" (str worker-id)) params)]
-                   (-> (resp/response (workers/render-edit-worker-page worker цеха системы_оплаты категории разряды режимы оклады ставки
+                   (-> (resp/response (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
+                                                                        (:категории form-data) (:разряды form-data)
+                                                                        (:режимы form-data) (:оклады form-data) (:ставки form-data)
                                                                         :errors (:errors validation-result)))
                        (resp/content-type "text/html; charset=utf-8"))))))))))))
 

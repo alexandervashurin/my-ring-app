@@ -84,9 +84,9 @@
       {:valid? true}
       {:valid? false :errors @errors})))
 
-(defn validate-worker-update [data]
-  "Валидация данных при обновлении работника (более мягкая)"
-  (validate-worker data))
+(def validate-worker-update
+  "Валидация данных при обновлении работника. Идентична validate-worker."
+  validate-worker)
 
 ;; НОВАЯ ФУНКЦИЯ: Валидация учета рабочего времени
 (defn validate-work-time [data]
