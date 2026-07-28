@@ -1,7 +1,6 @@
 (ns my-ring-app.api.notifications
   "REST API для email уведомлений"
-  (:require [compojure.core :refer [defroutes GET POST]]
-            [ring.util.response :as resp]
+  (:require [ring.util.response :as resp]
             [clojure.string :as str]
             [my-ring-app.email :as email]
             [my-ring-app.model :as model]
@@ -147,13 +146,3 @@
       (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
           (resp/status 500)
           (resp/content-type "application/json; charset=utf-8")))))
-
-;; ======================================================================
-;; Маршруты API
-;; ======================================================================
-
-(defroutes api-routes
-  (GET "/api/notifications/test" [] test-email-api)
-  (POST "/api/notifications/new-worker" [] notify-new-worker-api)
-  (POST "/api/notifications/birthday" [] notify-birthday-api)
-  (POST "/api/notifications/anniversary" [] notify-anniversary-api))

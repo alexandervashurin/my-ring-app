@@ -1,7 +1,7 @@
 (ns my-ring-app.auth
   "Модуль аутентификации и авторизации пользователей"
   (:require [clojure.java.jdbc :as jdbc]
-            [my-ring-app.config :refer [db-spec]]
+            [my-ring-app.config :as config :refer [db-spec]]
             [my-ring-app.logger :as logger]
             [buddy.hashers :as hashers]
             [ring.util.response :as resp]
@@ -216,13 +216,14 @@
 (defn require-role
   "Middleware требующий определённой роли"
   [handler & allowed-roles]
-  (fn [request]
-    (let [user (:identity request)]
-      (if (and user (contains? (set allowed-roles) (:role user)))
-        (handler request)
-        (-> (resp/response "Доступ запрещён: недостаточно прав")
-            (resp/status 403)
-            (resp/content-type "text/html; charset=utf-8"))))))
+  (let [allowed (set allowed-roles)]
+    (fn [request]
+      (let [user (:identity request)]
+        (if (and user (contains? allowed (:role user)))
+          (handler request)
+          (-> (resp/response "Доступ запрещён: недостаточно прав")
+              (resp/status 403)
+              (resp/content-type "text/html; charset=utf-8")))))))
 
 (defn require-permission
   "Middleware требующий определённого права"
@@ -238,16 +239,6 @@
 ;; ======================================================================
 ;; Вспомогательные функции
 ;; ======================================================================
-
-(defn get-current-user
-  "Получение текущего пользователя из запроса"
-  [request]
-  (:identity request))
-
-(defn logged-in?
-  "Проверка, залогинен ли пользователь"
-  [request]
-  (authenticated? request))
 
 (defn validate-user-data
   "Валидация данных пользователя"
@@ -300,8 +291,9 @@
                 (zero? (:count (first users))))
         ;; Создаём админа по умолчанию с безопасным паролем
         (let [admin-password (or (System/getenv "ADMIN_PASSWORD")
-                                  (do (logger/log-warn "ADMIN_PASSWORD env var not set - using insecure default. Set ADMIN_PASSWORD in production!")
-                                      "changeme!"))
+                                  (when (= "production" (:env config/app-config))
+                                    (throw (IllegalStateException. "ADMIN_PASSWORD env var is required in production")))
+                                  "changeme!")
               admin-email (or (System/getenv "ADMIN_EMAIL") "admin@example.com")
               result (create-user "admin" admin-email admin-password "admin")]
           (if (:success result)

@@ -88,8 +88,9 @@
                                      :path "/"}
                      :cookie-name "session-id"
                      :store (cookie/cookie-store {:key (or (System/getenv "SESSION_SECRET")
-                                                           (do (logger/log-warn "SESSION_SECRET env var not set - using insecure default. Set SESSION_SECRET in production!")
-                                                               "d3v-s3cr3t-k3y!1"))})})
+                                                            (when (= "production" (:env config/app-config))
+                                                              (throw (IllegalStateException. "SESSION_SECRET env var is required in production")))
+                                                            "d3v-s3cr3t-k3y!1"))})})
       auth/wrap-authentication
       wrap-anti-forgery
       wrap-csrf-error

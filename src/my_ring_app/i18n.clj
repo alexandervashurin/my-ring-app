@@ -12,8 +12,7 @@
   "Кэш переводов"
   (delay
     (try
-      (with-open [r (io/reader (io/resource "i18n.edn"))]
-        (edn/read-string (slurp r)))
+      (edn/read-string (slurp (io/resource "i18n.edn")))
       (catch Exception e
         (println "Error loading i18n.edn:" (.getMessage e))
         {}))))

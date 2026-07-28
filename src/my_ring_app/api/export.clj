@@ -1,12 +1,9 @@
 (ns my-ring-app.api.export
   "REST API для экспорта данных (CSV, Excel)"
-  (:require [compojure.core :refer [defroutes GET]]
-            [ring.util.response :as resp]
+  (:require [ring.util.response :as resp]
             [clojure.data.csv :as csv]
             [clojure.java.io :as io]
-            [clojure.string :as str]
             [my-ring-app.model :as model]
-            [my-ring-app.views.layout :as layout]
             [my-ring-app.logger :as logger]
             [my-ring-app.util :as util])
   (:import (java.io StringWriter ByteArrayOutputStream)
@@ -186,12 +183,3 @@
       (-> (resp/response (error-response "EXPORT_ERROR" "Ошибка при экспорте в Excel"))
           (resp/status 500)
           (resp/content-type "application/json; charset=utf-8")))))
-
-;; ======================================================================
-;; Маршруты API
-;; ======================================================================
-
-(defroutes api-routes
-  (GET "/api/export/workers.csv" [] export-workers-csv)
-  (GET "/api/export/salary.csv" [] export-salary-csv)
-  (GET "/api/export/workers.xlsx" [] export-workers-excel))

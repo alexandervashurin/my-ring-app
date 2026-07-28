@@ -1,7 +1,6 @@
 (ns my-ring-app.api.workers
   "REST API для работников"
-  (:require [compojure.core :refer [defroutes GET POST PUT DELETE]]
-            [ring.util.response :as resp]
+  (:require [ring.util.response :as resp]
             [clojure.string :as str]
             [my-ring-app.model :as model]
             [my-ring-app.validation :as validation]
@@ -210,16 +209,3 @@
       (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
           (resp/status 500)
           (resp/content-type "application/json; charset=utf-8")))))
-
-;; ======================================================================
-;; Маршруты API
-;; ======================================================================
-
-(defroutes api-routes
-  ;; Работники
-  (GET "/api/workers" [] get-workers)
-  (GET "/api/workers/search" [] search-workers-api)
-  (GET "/api/workers/:id" [] get-worker-by-id)
-  (POST "/api/workers" [] create-worker)
-  (PUT "/api/workers/:id" [] update-worker)
-  (DELETE "/api/workers/:id" [] delete-worker))

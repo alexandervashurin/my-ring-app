@@ -1,7 +1,6 @@
 (ns my-ring-app.api.dashboard
   "REST API для дашборда и аналитики"
-  (:require [compojure.core :refer [defroutes GET]]
-            [ring.util.response :as resp]
+  (:require [ring.util.response :as resp]
             [my-ring-app.model :as model]
             [my-ring-app.logger :as logger]
             [my-ring-app.util :as util]))
@@ -86,14 +85,3 @@
       (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
           (resp/status 500)
           (resp/content-type "application/json; charset=utf-8")))))
-
-;; ======================================================================
-;; Маршруты API
-;; ======================================================================
-
-(defroutes api-routes
-  (GET "/api/dashboard" [] get-dashboard)
-  (GET "/api/dashboard/stats" [] get-dashboard-stats)
-  (GET "/api/analytics/workers-by-shop" [] get-workers-by-shop)
-  (GET "/api/analytics/workers-by-category" [] get-workers-by-category)
-  (GET "/api/analytics/salary-distribution" [] get-salary-distribution))

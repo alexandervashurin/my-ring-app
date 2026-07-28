@@ -1,8 +1,6 @@
 (ns my-ring-app.api.salary
   "REST API для зарплаты и учёта рабочего времени"
-  (:require [compojure.core :refer [defroutes GET POST PUT]]
-            [ring.util.response :as resp]
-            [clojure.string :as str]
+  (:require [ring.util.response :as resp]
             [my-ring-app.model :as model]
             [my-ring-app.validation :as validation]
             [my-ring-app.logger :as logger]
@@ -117,12 +115,3 @@
       (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
           (resp/status 500)
           (resp/content-type "application/json; charset=utf-8")))))
-
-;; ======================================================================
-;; Маршруты API
-;; ======================================================================
-
-(defroutes api-routes
-  (GET "/api/salary/:worker-id" [] get-worker-salary)
-  (GET "/api/work-time/:worker-id" [] get-worker-work-time)
-  (PUT "/api/work-time/:id" [] update-work-time))

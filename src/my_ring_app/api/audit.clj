@@ -1,7 +1,6 @@
 (ns my-ring-app.api.audit
   "REST API для просмотра аудита изменений"
-  (:require [compojure.core :refer [defroutes GET]]
-            [ring.util.response :as resp]
+  (:require [ring.util.response :as resp]
             [clojure.string :as str]
             [my-ring-app.model :as model]
             [my-ring-app.logger :as logger]
@@ -119,13 +118,3 @@
       (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
           (resp/status 500)
           (resp/content-type "application/json; charset=utf-8")))))
-
-;; ======================================================================
-;; Маршруты API
-;; ======================================================================
-
-(defroutes api-routes
-  (GET "/api/audit" [] get-audit-log-api)
-  (GET "/api/audit/stats" [] get-audit-stats-api)
-  (GET "/api/audit/:entity-type/:entity-id" [] get-audit-by-entity-api)
-  (GET "/api/audit/user/:username" [] get-audit-by-user-api))

@@ -1,8 +1,6 @@
 (ns my-ring-app.api.monitoring
   "REST API для мониторинга и метрик"
-  (:require [compojure.core :refer [defroutes GET]]
-            [ring.util.response :as resp]
-            [clojure.string :as str]
+  (:require [ring.util.response :as resp]
             [my-ring-app.model :as model]
             [my-ring-app.logger :as logger]
             [java-time :as time]))
@@ -40,12 +38,10 @@
   "Статистика базы данных"
   []
   (try
-    (let [tables (model/get-tables)
-          workers-count (count (model/get-workers-with-details))
-          shops-count (count (model/get-table-data "Цех"))]
-      {:tables (count tables)
-       :workers workers-count
-       :shops shops-count
+    (let [stats (model/get-dashboard-stats)]
+      {:tables (count (model/get-tables))
+       :workers (:total-workers stats)
+       :shops (:total-shops stats)
        :status "connected"})
     (catch Exception e
       {:status "disconnected"
@@ -188,11 +184,13 @@
     (let [memory (get-memory-info)
           db-stats (get-db-stats)
           app-stats (get-app-stats)
-          workers (model/get-workers-with-details)
           [current-year current-month] (model/current-year-month)
-          salary-data (map #(merge % (model/get-worker-salary (:id %) current-year current-month)) workers)
+          salary-data (->> (model/get-salary-with-details)
+                           (filter #(and (= (:год %) current-year)
+                                         (= (:месяц %) current-month))))
           total-payroll (reduce + (map #(or (:общая_зарплата %) 0) salary-data))
-          avg-salary (if (seq salary-data) (/ total-payroll (count salary-data)) 0)]
+          worker-count (:workers db-stats)
+          avg-salary (if (pos? worker-count) (/ total-payroll worker-count) 0)]
       (logger/log-info "API: GET /api/stats")
       (-> (resp/response
            {:application app-stats
@@ -214,14 +212,3 @@
       (-> (resp/response {:error "Internal server error"})
           (resp/status 500)
           (resp/content-type "application/json; charset=utf-8")))))
-
-;; ======================================================================
-;; Маршруты API
-;; ======================================================================
-
-(defroutes api-routes
-  (GET "/api/health" [] health-check)
-  (GET "/api/ready" [] ready-check)
-  (GET "/api/live" [] live-check)
-  (GET "/api/metrics" [] prometheus-metrics)
-  (GET "/api/stats" [] app-statistics))

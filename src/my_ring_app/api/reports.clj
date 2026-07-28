@@ -1,12 +1,9 @@
 (ns my-ring-app.api.reports
   "REST API для генерации PDF отчётов"
-  (:require [compojure.core :refer [defroutes GET]]
-            [ring.util.response :as resp]
-            [clojure.string :as str]
+  (:require [ring.util.response :as resp]
             [my-ring-app.model :as model]
             [my-ring-app.pdf-reports :as pdf]
             [my-ring-app.logger :as logger]
-            [clojure.java.io :as io]
             [my-ring-app.util :as util]))
 
 ;; ======================================================================
@@ -114,12 +111,3 @@
         (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
             (resp/status 500)
             (resp/content-type "application/json; charset=utf-8"))))))
-
-;; ======================================================================
-;; Маршруты API
-;; ======================================================================
-
-(defroutes api-routes
-  (GET "/api/reports/worker/:id/pdf" [] export-worker-pdf)
-  (GET "/api/reports/workers/pdf" [] export-workers-list-pdf)
-  (GET "/api/reports/salary/pdf" [] export-salary-report-pdf))

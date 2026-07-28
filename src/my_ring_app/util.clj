@@ -1,6 +1,7 @@
 (ns my-ring-app.util
   "Общие вспомогательные функции"
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [ring.util.response :as resp]))
 
 (defn parse-int
   "Безопасное преобразование строки в число"
@@ -80,6 +81,24 @@
    :сколько_должны_отработать (when (seq (:сколько_должны_отработать params)) (parse-int (:сколько_должны_отработать params) nil))
    :больничные_дни (parse-int (:больничные_дни params) 0)
    :командировочные_дни (parse-int (:командировочные_дни params) 0)})
+
+(defn json-response
+  "Стандартный JSON ответ с Content-Type"
+  ([data]
+   (-> (resp/response data)
+       (resp/content-type "application/json; charset=utf-8")))
+  ([data status]
+   (-> (resp/response data)
+       (resp/status status)
+       (resp/content-type "application/json; charset=utf-8"))))
+
+(defn pagination-meta
+  "Метаданные пагинации для ответа"
+  [total page per-page]
+  {:total total
+   :page page
+   :per_page per-page
+   :total_pages (int (Math/ceil (/ (double total) (double per-page))))})
 
 (defn validate-year-month
   "Валидация года и месяца. Возвращает nil или карту с ошибкой"

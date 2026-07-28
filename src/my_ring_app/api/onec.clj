@@ -1,7 +1,6 @@
 (ns my-ring-app.api.onec
   "REST API для интеграции с 1С:ЗУП"
-  (:require [compojure.core :refer [defroutes GET POST]]
-            [ring.util.response :as resp]
+  (:require [ring.util.response :as resp]
             [clojure.data.xml :as xml]
             [clojure.string :as str]
             [my-ring-app.model :as model]
@@ -209,13 +208,3 @@
       (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
           (resp/status 500)
           (resp/content-type "application/json; charset=utf-8")))))
-
-;; ======================================================================
-;; Маршруты API
-;; ======================================================================
-
-(defroutes api-routes
-  (GET "/api/1c/workers" [] get-workers-export)
-  (GET "/api/1c/salary" [] get-salary-export)
-  (POST "/api/1c/workers/import" [] import-workers-from-1c)
-  (GET "/api/1c/docs" [] get-1c-documentation))
