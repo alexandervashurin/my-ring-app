@@ -2,6 +2,8 @@
   "REST API для мониторинга и метрик"
   (:require [ring.util.response :as resp]
             [my-ring-app.model :as model]
+            [my-ring-app.migration :as migration]
+            [my-ring-app.cache :as cache]
             [my-ring-app.logger :as logger]
             [java-time :as time]))
 
@@ -202,13 +204,52 @@
                      :percent (:percent memory)}
             :uptime {:seconds (int (/ (- (System/currentTimeMillis) app-start-time) 1000))
                      :formatted (format-uptime (/ (- (System/currentTimeMillis) app-start-time) 1000))}
-            :business {:total-workers (:workers db-stats 0)
-                       :total-shops (:shops db-stats 0)
-                       :total-payroll total-payroll
-                       :avg-salary (int avg-salary)}})
+                          :business {:total-workers (:workers db-stats 0)
+                        :total-shops (:shops db-stats 0)
+                        :total-payroll total-payroll
+                        :avg-salary (int avg-salary)}
+                          :cache (cache/cache-status)})
           (resp/content-type "application/json; charset=utf-8")))
     (catch Exception e
       (logger/log-error e "API: Ошибка при получении статистики")
+      (-> (resp/response {:error "Internal server error"})
+          (resp/status 500)
+          (resp/content-type "application/json; charset=utf-8")))))
+
+;; ======================================================================
+;; Cache Refresh
+;; ======================================================================
+
+(defn refresh-cache
+  "POST /api/cache/refresh — принудительное обновление кэша справочников (admin only)"
+  [request]
+  (try
+    (cache/refresh!)
+    (logger/log-info "API: POST /api/cache/refresh — кэш обновлён")
+    (-> (resp/response {:message "Кэш справочников обновлён"
+                        :status (cache/cache-status)})
+        (resp/content-type "application/json; charset=utf-8")))
+    (catch Exception e
+      (logger/log-error e "API: Ошибка обновления кэша")
+      (-> (resp/response {:error "Internal server error"})
+          (resp/status 500)
+          (resp/content-type "application/json; charset=utf-8")))))
+
+(defn migration-status
+  "GET /api/migrations — статус миграций базы данных"
+  [request]
+  (try
+    (let [status (migration/migration-status)
+          applied (count (filter :applied status))
+          pending (count (filter #(not (:applied %)) status))]
+      (logger/log-info "API: GET /api/migrations")
+      (-> (resp/response {:total (count status)
+                          :applied applied
+                          :pending pending
+                          :migrations status})
+          (resp/content-type "application/json; charset=utf-8")))
+    (catch Exception e
+      (logger/log-error e "API: Ошибка при получении статуса миграций")
       (-> (resp/response {:error "Internal server error"})
           (resp/status 500)
           (resp/content-type "application/json; charset=utf-8")))))

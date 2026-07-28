@@ -12,7 +12,9 @@
             [my-ring-app.routes :refer [app-routes]]
             [my-ring-app.logger :as logger]
             [my-ring-app.config :as config]
-            [my-ring-app.auth :as auth]))
+            [my-ring-app.auth :as auth]
+            [my-ring-app.migration :as migration]
+            [my-ring-app.cache :as cache]))
 
 ;; ======================================================================
 ;; Middleware
@@ -111,8 +113,14 @@
   (logger/log-info "Запуск приложения 'Система управления персоналом'")
   (logger/log-info "========================================")
 
+  ;; Применение миграций
+  (migration/run-migrations!)
+
   ;; Инициализация таблицы пользователей
   (auth/init-db!)
+
+  ;; Загрузка кэша справочников
+  (cache/load-all!)
 
   (let [port (:port config/app-config)]
     (logger/log-info (format "Сервер запускается на порту %d" port))

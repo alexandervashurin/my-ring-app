@@ -39,6 +39,8 @@
   (GET "/api/live" [] api-monitoring/live-check)
   (GET "/api/metrics" request ((auth-required api-monitoring/prometheus-metrics) request))
   (GET "/api/stats" request ((auth-required api-monitoring/app-statistics) request))
+  (GET "/api/migrations" request ((admin-only api-monitoring/migration-status) request))
+  (POST "/api/cache/refresh" request ((admin-only api-monitoring/refresh-cache) request))
 
   ;; ======================================================================
   ;; REST API - Интеграция с 1С (только админ)

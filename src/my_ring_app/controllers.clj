@@ -11,7 +11,8 @@
             [my-ring-app.views.dashboard :as dashboard]
             [my-ring-app.validation :as validation]
             [my-ring-app.logger :as logger]
-            [my-ring-app.util :as util]))
+            [my-ring-app.util :as util]
+            [my-ring-app.cache :as cache]))
 
 ;; ======================================================================
 ;; Вспомогательные функции
@@ -43,15 +44,15 @@
   (get-in request [:params :id]))
 
 (defn- load-worker-form-data
-  "Загрузка всех справочников для формы работника"
+  "Загрузка всех справочников для формы работника (из кэша)"
   []
-  {:цеха (model/get-table-data "Цех")
-   :системы_оплаты (model/get-table-data "Система_оплаты")
-   :категории (model/get-table-data "Категория_работника")
-   :разряды (model/get-table-data "Разряд")
-   :режимы (model/get-table-data "Режим_работы")
-   :оклады (model/get-table-data "Оклад")
-   :ставки (model/get-table-data "Почасовые_ставки")})
+  {:цеха (cache/get-shops)
+   :системы_оплаты (cache/get-salary-systems)
+   :категории (cache/get-worker-categories)
+   :разряды (cache/get-qualifications)
+   :режимы (cache/get-work-modes)
+   :оклады (cache/get-salary-grades)
+   :ставки (cache/get-hourly-rates)})
 
 (defn- render-new-worker-error-response
   "Рендер ответа с ошибкой для формы создания работника"
