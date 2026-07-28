@@ -98,7 +98,7 @@
 
 (defn- create-header-style
   "Создание стиля для заголовков"
-  [wb]
+  [^org.apache.poi.xssf.usermodel.XSSFWorkbook wb]
   (let [style (.createCellStyle wb)
         font (.createFont wb)]
     (.setBold font true)
@@ -113,7 +113,7 @@
 
 (defn- create-row-style
   "Создание стиля для строки (чередование цветов)"
-  [wb ^long row-num]
+  [^org.apache.poi.xssf.usermodel.XSSFWorkbook wb ^long row-num]
   (let [style (.createCellStyle wb)]
     (if (even? row-num)
       (.setFillForegroundColor style (.getIndex org.apache.poi.ss.usermodel.IndexedColors/WHITE))
@@ -127,18 +127,15 @@
   (with-open [wb (XSSFWorkbook.)]
     (let [sheet (.createSheet wb "Работники")
           header-style (create-header-style wb)
-          ;; Заголовки
           headers ["ID" "Фамилия" "Имя" "Отчество" "Дата приема" "Цех" "Система оплаты" "Категория" "Разряд" "Режим работы"]
-          header-row (.createRow sheet 0)]
-      ;; Создаем заголовки
+          ^org.apache.poi.xssf.usermodel.XSSFRow header-row (.createRow sheet 0)]
       (doseq [[i h] (map-indexed vector headers)]
-        (let [cell (.createCell header-row i)]
-          (.setCellValue cell h)
+        (let [^org.apache.poi.xssf.usermodel.XSSFCell cell (.createCell header-row (int i))]
+          (.setCellValue cell (str h))
           (.setCellStyle cell header-style)))
       
-      ;; Данные
       (doseq [[row-idx w] (map-indexed vector workers)]
-        (let [row (.createRow sheet (inc row-idx))
+        (let [^org.apache.poi.xssf.usermodel.XSSFRow row (.createRow sheet (int (inc row-idx)))
               row-style (create-row-style wb row-idx)
               values [(:id w)
                       (:фамилия w)
@@ -151,7 +148,7 @@
                       (or (:разряд w) "")
                       (or (:режим w) "")]]
           (doseq [[col-idx v] (map-indexed vector values)]
-            (let [cell (.createCell row col-idx)]
+            (let [^org.apache.poi.xssf.usermodel.XSSFCell cell (.createCell row (int col-idx))]
               (cond
                 (number? v) (.setCellValue cell (double v))
                 :else (.setCellValue cell (str v)))

@@ -72,9 +72,9 @@
     (when dir
       (let [files (-> (io/file dir)
                       .listFiles
-                      (->> (filter #(.endsWith (.getName %) ".sql"))
-                           (sort-by #(.getName %))))]
-        (mapv (fn [f]
+                      (->> (filter #(.endsWith (.getName ^java.io.File %) ".sql"))
+                           (sort-by #(.getName ^java.io.File %))))]
+        (mapv (fn [^java.io.File f]
                 (let [name (.getName f)
                       version (str/replace name #"\.sql$" "")
                       content (slurp f)]
