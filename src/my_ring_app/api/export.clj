@@ -1,7 +1,6 @@
 (ns my-ring-app.api.export
   "REST API для экспорта данных (CSV, Excel)"
-  (:require [ring.util.response :as resp]
-            [clojure.data.csv :as csv]
+  (:require [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [my-ring-app.model :as model]
             [my-ring-app.logger :as logger]
@@ -9,17 +8,6 @@
   (:import (java.io StringWriter ByteArrayOutputStream)
            (org.apache.poi.ss.usermodel WorkbookFactory CellStyle CreationHelper)
            (org.apache.poi.xssf.usermodel XSSFWorkbook)))
-
-;; ======================================================================
-;; Вспомогательные функции
-;; ======================================================================
-
-(def ^:private success-response util/success-response)
-(def ^:private error-response util/error-response)
-
-;; ======================================================================
-;; CSV экспорт
-;; ======================================================================
 
 (defn- workers-to-csv
   "Конвертация работников в CSV формат"
@@ -66,14 +54,10 @@
           csv-content (workers-to-csv workers)
           filename (format "workers_%s.csv" (java.time.LocalDate/now))]
       (logger/log-info (format "API: GET /api/export/workers.csv — экспортировано %d работников" (count workers)))
-      (-> (resp/response csv-content)
-          (resp/header "Content-Type" "text/csv; charset=utf-8")
-          (resp/header "Content-Disposition" (str "attachment; filename=\"" filename "\""))))
+      (util/file-download csv-content "text/csv; charset=utf-8" filename))
     (catch Exception e
       (logger/log-error e "API: Ошибка при экспорте работников в CSV")
-      (-> (resp/response (error-response "EXPORT_ERROR" "Ошибка при экспорте в CSV"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "EXPORT_ERROR" "Ошибка при экспорте в CSV"))))
 
 (defn export-salary-csv
   "GET /api/export/salary.csv — экспорт зарплаты в CSV"
@@ -83,18 +67,10 @@
           csv-content (salary-to-csv enriched-data)
           filename (format "salary_%s.csv" (java.time.LocalDate/now))]
       (logger/log-info (format "API: GET /api/export/salary.csv — экспортировано %d записей" (count enriched-data)))
-      (-> (resp/response csv-content)
-          (resp/header "Content-Type" "text/csv; charset=utf-8")
-          (resp/header "Content-Disposition" (str "attachment; filename=\"" filename "\""))))
+      (util/file-download csv-content "text/csv; charset=utf-8" filename))
     (catch Exception e
       (logger/log-error e "API: Ошибка при экспорте зарплаты в CSV")
-      (-> (resp/response (error-response "EXPORT_ERROR" "Ошибка при экспорте в CSV"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
-
-;; ======================================================================
-;; Excel экспорт
-;; ======================================================================
+      (util/json-error 500 "EXPORT_ERROR" "Ошибка при экспорте в CSV"))))
 
 (defn- create-header-style
   "Создание стиля для заголовков"
@@ -154,11 +130,9 @@
                 :else (.setCellValue cell (str v)))
               (.setCellStyle cell row-style)))))
       
-      ;; Авто-размер колонок
       (doseq [i (range (count headers))]
         (.autoSizeColumn sheet i))
       
-      ;; Запись в ByteArrayOutputStream
       (let [baos (ByteArrayOutputStream.)]
         (.write wb baos)
         (.flush baos)
@@ -172,11 +146,9 @@
           excel-bytes (workers-to-excel workers)
           filename (format "workers_%s.xlsx" (java.time.LocalDate/now))]
       (logger/log-info (format "API: GET /api/export/workers.xlsx — экспортировано %d работников" (count workers)))
-      (-> (resp/response excel-bytes)
-          (resp/header "Content-Type" "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-          (resp/header "Content-Disposition" (str "attachment; filename=\"" filename "\""))))
+      (util/file-download excel-bytes
+                          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                          filename))
     (catch Exception e
       (logger/log-error e "API: Ошибка при экспорте работников в Excel")
-      (-> (resp/response (error-response "EXPORT_ERROR" "Ошибка при экспорте в Excel"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "EXPORT_ERROR" "Ошибка при экспорте в Excel"))))

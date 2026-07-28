@@ -1,28 +1,17 @@
 (ns my-ring-app.api.onec
   "REST API для интеграции с 1С:ЗУП"
-  (:require [ring.util.response :as resp]
-            [clojure.data.xml :as xml]
+  (:require [clojure.data.xml :as xml]
             [clojure.string :as str]
             [my-ring-app.model :as model]
             [my-ring-app.logger :as logger]
             [my-ring-app.util :as util]))
 
-;; ======================================================================
-;; Вспомогательные функции
-;; ======================================================================
-
 (def ^:private parse-int util/parse-int)
-(def ^:private success-response util/success-response)
-(def ^:private error-response util/error-response)
 
 (defn- format-date
   "Форматирование даты для 1С (YYYY-MM-DD)"
   [date-str]
   (or date-str "2000-01-01"))
-
-;; ======================================================================
-;; XML экспорт для 1С
-;; ======================================================================
 
 (defn- worker-to-xml
   "Конвертация работника в XML формат для 1С"
@@ -71,10 +60,6 @@
          [:ВерсияФормата "1.0"]
          (into [:Начисления] (map salary-to-xml salary-data))])))
 
-;; ======================================================================
-;; JSON экспорт для 1С (современный формат)
-;; ======================================================================
-
 (defn- format-worker-json
   "Форматирование работника для JSON экспорта"
   [worker]
@@ -100,10 +85,6 @@
    :sickPay (:зарплата_за_больничные_дни salary)
    :businessTripPay (:зарплата_за_командировочные_дни salary)})
 
-;; ======================================================================
-;; API endpoints
-;; ======================================================================
-
 (defn get-workers-export
   "GET /api/1c/workers — экспорт работников для 1С"
   [request]
@@ -114,16 +95,11 @@
           formatted (map format-worker-json workers)]
       (logger/log-info (format "API: GET /api/1c/workers (формат: %s, записей: %d)" format (count workers)))
       (if (= format "xml")
-        (-> (resp/response (workers-to-xml workers))
-            (resp/header "Content-Type" "application/xml; charset=utf-8")
-            (resp/header "Content-Disposition" "attachment; filename=\"workers_export.xml\""))
-        (-> (resp/response (success-response {:workers formatted :count (count workers)}))
-            (resp/content-type "application/json; charset=utf-8"))))
+        (util/file-download (workers-to-xml workers) "application/xml; charset=utf-8" "workers_export.xml")
+        (util/json-ok {:workers formatted :count (count workers)})))
     (catch Exception e
       (logger/log-error e "API: Ошибка при экспорте работников в 1С")
-      (-> (resp/response (error-response "EXPORT_ERROR" "Ошибка при экспорте данных"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "EXPORT_ERROR" "Ошибка при экспорте данных"))))
 
 (defn get-salary-export
   "GET /api/1c/salary — экспорт зарплаты для 1С"
@@ -139,16 +115,11 @@
           formatted (map format-salary-json salary-data)]
       (logger/log-info (format "API: GET /api/1c/salary (формат: %s, период: %d-%d)" format year month))
       (if (= format "xml")
-        (-> (resp/response (salary-to-xml-doc salary-data))
-            (resp/header "Content-Type" "application/xml; charset=utf-8")
-            (resp/header "Content-Disposition" "attachment; filename=\"salary_export.xml\""))
-        (-> (resp/response (success-response {:salary formatted :period (str year "-" month) :count (count salary-data)}))
-            (resp/content-type "application/json; charset=utf-8"))))
+        (util/file-download (salary-to-xml-doc salary-data) "application/xml; charset=utf-8" "salary_export.xml")
+        (util/json-ok {:salary formatted :period (str year "-" month) :count (count salary-data)})))
     (catch Exception e
       (logger/log-error e "API: Ошибка при экспорте зарплаты в 1С")
-      (-> (resp/response (error-response "EXPORT_ERROR" "Ошибка при экспорте данных"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "EXPORT_ERROR" "Ошибка при экспорте данных"))))
 
 (defn import-workers-from-1c
   "POST /api/1c/workers/import — импорт работников из 1С"
@@ -157,61 +128,53 @@
     (let [body (:params request)
           workers (:workers body)]
       (if (not (sequential? workers))
-        (-> (resp/response (error-response "INVALID_FORMAT" "Ожидаются данные в формате {\"workers\": [...]}"))
-            (resp/status 400)
-            (resp/content-type "application/json; charset=utf-8"))
+        (util/json-error 400 "INVALID_FORMAT" "Ожидаются данные в формате {\"workers\": [...]}")
         (do
           (logger/log-info (format "API: POST /api/1c/workers/import (записей: %d)" (count workers)))
-          (-> (resp/response (success-response {:imported (count workers) :message "Данные готовы к импорту"}))
-              (resp/content-type "application/json; charset=utf-8")))))
+          (util/json-ok {:imported (count workers) :message "Данные готовы к импорту"}))))
     (catch Exception e
       (logger/log-error e "API: Ошибка при импорте работников из 1С")
-      (-> (resp/response (error-response "IMPORT_ERROR" "Ошибка при импорте данных"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "IMPORT_ERROR" "Ошибка при импорте данных"))))
 
 (defn get-1c-documentation
   "GET /api/1c/docs — документация API для 1С разработчиков"
   [request]
   (try
     (logger/log-info "API: GET /api/1c/docs")
-    (-> (resp/response
-         {:success true
-          :documentation
-          {:title "API для интеграции с 1С:ЗУП"
-           :version "1.0"
-           :endpoints
-           [{:method "GET"
-             :path "/api/1c/workers"
-             :description "Экспорт списка работников"
-             :params {:format "json|xml (по умолчанию json)"}}
-            {:method "GET"
-             :path "/api/1c/salary"
-             :description "Экспорт данных по зарплате"
-             :params {:format "json|xml"
-                      :year "год (по умолчанию 2025)"
-                      :month "месяц (по умолчанию 10)"}}
-            {:method "POST"
-             :path "/api/1c/workers/import"
-             :description "Импорт работников из 1С"
-             :body {:workers [{:id "number"
-                               :surname "string"
-                               :name "string"
-                               :patronymic "string"
-                               :hireDate "YYYY-MM-DD"
-                               :shop "string"
-                               :paymentSystem "string"
-                               :category "string"
-                               :rank "number"
-                               :workMode "string"}]}}]
-           :examples
-           {:workers-export
-            "GET /api/1c/workers?format=json"
-            :salary-export
-            "GET /api/1c/salary?format=xml&year=2025&month=10"}}})
-        (resp/content-type "application/json; charset=utf-8"))
+    (util/json-response
+     {:success true
+      :documentation
+      {:title "API для интеграции с 1С:ЗУП"
+       :version "1.0"
+       :endpoints
+       [{:method "GET"
+         :path "/api/1c/workers"
+         :description "Экспорт списка работников"
+         :params {:format "json|xml (по умолчанию json)"}}
+        {:method "GET"
+         :path "/api/1c/salary"
+         :description "Экспорт данных по зарплате"
+         :params {:format "json|xml"
+                  :year "год (по умолчанию 2025)"
+                  :month "месяц (по умолчанию 10)"}}
+        {:method "POST"
+         :path "/api/1c/workers/import"
+         :description "Импорт работников из 1С"
+         :body {:workers [{:id "number"
+                           :surname "string"
+                           :name "string"
+                           :patronymic "string"
+                           :hireDate "YYYY-MM-DD"
+                           :shop "string"
+                           :paymentSystem "string"
+                           :category "string"
+                           :rank "number"
+                           :workMode "string"}]}}]
+       :examples
+       {:workers-export
+        "GET /api/1c/workers?format=json"
+        :salary-export
+        "GET /api/1c/salary?format=xml&year=2025&month=10"}}})
     (catch Exception e
       (logger/log-error e "API: Ошибка при получении документации 1С")
-      (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))

@@ -92,6 +92,42 @@
        (resp/status status)
        (resp/content-type "application/json; charset=utf-8"))))
 
+(defn json-ok
+  "JSON ответ 200 OK"
+  ([data]
+   (json-ok data nil))
+  ([data message]
+   (-> (resp/response (success-response data (or message "Операция выполнена успешно")))
+       (resp/content-type "application/json; charset=utf-8"))))
+
+(defn json-created
+  "JSON ответ 201 Created"
+  [data message]
+  (-> (resp/response (success-response data message))
+      (resp/status 201)
+      (resp/content-type "application/json; charset=utf-8")))
+
+(defn json-error
+  "JSON ответ об ошибке с указанным статусом"
+  [status code message]
+  (-> (resp/response (error-response code message))
+      (resp/status status)
+      (resp/content-type "application/json; charset=utf-8")))
+
+(defn json-error-details
+  "JSON ответ об ошибке с деталями"
+  [status code message details]
+  (-> (resp/response (error-response code message details))
+      (resp/status status)
+      (resp/content-type "application/json; charset=utf-8")))
+
+(defn file-download
+  "Ответ для скачивания файла"
+  [content content-type filename]
+  (-> (resp/response content)
+      (resp/header "Content-Type" content-type)
+      (resp/header "Content-Disposition" (str "attachment; filename=\"" filename "\""))))
+
 (defn pagination-meta
   "Метаданные пагинации для ответа"
   [total page per-page]

@@ -1,21 +1,14 @@
 (ns my-ring-app.api.workers
   "REST API для работников"
-  (:require [ring.util.response :as resp]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [my-ring-app.model :as model]
             [my-ring-app.validation :as validation]
             [my-ring-app.auth :as auth]
             [my-ring-app.util :as util]
             [my-ring-app.logger :as logger]))
 
-;; ======================================================================
-;; Вспомогательные функции
-;; ======================================================================
-
 (def ^:private parse-int util/parse-int)
 (def ^:private validate-id util/validate-id)
-(def ^:private success-response util/success-response)
-(def ^:private error-response util/error-response)
 (def ^:private parse-worker-params util/parse-worker-params)
 
 (defn format-worker
@@ -31,10 +24,6 @@
                :категория (:категория worker)
                :разряд (:разряд worker)
                :режим (:режим worker)))))
-
-;; ======================================================================
-;; API endpoints
-;; ======================================================================
 
 (defn get-workers
   "GET /api/workers — получение списка работников с пагинацией"
@@ -55,21 +44,18 @@
           paginated-workers (take per-page (drop offset workers))]
       (logger/log-info (format "API: GET /api/workers (поиск: %s, страница: %d, размер: %d, найдено: %d, org: %s)"
                                (or search "-") page per-page (count paginated-workers) (str org-id)))
-      (-> (resp/response (success-response
-                          {:workers (map format-worker paginated-workers)
-                           :pagination {:page page
-                                        :per_page per-page
-                                        :total total
-                                        :total_pages total-pages
-                                        :has_next (< page total-pages)
-                                        :has_prev (> page 1)}}
-                          (str "Получено " (count paginated-workers) " из " total " работников")))
-          (resp/content-type "application/json; charset=utf-8")))
+      (util/json-ok
+       {:workers (map format-worker paginated-workers)
+        :pagination {:page page
+                     :per_page per-page
+                     :total total
+                     :total_pages total-pages
+                     :has_next (< page total-pages)
+                     :has_prev (> page 1)}}
+       (str "Получено " (count paginated-workers) " из " total " работников")))
     (catch Exception e
       (logger/log-error e "API: Ошибка при получении списка работников")
-      (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
 
 (defn get-worker-by-id
   "GET /api/workers/:id — получение работника по ID"
@@ -77,23 +63,16 @@
   (try
     (let [id (-> request :route-params :id validate-id)]
       (if (nil? id)
-        (-> (resp/response (error-response "INVALID_ID" "Некорректный идентификатор"))
-            (resp/status 400)
-            (resp/content-type "application/json; charset=utf-8"))
+        (util/json-error 400 "INVALID_ID" "Некорректный идентификатор")
         (let [worker (model/get-record-by-id "Работник" (str id))]
           (if worker
             (do
               (logger/log-info (format "API: GET /api/workers/%d" id))
-              (-> (resp/response (success-response (format-worker worker)))
-                  (resp/content-type "application/json; charset=utf-8")))
-            (-> (resp/response (error-response "NOT_FOUND" "Работник не найден"))
-                (resp/status 404)
-                (resp/content-type "application/json; charset=utf-8"))))))
+              (util/json-ok (format-worker worker)))
+            (util/json-error 404 "NOT_FOUND" "Работник не найден")))))
     (catch Exception e
       (logger/log-error e "API: Ошибка при получении работника по ID")
-      (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
 
 (defn create-worker
   "POST /api/workers — создание работника"
@@ -111,24 +90,16 @@
               (logger/log-audit "CREATE" "Worker" (:id result)
                                 (format "Создан работник %s %s (API, org: %s)" (:фамилия data) (:имя data) (str org-id)))
               (logger/log-info (format "API: POST /api/workers — создан работник ID=%s (org: %s)" (str (:id result)) (str org-id)))
-              (-> (resp/response (success-response
-                                  (format-worker (model/get-record-by-id "Работник" (str (:id result))))
-                                  "Работник успешно создан"))
-                  (resp/status 201)
-                  (resp/content-type "application/json; charset=utf-8")))
-            (-> (resp/response (error-response "CREATE_ERROR" (:message result)))
-                (resp/status 500)
-                (resp/content-type "application/json; charset=utf-8"))))
+              (util/json-created
+               (format-worker (model/get-record-by-id "Работник" (str (:id result))))
+               "Работник успешно создан"))
+            (util/json-error 500 "CREATE_ERROR" (:message result))))
         (do
           (logger/log-warn (format "API: Валидация не пройдена: %s" (str/join ", " (:errors validation-result))))
-          (-> (resp/response (error-response "VALIDATION_ERROR" "Ошибка валидации данных" (:errors validation-result)))
-              (resp/status 400)
-              (resp/content-type "application/json; charset=utf-8")))))
+          (util/json-error-details 400 "VALIDATION_ERROR" "Ошибка валидации данных" (:errors validation-result)))))
     (catch Exception e
       (logger/log-error e "API: Ошибка при создании работника")
-      (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
 
 (defn update-worker
   "PUT /api/workers/:id — обновление работника"
@@ -137,10 +108,8 @@
     (let [id (-> request :route-params :id validate-id)
           worker-data (:params request)]
       (if (nil? id)
-        (-> (resp/response (error-response "INVALID_ID" "Некорректный идентификатор"))
-            (resp/status 400)
-            (resp/content-type "application/json; charset=utf-8"))
-            (let [validation-result (validation/validate-worker worker-data)]
+        (util/json-error 400 "INVALID_ID" "Некорректный идентификатор")
+        (let [validation-result (validation/validate-worker worker-data)]
           (if (:valid? validation-result)
             (let [data (parse-worker-params worker-data)
                   result (model/update-record "Работник" id data)]
@@ -149,21 +118,14 @@
                   (logger/log-audit "UPDATE" "Worker" id
                                     (format "Обновлен работник %s %s (API)" (:фамилия data) (:имя data)))
                   (logger/log-info (format "API: PUT /api/workers/%d — обновлён работник" id))
-                  (-> (resp/response (success-response
-                                      (format-worker (model/get-record-by-id "Работник" (str id)))
-                                      "Работник успешно обновлён"))
-                      (resp/content-type "application/json; charset=utf-8")))
-                (-> (resp/response (error-response "UPDATE_ERROR" (:message result)))
-                    (resp/status 500)
-                    (resp/content-type "application/json; charset=utf-8"))))
-            (-> (resp/response (error-response "VALIDATION_ERROR" "Ошибка валидации данных" (:errors validation-result)))
-                (resp/status 400)
-                (resp/content-type "application/json; charset=utf-8"))))))
+                  (util/json-ok
+                   (format-worker (model/get-record-by-id "Работник" (str id)))
+                   "Работник успешно обновлён"))
+                (util/json-error 500 "UPDATE_ERROR" (:message result))))
+            (util/json-error-details 400 "VALIDATION_ERROR" "Ошибка валидации данных" (:errors validation-result))))))
     (catch Exception e
       (logger/log-error e "API: Ошибка при обновлении работника")
-      (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
 
 (defn delete-worker
   "DELETE /api/workers/:id — удаление работника"
@@ -171,24 +133,17 @@
   (try
     (let [id (-> request :route-params :id validate-id)]
       (if (nil? id)
-        (-> (resp/response (error-response "INVALID_ID" "Некорректный идентификатор"))
-            (resp/status 400)
-            (resp/content-type "application/json; charset=utf-8"))
+        (util/json-error 400 "INVALID_ID" "Некорректный идентификатор")
         (let [result (model/delete-record "Работник" id)]
           (if (:success result)
             (do
               (logger/log-audit "DELETE" "Worker" id "Работник удалён (API)")
               (logger/log-info (format "API: DELETE /api/workers/%d — удалён работник" id))
-              (-> (resp/response (success-response nil "Работник успешно удалён"))
-                  (resp/content-type "application/json; charset=utf-8")))
-            (-> (resp/response (error-response "DELETE_ERROR" (:message result)))
-                (resp/status 500)
-                (resp/content-type "application/json; charset=utf-8"))))))
+              (util/json-ok nil "Работник успешно удалён"))
+            (util/json-error 500 "DELETE_ERROR" (:message result))))))
     (catch Exception e
       (logger/log-error e "API: Ошибка при удалении работника")
-      (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
 
 (defn search-workers-api
   "GET /api/workers/search — поиск работников"
@@ -198,17 +153,12 @@
           query-params (:params request)
           query (:q query-params)]
       (if (or (nil? query) (str/blank? query))
-        (-> (resp/response (error-response "MISSING_QUERY" "Параметр поиска 'q' обязателен"))
-            (resp/status 400)
-            (resp/content-type "application/json; charset=utf-8"))
+        (util/json-error 400 "MISSING_QUERY" "Параметр поиска 'q' обязателен")
         (let [workers (model/search-workers query org-id)]
           (logger/log-info (format "API: GET /api/workers/search (запрос: %s, найдено: %d, org: %s)" query (count workers) (str org-id)))
-          (-> (resp/response (success-response
-                               (vec (map format-worker workers))
-                              (str "Найдено " (count workers) " работников по запросу '" query "'")))
-              (resp/content-type "application/json; charset=utf-8")))))
+          (util/json-ok
+           (vec (map format-worker workers))
+           (str "Найдено " (count workers) " работников по запросу '" query "'")))))
     (catch Exception e
       (logger/log-error e "API: Ошибка при поиске работников")
-      (-> (resp/response (error-response "INTERNAL_ERROR" "Внутренняя ошибка сервера"))
-          (resp/status 500)
-          (resp/content-type "application/json; charset=utf-8")))))
+      (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
