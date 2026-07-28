@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file. This change
 
 ## [Unreleased] - 2026-07-28
 
+### ✨ New Features (Q2 2027)
+- **Connection Pooling**: HikariCP — пул соединений с настройкой через env vars (DB_POOL_MAX, DB_POOL_MIN)
+- **Database Indexes**: 14 индексов для ускорения JOIN, поиска, зарплатных запросов и аудита
+- **Rate Limiting**: скользящее окно по IP (30 req/min для API, 100 req/min для страниц), заголовки X-RateLimit-*
+- **Dashboard Polling**: `GET /api/dashboard/poll` — быстрый эндпоинт для реалтайм обновлений дашборда
+- **API Versioning**: `/api/v1/*` маршруты с обратной совместимостью `/api/*`, заголовок X-API-Version
+- **OpenAPI/Swagger**: полная документация API на `/api-docs` (Swagger UI + OpenAPI 3.0.3 JSON)
+
 ### ✨ New Features (Q1 2027)
 - **DB миграции**: `migration.clj` — лёгкая система миграций с таблицей `schema_migrations`, поддержка Up/Down, идемпотентный запуск
 - **Миграция 001**: `001_initial_schema.sql` — фиксирует схему таблиц Пользователь + Аудит_изменений

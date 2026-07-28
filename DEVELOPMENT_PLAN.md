@@ -34,9 +34,9 @@
 | Версия | 2.0.0-SNAPSHOT |
 | Тесты | **51 тест, 192 утверждения** |
 | Reflection warnings | **0** |
-| API endpoints | **28+** (REST + HTML) |
-| Модули | **18+ namespace'ов** |
-| Зависимости | 15 (core) + 3 (test) |
+| API endpoints | **30+** (REST + HTML + v1) |
+| Модули | **20+ namespace'ов** |
+| Зависимости | 16 (core) + 3 (test) |
 
 ### Q1 2027 — ВЫПОЛНЕНО ✅
 
@@ -47,6 +47,16 @@
 - ✅ Клиентская валидация (validation.js)
 - ✅ Тесты: cache_test.clj + migration_test.clj (+9 тестов)
 - ✅ Type hints: все reflection warnings устранены
+
+### Q2 2027 — ВЫПОЛНЕНО ✅
+
+**Задачи Q2 2027 (6/6 выполнено):**
+- ✅ HikariCP connection pooling (config.clj, настраивается через env)
+- ✅ Database indexes — 14 индексов для FK, поиска, зарплаты, аудита
+- ✅ Rate limiting — скользящее окно по IP (API: 30/min, страницы: 100/min)
+- ✅ Dashboard polling — /api/dashboard/poll для реалтайм обновлений
+- ✅ API versioning — /api/v1/* с обратной совместимостью
+- ✅ OpenAPI/Swagger — полная документация на /api-docs
 
 ### Последние улучшения (июль 2026 — рефакторинг)
 
