@@ -96,7 +96,9 @@
 | **Валидация** | `validation.clj` | Проверка входных данных |
 | **Логгер** | `logger.clj` | Система логирования и аудита |
 | **Конфигурация** | `config.clj` | Настройки подключения к БД, порту |
-| **Представления** | `views/*.clj` | Генерация HTML-страниц |
+| **Кэш** | `cache.clj` | Кэширование справочников (Atom) |
+| **Rate Limit** | `rate_limit.clj` | Ограничение частоты запросов |
+| **API Version** | `api_version.clj` | Версионирование API (v1/v2) |
 
 ---
 
@@ -126,6 +128,7 @@
 | **SQLite** | 3.x | Встраиваемая СУБД |
 | **SQLite JDBC** | 3.45.1.0 | Драйвер подключения |
 | **java.jdbc** | 0.7.12 | Clojure-библиотека для JDBC |
+| **HikariCP** | 4.1.0 | Connection pooling |
 
 ### Логирование
 
@@ -157,7 +160,13 @@ my-ring-app/
 │   ├── validation.clj     # Валидация (2 функции)
 │   ├── logger.clj         # Логирование (7 функций)
 │   ├── config.clj         # Конфигурация
+│   ├── migration.clj      # Система миграций БД
+│   ├── cache.clj          # Кэш справочников (Atom)
+│   ├── rate_limit.clj     # Rate limiting middleware
+│   ├── api_version.clj    # API versioning (v1/v2)
 │   ├── util.clj           # Вспомогательные функции
+│   ├── api/
+│   │   └── sse.clj        # Dashboard polling
 │   └── views/
 │       ├── layout.clj     # Общий HTML-шаблон, CSS
 │       ├── home.clj       # Главная страница
@@ -166,14 +175,19 @@ my-ring-app/
 │       ├── salary.clj     # Страница зарплаты
 │       ├── work_time.clj  # Учёт рабочего времени
 │       ├── tables.clj     # Просмотр таблиц БД
+│       ├── auth.clj       # Страницы аутентификации
 │       └── helpers.clj    # Вспомогательные функции
 ├── resources/
-│   └── logback.xml        # Конфигурация логгера
+│   ├── migrations/         # SQL миграции
+│   ├── logback.xml        # Конфигурация логгера
+│   └── public/             # Статические файлы (CSS, JS)
 ├── test/my_ring_app/
 │   ├── core_test.clj      # Интеграционные тесты
 │   ├── model_test.clj     # Тесты модели
 │   ├── validation_test.clj # Тесты валидации
 │   ├── util_test.clj      # Тесты вспомогательных функций
+│   ├── cache_test.clj     # Тесты кэша
+│   ├── migration_test.clj # Тесты миграций
 │   └── api/
 │       └── export_test.clj # Тесты экспорта
 ├── doc/
@@ -201,14 +215,22 @@ my-ring-app/
 **Middleware цепочка (снаружи внутрь):**
 ```clojure
 app-routes
-  → wrap-security-headers
-    → wrap-error-handler
-      → wrap-content-type
-        → wrap-file-info
-          → wrap-keyword-params
-            → wrap-params
-              → wrap-json-body
-                → wrap-json-response
+  → wrap-session (cookie store)
+    → wrap-authentication
+      → wrap-anti-forgery
+        → wrap-csrf-error
+          → wrap-security-headers
+            → wrap-error-handler
+              → wrap-rate-limit (30 API/min, 100 page/min)
+                → wrap-api-v1-rewrite (/api/v1/* → /api/*)
+                  → wrap-api-version (X-API-Version header)
+                    → wrap-logging
+                      → wrap-content-type
+                        → wrap-file-info
+                          → wrap-keyword-params
+                            → wrap-params
+                              → wrap-json-body
+                                → wrap-json-response
 ```
 
 #### routes.clj (Маршруты)
@@ -419,6 +441,14 @@ CREATE TABLE Начисление_заработной_платы (
 | **Режим_работы** | id, название_режима | 9 (Односменный, Двухсменный, Вахтовый, ...) |
 | **Оклад** | id, оклад_в_месяц | 20+ (25000 - 200000 ₽) |
 | **Почасовые_ставки** | id, ставка_в_час | 14+ (150 - 600 ₽/час) |
+
+#### Служебные таблицы
+
+| Таблица | Поля | Описание |
+|---------|------|----------|
+| **Пользователь** | id, username, password_hash, email, role, is_active, created_at | Аутентификация |
+| **Аудит_изменений** | id, entity_type, entity_id, action, user_id, username, old_values, new_values, ip_address, user_agent, details, created_at | Журнал изменений |
+| **schema_migrations** | version, applied_at | Отслеживание применённых миграций |
 
 ### Связи между таблицами
 
@@ -827,7 +857,9 @@ lein test my-ring-app.validation-test
 | `core_test.clj` | 3 | 10 | Интеграционные тесты |
 | `util_test.clj` | 21 | 63 | Тесты вспомогательных функций |
 | `api/export_test.clj` | 8 | 32 | Тесты экспорта данных |
-| **Итого** | **42** | **165** | |
+| `cache_test.clj` | 5 | 18 | Тесты кэша справочников |
+| `migration_test.clj` | 4 | 12 | Тесты миграций |
+| **Итого** | **51** | **192** | |
 
 ### Покрытие тестами
 
@@ -954,6 +986,11 @@ java -Xms512m -Xmx2g -jar target/uberjar/my-ring-app-0.1.0-SNAPSHOT-standalone.j
 |------------|--------------|----------|
 | `PORT` | 3000 | Порт веб-сервера |
 | `ENV` | development | Окружение (development/production) |
+| `SESSION_SECRET` | `d3v-s3cr3t-k3y!1` | Секрет для сессий (обязателен в production) |
+| `ADMIN_PASSWORD` | `admin` | Пароль администратора (обязателен в production) |
+| `DB_TYPE` | `sqlite` | Тип БД (sqlite/postgresql) |
+| `DB_POOL_MAX` | `10` | Макс. размер пула соединений (PostgreSQL) |
+| `DB_POOL_MIN` | `2` | Мин. размер пула соединений (PostgreSQL) |
 | `JVM_OPTS` | - | Опции JVM (например, `-Xmx1g`) |
 
 ### systemd-сервис (Linux)
@@ -1041,43 +1078,42 @@ sudo certbot --nginx -d your-domain.com
 
 ## Известные ограничения
 
-### Текущие ограничения
+### Устранённые ограничения
 
-| Ограничение | Описание | Возможное решение |
-|-------------|----------|-------------------|
-| **SQLite для продакшена** | Ограниченная масштабируемость | PostgreSQL поддерживается, рекомендуется для prod |
-| **CSS в коде** | Стили встроены в Clojure-код | Вынести в отдельные CSS-файлы |
-| **Нет миграций БД** | Схема не версионируется | Liquibase/Flyway |
-| **Нет type hints** | Некоторые reflection warnings | Добавить type hints |
-| **Нет connection pooling** | Для PostgreSQL | HikariCP |
+| Ограничение | Статус | Описание |
+|-------------|--------|----------|
+| ~~SQLite для продакшена~~ | ✅ Решено | PostgreSQL поддерживается через DB_TYPE |
+| ~~CSS в коде~~ | ✅ Решено | Стили вынесены в resources/public/css/app.css |
+| ~~Нет миграций БД~~ | ✅ Решено | migration.clj с таблицей schema_migrations |
+| ~~Нет type hints~~ | ✅ Решено | Все reflection warnings устранены |
+| ~~Нет connection pooling~~ | ✅ Решено | HikariCP с настраиваемым размером пула |
 
-### Технические долги
+### Технический долг (устранён)
 
-1. **Файл `doc/intro.md`** — содержит заглушку "TODO: write documentation"
-2. **CSS в коде** — стили встроены в Clojure-код (вынос в отдельные файлы)
-3. **Нет type hints** — некоторые функции не имеют type hints (reflection warnings)
-4. **Нет миграций БД** — схема не версионируется (рекомендация: Liquibase/Flyway)
-5. **Нет connection pooling** — для PostgreSQL рекомендуется HikariCP
+Все ранее выявленные проблемы устранены в Q1-Q2 2027:
+- ✅ Миграции БД (migration.clj + SQL файлы)
+- ✅ CSS вынесен в отдельные файлы
+- ✅ Type hints добавлены (0 reflection warnings)
+- ✅ Connection pooling (HikariCP)
+- ✅ Rate limiting (скользящее окно по IP)
+- ✅ API versioning (/api/v1/)
+- ✅ Кэш справочников (Atom, автообновление)
+- ✅ Клиентская валидация (validation.js)
 
 ### Рекомендации по улучшению
 
-**Краткосрочные (1-2 недели):**
-- [ ] Добавить миграции БД (Liquibase/Flyway)
-- [ ] Кэширование справочников (Atom/delay)
-- [ ] Вынести CSS в отдельные файлы
-- [ ] Добавить клиентскую валидацию форм (JavaScript)
-
-**Среднесрочные (1-2 месяца):**
+**Краткосрочные:**
 - [ ] Покрытие тестами > 70%
-- [ ] Connection pooling (HikariCP)
-- [ ] Rate limiting API
-- [ ] Type hints для performance
+- [ ] Добавить тесты для API endpoints
 
-**Долгосрочные (3-6 месяцев):**
+**Среднесрочные (Q3 2027):**
 - [ ] Мульти-тенантность
 - [ ] OAuth2 (Google/Yandex)
-- [ ] WebSocket для обновлений
+- [ ] WebSocket для реалтайм обновлений
+
+**Долгосрочные (Q4 2027):**
 - [ ] GraphQL API
+- [ ] CLI утилита
 
 ---
 

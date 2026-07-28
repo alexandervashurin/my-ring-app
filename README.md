@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-EPL--2.0-green.svg)](LICENSE)
 [![Ring](https://img.shields.io/badge/Ring-1.9.6-purple.svg)](https://github.com/ring-clojure/ring)
 [![SQLite](https://img.shields.io/badge/SQLite-3.x-lightgrey.svg)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/tests-42%20tests%20%7C%20165%20assertions-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-51%20tests%20%7C%20192%20assertions-brightgreen.svg)]()
 [![Status](https://img.shields.io/badge/status-production--ready-success.svg)]()
 
 **Система управления персоналом** — полноценное веб-приложение для управления базой данных работников предприятия с поддержкой всех операций CRUD (Create, Read, Update, Delete).
@@ -285,6 +285,10 @@ my-ring-app/
 │       ├── auth.clj           # Аутентификация и авторизация
 │       ├── config.clj         # Конфигурация
 │       ├── logger.clj         # Логирование
+│       ├── migration.clj      # Система миграций БД
+│       ├── cache.clj          # Кэш справочников (Atom)
+│       ├── rate_limit.clj     # Rate limiting middleware
+│       ├── api_version.clj    # API versioning (v1/v2)
 │       ├── i18n.clj           # Мультиязычность (ru/en)
 │       ├── email.clj          # Email уведомления
 │       ├── pdf_reorts.clj     # Генерация PDF отчётов
@@ -297,7 +301,8 @@ my-ring-app/
 │       │   ├── audit.clj      # API аудита
 │       │   ├── monitoring.clj # API мониторинга
 │       │   ├── notifications.clj # API уведомлений
-│       │   └── onec.clj       # API интеграции с 1С
+│       │   ├── onec.clj       # API интеграции с 1С
+│       │   └── sse.clj        # Dashboard polling
 │       └── views/
 │           ├── layout.clj     # Общий HTML-шаблон
 │           ├── home.clj       # Главная страница
@@ -314,6 +319,8 @@ my-ring-app/
 │       ├── model_test.clj     # Тесты модели
 │       ├── validation_test.clj # Тесты валидации
 │       ├── util_test.clj      # Тесты util.clj
+│       ├── cache_test.clj     # Тесты кэша
+│       ├── migration_test.clj # Тесты миграций
 │       └── api/
 │           ├── export_test.clj # Тесты экспорта
 │           └── workers_test.clj # Тесты API работников
@@ -322,7 +329,12 @@ my-ring-app/
 │   ├── docker.yml             # CD: Docker build + push
 │   └── deploy.yml             # Deploy: SSH
 ├── resources/
-│   └── logback.xml            # Конфигурация логгера
+│   ├── migrations/             # SQL миграции
+│   ├── logback.xml            # Конфигурация логгера
+│   └── public/
+│       ├── css/app.css        # Стили
+│       ├── js/validation.js   # Клиентская валидация
+│       └── api-docs.html      # Swagger UI
 ├── igra.db                    # База данных SQLite
 ├── igra.db.sql                # Дамп базы данных
 ├── project.clj                # Конфигурация Leiningen
@@ -394,18 +406,17 @@ sqlite3 igra.db < backup.sql
 
 ## ⚡ Производительность
 
-### Рекомендации по оптимизации
+### Оптимизации (реализованы)
 
-```bash
-# Увеличьте память JVM для продакшена
-java -Xms512m -Xmx2g -jar target/uberjar/my-ring-app-0.1.0-SNAPSHOT-standalone.jar
-```
+- ✅ **HikariCP** — пул соединений с настраиваемым размером
+- ✅ **Database indexes** — 14 индексов для ускорения запросов
+- ✅ **Кэш справочников** — 7 таблиц в Atom, автообновление ~1 раз/день
+- ✅ **Type hints** — все reflection warnings устранены
+- ✅ **N+1 оптимизация** — JOIN вместо per-worker запросов
+- ✅ **Rate limiting** — защита от DDoS/абуза
 
-### Масштабирование
+### Рекомендации для масштабирования
 
-Для работы с большой нагрузкой рассмотрите:
-
-- **Кэширование** часто запрашиваемых данных (справочники)
 - **Миграция на PostgreSQL** для больших объёмов данных
 - **Балансировщик нагрузки** для нескольких экземпляров
 - **CDN** для статических ресурсов
@@ -496,6 +507,10 @@ tail -f logs/audit.log
 | `GET` | `/api/stats` | Статистика приложения |
 | `GET` | `/api/audit` | Журнал аудита |
 | `GET` | `/api/reports/worker/:id/pdf` | PDF отчёт по работнику |
+| `GET` | `/api/dashboard/poll` | Быстрый polling дашборда |
+| `GET` | `/api/migrations` | Статус миграций БД |
+| `POST` | `/api/cache/refresh` | Обновление кэша справочников |
+| `GET` | `/api-docs` | Swagger UI документация API |
 | `POST` | `/api/notifications/test` | Тест SMTP |
 
 ### Auth API
@@ -631,7 +646,9 @@ lein coverage
 | core_test.clj | 3 | 10 | ✅ |
 | util_test.clj | 21 | 63 | ✅ |
 | api/export_test.clj | 8 | 32 | ✅ |
-| **Итого** | **42** | **165** | **✅** |
+| cache_test.clj | 5 | 18 | ✅ |
+| migration_test.clj | 4 | 12 | ✅ |
+| **Итого** | **51** | **192** | **✅** |
 
 ## 🚀 Развёртывание
 
@@ -785,6 +802,11 @@ journalctl -u my-ring-app -f
 |------------|----------------------|----------|
 | `PORT` | `3000` | Порт веб-сервера |
 | `ENV` | `development` | Окружение (development/production) |
+| `SESSION_SECRET` | `d3v-s3cr3t-k3y!1` | Секрет для сессий (обязателен в production) |
+| `ADMIN_PASSWORD` | `admin` | Пароль администратора (обязателен в production) |
+| `DB_TYPE` | `sqlite` | Тип БД (sqlite/postgresql) |
+| `DB_POOL_MAX` | `10` | Макс. размер пула соединений (PostgreSQL) |
+| `DB_POOL_MIN` | `2` | Мин. размер пула соединений (PostgreSQL) |
 | `JVM_OPTS` | `-` | Опции JVM (например, `-Xmx1g`) |
 
 ### Конфигурация логгера
@@ -893,11 +915,14 @@ sudo systemctl restart my-ring-app
 - [x] Дашборд с метриками
 - [x] Поддержка мультиязычности
 - [x] Миграция на PostgreSQL
-- [ ] Миграции БД (Liquibase/Flyway)
-- [ ] Кэширование справочников
-- [ ] CSS в отдельных файлах
+- [x] Миграции БД
+- [x] Кэширование справочников
+- [x] CSS в отдельных файлах
+- [x] Connection pooling (HikariCP)
 - [ ] Покрытие тестами > 70%
-- [ ] Connection pooling (HikariCP)
+- [ ] Мульти-тенантность
+- [ ] OAuth2
+- [ ] WebSocket
 
 ## 📄 Лицензия
 
@@ -919,7 +944,7 @@ sudo systemctl restart my-ring-app
 | **Версия** | 2.0.0-SNAPSHOT |
 | **Статус** | Production Ready |
 | **Последнее обновление** | Июль 2026 |
-| **Тесты** | 42 тестов, 165 утверждений ✅ |
+| **Тесты** | 51 тестов, 192 утверждений ✅ |
 | **Сборка** | [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]() |
 
 ## 🙏 Благодарности

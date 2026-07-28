@@ -3,64 +3,50 @@ All notable changes to this project will be documented in this file. This change
 
 ## [Unreleased] - 2026-07-28
 
-### ✨ New Features (Q2 2027)
-- **Connection Pooling**: HikariCP — пул соединений с настройкой через env vars (DB_POOL_MAX, DB_POOL_MIN)
-- **Database Indexes**: 14 индексов для ускорения JOIN, поиска, зарплатных запросов и аудита
-- **Rate Limiting**: скользящее окно по IP (30 req/min для API, 100 req/min для страниц), заголовки X-RateLimit-*
-- **Dashboard Polling**: `GET /api/dashboard/poll` — быстрый эндпоинт для реалтайм обновлений дашборда
-- **API Versioning**: `/api/v1/*` маршруты с обратной совместимостью `/api/*`, заголовок X-API-Version
-- **OpenAPI/Swagger**: полная документация API на `/api-docs` (Swagger UI + OpenAPI 3.0.3 JSON)
+### ✨ New Features
 
-### ✨ New Features (Q1 2027)
+**Q1 2027:**
 - **DB миграции**: `migration.clj` — лёгкая система миграций с таблицей `schema_migrations`, поддержка Up/Down, идемпотентный запуск
-- **Миграция 001**: `001_initial_schema.sql` — фиксирует схему таблиц Пользователь + Аудит_изменений
-- **Кэш справочников**: `cache.clj` — Atom-based кэш для 7 справочных таблиц, автообновление ~1 раз/день, ручной refresh
-- **API миграций**: `GET /api/migrations` (admin) — статус всех миграций
-- **API кэша**: `POST /api/cache/refresh` (admin) — принудительное обновление кэша
-- **Клиентская валидация**: `validation.js` — валидация форм работника и учета времени на клиенте (длина полей, формат даты, условная валидация оклад/ставка)
+- **Миграции 001+002**: начальная схема + 14 индексов для оптимизации запросов
+- **Кэш справочников**: `cache.clj` — Atom-based кэш для 7 справочных таблиц, автообновление ~1 раз/день
+- **Клиентская валидация**: `validation.js` — валидация форм работника и учета времени на клиенте
 - **Извлечение CSS**: инлайн-стили из `views/auth.clj` перенесены в `app.css`
 
-### ⚡ Performance
-- **Reflection warnings**: все reflection warnings устранены (type hints в `export.clj` для Apache POI, `migration.clj` для File I/O)
-- **Кэш справочников**: `load-worker-form-data` читает из кэша вместо 7 запросов к БД при каждом рендер формы
-
-### 🧪 Tests
-- Новые тесты: `cache_test.clj` (load-all!, getters, cache-status, data consistency) — 5 тестов, 18 утверждений
-- Новые тесты: `migration_test.clj` (status, applied detection, idempotent run, rollback) — 4 теста
-- Итого: **51 тест, 192 утверждения, 0 ошибок**
-
-### 🔧 Refactoring (массовый)
-- Удалён мёртвый код `defroutes api-routes` из всех 9 API namespace'ов (dashboard, monitoring, workers, salary, export, audit, reports, onec, notifications)
-- Удалены неиспользуемые require: `compojure.core` (defroutes/GET/POST), `clojure.string` (из monitoring, salary, export), `views.layout` (из export)
-- Созданы общие хелперы в `util.clj`: `json-response`, `pagination-meta`
-- Извлечён `parse-work-time-params` в `util.clj` (убрано дублирование controllers.clj + api/salary.clj)
-- Удалён `get-spravochnik` (дублировал `get-table-data`), все вызовы заменены
-- Удалён алиас `validate-worker-update` (вызовы используют `validate-worker` напрямую)
-- Удалены неиспользуемые функции из `auth.clj`: `logged-in?`, `get-current-user`
-- Удалён мёртвый `render-distribution-charts` из `views/dashboard.clj`
-- Удалена неиспользуемая зависимость `clojure.string` из `views/workers.clj`
+**Q2 2027:**
+- **Connection Pooling**: HikariCP — пул соединений с настройкой через env vars (DB_POOL_MAX, DB_POOL_MIN)
+- **Database Indexes**: 14 индексов для ускорения JOIN, поиска, зарплатных запросов и аудита
+- **Rate Limiting**: скользящее окно по IP (30 req/min для API, 100 req/min для страниц)
+- **Dashboard Polling**: `GET /api/dashboard/poll` — быстрый эндпоинт для реалтайм обновлений
+- **API Versioning**: `/api/v1/*` маршруты с обратной совместимостью `/api/*`
+- **OpenAPI/Swagger**: полная документация API на `/api-docs`
 
 ### ⚡ Performance
-- Исправлен N+1 запрос в `monitoring.clj` app-statistics — теперь использует `get-salary-with-details` вместо пофраерных запросов
-- `get-db-stats` переиспользует `get-dashboard-stats` (COUNT-запросы) вместо загрузки всех работников
-- `require-role` предвычисляет `allowed-roles` как set (аллоцировался per-request)
+- HikariCP connection pooling для PostgreSQL и SQLite
+- 14 database indexes для оптимизации JOIN и поисковых запросов
+- Кэш справочников — `load-worker-form-data` читает из кэша вместо 7 запросов к БД
+- N+1 оптимизация в `monitoring.clj` app-statistics
+- `get-db-stats` переиспользует `get-dashboard-stats` (COUNT-запросы)
+- `require-role` предвычисляет `allowed-roles` как set
+- Все reflection warnings устранены (type hints в export.clj, migration.clj)
 
 ### 🔒 Security
-- `SESSION_SECRET` и `ADMIN_PASSWORD` теперь выбрасывают `IllegalStateException` в production если не заданы (вместо дефолтных значений)
+- `SESSION_SECRET` и `ADMIN_PASSWORD` выбрасывают `IllegalStateException` в production
+- Rate limiting middleware — защита от DDoS/абуза (30 API req/min, 100 page req/min)
+- XSS, CSRF, Clickjacking, CSP, Secure Cookie, Brute-force protection
 
-### 🐛 Bug Fixes
-- Исправлен unsafe `Integer/parseInt` → `util/parse-int` в `api/salary.clj` update-work-time
-- Исправлена несогласованность `clojure.string` full-path vs alias (helpers.clj, dashboard.clj, controllers.clj, api/workers.clj)
-- Исправлен double-read в `i18n.clj` (лишний `with-open` + `slurp`)
-- Перенесён прямой JDBC из `api/audit.clj` в model layer (новые функции `get-audit-count-by-action`, `get-audit-count-by-entity`)
-- Добавлен `get-salary-with-details` в model.clj (JOIN запрос для экспорта и мониторинга)
+### 🧪 Tests
+- **51 тест, 192 утверждения, 0 ошибок**
+- Новые: `cache_test.clj` (5 тестов), `migration_test.clj` (4 теста)
 
-### 📝 Documentation
-- Обновлён DEVELOPMENT_PLAN.md — план на Q1 2027
-- Обновлён CHANGELOG.md
+### 🔧 Refactoring
+- Удалён мёртвый код `defroutes api-routes` из всех 9 API namespace'ов
+- Удалены неиспользуемые require и функции (logged-in?, get-current-user, get-spravochnik)
+- Созданы общие хелперы: `json-response`, `pagination-meta`
 
 ### 🏗️ Infrastructure
-- Добавлены GitHub Actions workflow'и: тесты + uberjar, Docker build + push to GHCR, SSH deploy
+- HikariCP connection pooling с настраиваемым размером через env vars
+- DB миграции (custom runner + schema_migrations table)
+- GitHub Actions: тесты + uberjar, Docker build + push, SSH deploy
 
 ---
 
