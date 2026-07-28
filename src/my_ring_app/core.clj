@@ -15,7 +15,8 @@
             [my-ring-app.auth :as auth]
             [my-ring-app.migration :as migration]
             [my-ring-app.cache :as cache]
-            [my-ring-app.rate-limit :as rate-limit]))
+            [my-ring-app.rate-limit :as rate-limit]
+            [my-ring-app.api-version :as api-version]))
 
 ;; ======================================================================
 ;; Middleware
@@ -100,6 +101,8 @@
       wrap-security-headers
       wrap-error-handler
       (rate-limit/wrap-rate-limit)
+      (api-version/wrap-api-v1-rewrite)
+      (api-version/wrap-api-version)
       wrap-logging
       wrap-content-type
       wrap-file-info
