@@ -18,7 +18,7 @@
          "<div class='salary-grid'>"
          
          "<div>"
-         "<p><strong>👨‍💼 ФИО:</strong> <span class='fs-medium text-blue'>" (html-escape (:фамилия salary-info)) " " (html-escape (:имя salary-info)) " " (html-escape (or (:отчество salary-info) "")) "</span></p>"
+         "<p><strong>👨‍💼 ФИО:</strong> <span class='fs-medium text-blue'>" (helpers/render-full-name salary-info) "</span></p>"
          "<p><strong>🏭 Цех:</strong> " (html-escape (:название_цеха salary-info)) "</p>"
          "<p><strong>💰 Система оплаты:</strong> " (html-escape (:название_системы salary-info)) "</p>"
          "<p><strong>⏰ Отработано часов:</strong> <span class='fw-bold text-green'>" (html-escape (str (:всего_отработанных_часов salary-info))) " ч.</span></p>"
@@ -96,7 +96,7 @@
          
          ;; Информация о работнике
          "<div class='info-box'>"
-         "<p ><strong>ФИО:</strong> " (html-escape (:фамилия worker)) " " (html-escape (:имя worker)) " " (html-escape (or (:отчество worker) "")) "</p>"
+         "<p ><strong>ФИО:</strong> " (helpers/render-full-name worker) "</p>"
          "<p ><strong>Дата приема:</strong> " (html-escape (:дата_приема worker)) "</p>"
          "</div>"
          
@@ -107,5 +107,5 @@
          (render-salary-history salary-history)
          
          "</div>")
-    (str "Зарплата: " (html-escape (:фамилия worker)) " " (html-escape (:имя worker)))
+    (str "Зарплата: " (helpers/render-short-name worker))
     "workers"))

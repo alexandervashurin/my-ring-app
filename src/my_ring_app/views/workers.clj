@@ -27,7 +27,7 @@
                                (map (fn [w]
                                       (str "<tr>"
                                            "<td>" (html-escape (str (:id w))) "</td>"
-                                           "<td><strong>" (html-escape (:фамилия w)) "</strong> " (html-escape (:имя w)) " " (html-escape (or (:отчество w) "")) "</td>"
+                                           "<td><strong>" (helpers/render-full-name w) "</strong></td>"
                                            "<td>" (html-escape (:дата_приема w)) "</td>"
                                            "<td>" (html-escape (:цех w)) "</td>"
                                            "<td>" (html-escape (:система w)) "</td>"
@@ -101,74 +101,16 @@
          "<form method='POST' action='" (html-escape form-action) "' class='form-card'>"
          (csrf-field)
 
-         ;; Фамилия
-         "<div class='form-group'>"
-         "<label>Фамилия *</label>"
-         "<input type='text' name='фамилия' value='" (html-escape (or (:фамилия worker-data) "")) "' required>"
-         "</div>"
-
-         ;; Имя
-         "<div class='form-group'>"
-         "<label>Имя *</label>"
-         "<input type='text' name='имя' value='" (html-escape (or (:имя worker-data) "")) "' required>"
-         "</div>"
-
-         ;; Отчество
-         "<div class='form-group'>"
-         "<label>Отчество</label>"
-         "<input type='text' name='отчество' value='" (html-escape (or (:отчество worker-data) "")) "'>"
-         "</div>"
-
-         ;; Дата приема
-         "<div class='form-group'>"
-         "<label>Дата приема *</label>"
-         "<input type='date' name='дата_приема' value='" (html-escape (or (:дата_приема worker-data) "")) "' required>"
-         "</div>"
-         
-         ;; Цех
-         "<div class='form-group'>"
-         "<label>Цех *</label>"
-         "<select name='цех_id' required>"
-         "<option value=''>Выберите цех</option>"
-         (apply str (map #(helpers/option-tag % :id :название_цеха цех-id) цеха))
-         "</select>"
-         "</div>"
-         
-         ;; Система оплаты
-         "<div class='form-group'>"
-         "<label>Система оплаты *</label>"
-         "<select name='система_оплаты_id' required onchange='togglePaymentFields(this.value)'>"
-         "<option value=''>Выберите систему</option>"
-         (apply str (map #(helpers/option-tag % :id :название_системы система-id) системы_оплаты))
-         "</select>"
-         "</div>"
-         
-         ;; Категория работника
-         "<div class='form-group'>"
-         "<label>Категория работника *</label>"
-         "<select name='категория_работника_id' required>"
-         "<option value=''>Выберите категорию</option>"
-         (apply str (map #(helpers/option-tag % :id :название_категории категория-id) категории))
-         "</select>"
-         "</div>"
-         
-         ;; Разряд
-         "<div class='form-group'>"
-         "<label>Разряд *</label>"
-         "<select name='разряд_id' required>"
-         "<option value=''>Выберите разряд</option>"
-         (apply str (map #(helpers/option-tag % :id :номер_разряда разряд-id) разряды))
-         "</select>"
-         "</div>"
-         
-         ;; Режим работы
-         "<div class='form-group'>"
-         "<label>Режим работы *</label>"
-         "<select name='режим_работы_id' required>"
-         "<option value=''>Выберите режим</option>"
-         (apply str (map #(helpers/option-tag % :id :название_режима режим-id) режимы))
-         "</select>"
-         "</div>"
+         (helpers/text-input "Фамилия" :фамилия (:фамилия worker-data) {:required true})
+         (helpers/text-input "Имя" :имя (:имя worker-data) {:required true})
+         (helpers/text-input "Отчество" :отчество (:отчество worker-data))
+         (helpers/text-input "Дата приема" :дата_приема (:дата_приема worker-data) {:required true :type "date"})
+         (helpers/select-input "Цех" :цех_id цеха :id :название_цеха цех-id {:required true})
+         (helpers/select-input "Система оплаты" :система_оплаты_id системы_оплаты :id :название_системы система-id
+                               {:required true :attrs {:onchange "togglePaymentFields(this.value)"}})
+         (helpers/select-input "Категория работника" :категория_работника_id категории :id :название_категории категория-id {:required true})
+         (helpers/select-input "Разряд" :разряд_id разряды :id :номер_разряда разряд-id {:required true})
+         (helpers/select-input "Режим работы" :режим_работы_id режимы :id :название_режима режим-id {:required true})
          
          ;; Оклад (показывается только при системе оплаты "Оклад")
          "<div class='form-group payment-field' id='oklad-field' style='display: none;'>"

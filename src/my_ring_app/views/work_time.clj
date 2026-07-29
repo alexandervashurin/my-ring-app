@@ -58,7 +58,7 @@
          
          ;; Информация о работнике
          "<div class='info-box'>"
-          "<p ><strong>👨‍💼 ФИО:</strong> " (html-escape (:фамилия worker)) " " (html-escape (:имя worker)) " " (html-escape (or (:отчество worker) "")) "</p>"
+          "<p ><strong>👨‍💼 ФИО:</strong> " (helpers/render-full-name worker) "</p>"
           "<p ><strong>🏭 Цех:</strong> " (html-escape (:цех worker)) "</p>"
           "<p ><strong>📅 Дата приема:</strong> " (html-escape (:дата_приема worker)) "</p>"
          "</div>"
@@ -69,7 +69,7 @@
          "</div>"
          
          "</div>")
-    (str "Учет времени: " (html-escape (:фамилия worker)) " " (html-escape (:имя worker)))
+    (str "Учет времени: " (helpers/render-short-name worker))
     "workers"))
 
 (defn render-edit-work-time-form
@@ -86,7 +86,7 @@
            
            ;; Информация о работнике
            "<div class='info-box'>"
-            "<p ><strong>👨‍💼 Работник:</strong> " (html-escape (:фамилия worker)) " " (html-escape (:имя worker)) " " (html-escape (or (:отчество worker) "")) "</p>"
+            "<p ><strong>👨‍💼 Работник:</strong> " (helpers/render-full-name worker) "</p>"
             "<p ><strong>🏭 Цех:</strong> " (html-escape (:цех worker)) "</p>"
            "</div>"
            
@@ -96,65 +96,16 @@
            (str "<form method='POST' action='" (url (str "/work-time/" (html-escape (str (:id work-time-record))) "/update")) "' class='form-card'>")
            (csrf-field)
 
-           ;; Год
-           "<div class='form-group'>"
-           "<label>Год *</label>"
-            "<input type='text' name='год' value='" (html-escape (:год work-time-record)) "' required>"
-            "</div>"
-            
-            ;; Месяц
-            "<div class='form-group'>"
-            "<label>Месяц * (1-12)</label>"
-            "<input type='text' name='месяц' value='" (html-escape (:месяц work-time-record)) "' required>"
-            "</div>"
-            
-            ;; Плановые часы
-            "<div class='form-group'>"
-            "<label>Всего часов за месяц по плану *</label>"
-            "<input type='text' name='всего_часов_за_месяц_по_плану' value='" (html-escape (:всего_часов_за_месяц_по_плану work-time-record)) "' required>"
-            "</div>"
-            
-            ;; Фактические часы
-            "<div class='form-group'>"
-            "<label>Всего часов в месяц по факту *</label>"
-            "<input type='text' name='всего_часов_в_месяц_по_факту' value='" (html-escape (:всего_часов_в_месяц_по_факту work-time-record)) "' required>"
-            "</div>"
-            
-            ;; Отработанные дни
-            "<div class='form-group'>"
-            "<label>Количество отработанных дней</label>"
-            "<input type='text' name='количество_отработанных_дней' value='" (html-escape (or (:количество_отработанных_дней work-time-record) "")) "'>"
-            "</div>"
-            
-            ;; Рабочие часы в день
-            "<div class='form-group'>"
-            "<label>Количество рабочих часов в день</label>"
-            "<input type='text' name='количество_рабочих_часов_в_день' value='" (html-escape (or (:количество_рабочих_часов_в_день work-time-record) "")) "'>"
-            "</div>"
-            
-            ;; Всего отработанных часов
-            "<div class='form-group'>"
-            "<label>Всего отработанных часов</label>"
-            "<input type='text' name='всего_отработанных_часов' value='" (html-escape (or (:всего_отработанных_часов work-time-record) "")) "'>"
-            "</div>"
-            
-            ;; Сколько должны отработать
-            "<div class='form-group'>"
-            "<label>Сколько должны отработать</label>"
-            "<input type='text' name='сколько_должны_отработать' value='" (html-escape (or (:сколько_должны_отработать work-time-record) "")) "'>"
-            "</div>"
-            
-            ;; Больничные дни
-            "<div class='form-group'>"
-            "<label>Больничные дни</label>"
-            "<input type='text' name='больничные_дни' value='" (html-escape (or (:больничные_дни work-time-record) "0")) "'>"
-            "</div>"
-            
-            ;; Командировочные дни
-            "<div class='form-group'>"
-            "<label>Командировочные дни</label>"
-            "<input type='text' name='командировочные_дни' value='" (html-escape (or (:командировочные_дни work-time-record) "0")) "'>"
-            "</div>"
+           (helpers/text-input "Год" :год (:год work-time-record) {:required true})
+           (helpers/text-input "Месяц (1-12)" :месяц (:месяц work-time-record) {:required true})
+           (helpers/text-input "Всего часов за месяц по плану" :всего_часов_за_месяц_по_плану (:всего_часов_за_месяц_по_плану work-time-record) {:required true})
+           (helpers/text-input "Всего часов в месяц по факту" :всего_часов_в_месяц_по_факту (:всего_часов_в_месяц_по_факту work-time-record) {:required true})
+           (helpers/text-input "Количество отработанных дней" :количество_отработанных_дней (:количество_отработанных_дней work-time-record))
+           (helpers/text-input "Количество рабочих часов в день" :количество_рабочих_часов_в_день (:количество_рабочих_часов_в_день work-time-record))
+           (helpers/text-input "Всего отработанных часов" :всего_отработанных_часов (:всего_отработанных_часов work-time-record))
+           (helpers/text-input "Сколько должны отработать" :сколько_должны_отработать (:сколько_должны_отработать work-time-record))
+           (helpers/text-input "Больничные дни" :больничные_дни (:больничные_дни work-time-record))
+           (helpers/text-input "Командировочные дни" :командировочные_дни (:командировочные_дни work-time-record))
            
            ;; Кнопки
            "<div class='flex-row mt-20'>"
@@ -164,5 +115,5 @@
            
            "</form>"
            "</div>")
-      (str "Редактирование времени: " (html-escape (:фамилия worker)) " " (html-escape (:имя worker)))
+      (str "Редактирование времени: " (helpers/render-short-name worker))
       "workers")))
