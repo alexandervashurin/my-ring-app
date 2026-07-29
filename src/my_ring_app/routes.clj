@@ -15,6 +15,8 @@
             [my-ring-app.api.onec :as api-onec]
             [my-ring-app.api.monitoring :as api-monitoring]
             [my-ring-app.api.organizations :as api-organizations]
+            [my-ring-app.api.tariff :as api-tariff]
+            [my-ring-app.api.session-audit :as api-session-audit]
             [my-ring-app.sse :as sse]
             [my-ring-app.auth :as auth]))
 
@@ -28,10 +30,20 @@
   [handler]
   (-> handler auth/require-authentication (auth/require-role "admin")))
 
+(defn- org-admin-only
+  "Обёртка для маршрутов, доступных администратору организации"
+  [handler]
+  (-> handler auth/require-authentication (auth/require-org-role "org_admin")))
+
 (defn- manager-or-admin
   "Обёртка для маршрутов, доступных менеджерам и администраторам"
   [handler]
   (-> handler auth/require-authentication (auth/require-role "admin" "manager")))
+
+(defn- org-manager-or-admin
+  "Обёртка для маршрутов, доступных менеджерам организации и выше"
+  [handler]
+  (-> handler auth/require-authentication (auth/require-org-role "org_admin" "org_manager")))
 
 (defroutes app-routes
   ;; ======================================================================
@@ -57,8 +69,20 @@
   (GET "/api/organizations" request ((auth-required api-organizations/get-organizations) request))
   (GET "/api/organizations/:id" request ((auth-required api-organizations/get-organization-by-id) request))
   (POST "/api/organizations" request ((admin-only api-organizations/create-organization) request))
-  (PUT "/api/organizations/:id" request ((admin-only api-organizations/update-organization) request))
+  (PUT "/api/organizations/:id" request ((org-admin-only api-organizations/update-organization) request))
   (DELETE "/api/organizations/:id" request ((admin-only api-organizations/deactivate-organization) request))
+  (GET "/api/organizations/:id/users" request ((org-admin-only api-organizations/get-org-users-api) request))
+  (PUT "/api/organizations/:id/users/:user-id/role" request ((org-admin-only api-organizations/update-user-org-role-api) request))
+
+  ;; ======================================================================
+  ;; REST API - Тарифные планы
+  ;; ======================================================================
+  (GET "/api/tariffs" request ((auth-required api-tariff/get-plans) request))
+  (GET "/api/tariffs/current" request ((auth-required api-tariff/get-org-plan-api) request))
+  (GET "/api/tariffs/org/:id" request ((admin-only api-tariff/get-org-plan-admin-api) request))
+  (PUT "/api/tariffs/org/:id" request ((admin-only api-tariff/update-org-plan-api) request))
+  (GET "/api/tariffs/check-workers/:id" request ((admin-only api-tariff/check-worker-limit-api) request))
+  (GET "/api/tariffs/check-workers" request ((auth-required api-tariff/check-worker-limit-api) request))
 
   ;; ======================================================================
   ;; REST API - Интеграция с 1С (только админ)
@@ -100,6 +124,14 @@
   (GET "/api/audit/stats" request ((admin-only api-audit/get-audit-stats-api) request))
   (GET "/api/audit/:entity-type/:entity-id" request ((admin-only api-audit/get-audit-by-entity-api) request))
   (GET "/api/audit/user/:username" request ((admin-only api-audit/get-audit-by-user-api) request))
+
+  ;; ======================================================================
+  ;; REST API - Аудит сессий
+  ;; ======================================================================
+  (GET "/api/sessions" request ((auth-required api-session-audit/get-sessions-api) request))
+  (GET "/api/sessions/active" request ((auth-required api-session-audit/get-active-sessions-api) request))
+  (GET "/api/sessions/failed" request ((auth-required api-session-audit/get-failed-logins-api) request))
+  (GET "/api/sessions/stats" request ((auth-required api-session-audit/get-session-stats-api) request))
 
   ;; ======================================================================
   ;; REST API - Экспорт данных
@@ -147,6 +179,7 @@
   ;; ======================================================================
   (GET "/profile" request ((auth-required auth-controllers/profile-page) request))
   (POST "/change-password" request ((auth-required auth-controllers/change-password) request))
+  (GET "/sessions" request ((auth-required auth-controllers/sessions-page) request))
 
   ;; ======================================================================
   ;; Основные страницы
@@ -157,14 +190,16 @@
   ;; Дашборд с аналитикой
   (GET "/dashboard" request ((auth-required controllers/dashboard-page) request))
 
-  ;; Организации (только админ)
+  ;; Организации (админ или org_admin)
   (GET "/organizations" request ((admin-only org-controllers/organizations-page) request))
   (GET "/organizations/new" request ((admin-only org-controllers/new-organization-form) request))
   (POST "/organizations/create" request ((admin-only org-controllers/create-organization) request))
-  (GET "/organizations/:id" request ((admin-only org-controllers/organization-detail) request))
-  (GET "/organizations/:id/edit" request ((admin-only org-controllers/edit-organization-form) request))
-  (POST "/organizations/:id/update" request ((admin-only org-controllers/update-organization) request))
+  (GET "/organizations/:id" request ((org-admin-only org-controllers/organization-detail) request))
+  (GET "/organizations/:id/edit" request ((org-admin-only org-controllers/edit-organization-form) request))
+  (POST "/organizations/:id/update" request ((org-admin-only org-controllers/update-organization) request))
   (POST "/organizations/:id/delete" request ((admin-only org-controllers/delete-organization) request))
+  (POST "/organizations/:id/users/:user-id/role" request ((org-admin-only org-controllers/update-user-org-role) request))
+  (POST "/organizations/:id/update-plan" request ((admin-only org-controllers/update-org-plan) request))
 
   ;; Список работников с поиском
   (GET "/workers" request ((auth-required controllers/workers-page) request))

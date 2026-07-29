@@ -1,6 +1,7 @@
 (ns my-ring-app.views.auth
   "Представления аутентификации"
-  (:require [my-ring-app.views.layout :refer [wrap-html html-escape csrf-field]]))
+  (:require [my-ring-app.views.layout :refer [wrap-html html-escape csrf-field]]
+            [clojure.string :as str]))
 
 (defn render-login-page
   "Рендер страницы входа"
@@ -85,6 +86,61 @@
         "</div>")
    "Профиль"
    nil))
+
+(defn- session-table-html
+  [sessions title empty-text is-admin?]
+  (if (empty? sessions)
+    (str "<p>" empty-text "</p>")
+    (str "<h3>" title "</h3>"
+         "<div class='table-responsive'>"
+         "<table class='data-table'>"
+         "<thead><tr>"
+         "<th>ID</th>"
+         "<th>Пользователь</th>"
+         "<th>Вход</th>"
+         "<th>Выход</th>"
+         "<th>Длительность</th>"
+         "<th>IP адрес</th>"
+         "<th>Статус</th>"
+         "</tr></thead>"
+         "<tbody>"
+         (apply str
+                (for [s sessions]
+                  (let [success (:success s)
+                        duration (:duration s)]
+                    (str "<tr" (when (not success) " class='row-danger'") ">"
+                         "<td>" (:id s) "</td>"
+                         "<td>" (html-escape (:username s)) "</td>"
+                         "<td>" (html-escape (str (:login_time s))) "</td>"
+                         "<td>" (html-escape (or (str (:logout_time s)) "-")) "</td>"
+                         "<td>" (or duration "-") "</td>"
+                         "<td>" (html-escape (or (:ip_address s) "-")) "</td>"
+                         "<td>"
+                         (cond
+                           (not success) (str "<span class='badge badge-danger'>Ошибка</span>"
+                                              (when (:fail_reason s)
+                                                (str " (" (html-escape (:fail_reason s)) ")")))
+                           (:logout_time s) "<span class='badge badge-success'>Завершена</span>"
+                           :else "<span class='badge badge-warning'>Активна</span>")
+                         "</td>"
+                         "</tr>"))))
+         "</tbody></table>"
+         "</div>")))
+
+(defn render-sessions-page
+  "Страница истории сессий"
+  [user sessions active-sessions failed-logins]
+  (let [lang "ru"
+        is-admin (= "admin" (:role user))]
+    (wrap-html
+     (str "<div class='page-header'>"
+          "<h2>История сессий</h2>"
+          "</div>"
+          (when (and is-admin active-sessions (seq active-sessions))
+            (session-table-html active-sessions "Активные сессии" "Нет активных сессий" is-admin))
+          (session-table-html failed-logins "Неудачные попытки входа" "Нет неудачных попыток" is-admin)
+          (session-table-html sessions "История входов" "Нет записей" is-admin))
+     "История сессий" "sessions" lang)))
 
 (defn render-access-denied
   "Рендер страницы доступа запрещён"

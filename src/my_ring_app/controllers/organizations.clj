@@ -3,6 +3,7 @@
   (:require [clojure.string :as str]
             [ring.util.response :as resp]
             [my-ring-app.auth :as auth]
+            [my-ring-app.tariff :as tariff]
             [my-ring-app.views.organizations :as org-views]
             [my-ring-app.logger :as logger]
             [my-ring-app.util :as util]))
@@ -120,9 +121,45 @@
           (resp/status 302))
       (let [org (auth/get-organization-by-id id)]
         (if org
-          (do
+          (let [users (auth/get-org-users id)]
             (logger/log-info (format "Просмотр организации ID=%d" id))
-            (-> (resp/response (org-views/render-organization-detail org (:identity request)))
+            (-> (resp/response (org-views/render-organization-detail org (:identity request) :users users))
                 (resp/content-type "text/html; charset=utf-8")))
           (-> (resp/redirect "/organizations?error=not_found")
+              (resp/status 302)))))))
+
+(defn update-user-org-role
+  "POST /organizations/:id/users/:user-id/role — обновление роли пользователя"
+  [request]
+  (let [org-id (validate-id (get-in request [:params :id]))
+        user-id (validate-id (get-in request [:params :user-id]))
+        org-role (get-in request [:params :org_role])]
+    (if (or (nil? org-id) (nil? user-id))
+      (-> (resp/redirect (str "/organizations/" org-id "?error=invalid"))
+          (resp/status 302))
+      (let [result (auth/update-user-org-role! user-id org-role)]
+        (if (:success result)
+          (do
+            (logger/log-info (format "Роль пользователя %d в организации %d изменена на %s" user-id org-id (or org-role "default")))
+            (-> (resp/redirect (str "/organizations/" org-id "?success=role_updated"))
+                (resp/status 302)))
+          (-> (resp/redirect (str "/organizations/" org-id "?error=role_failed"))
+              (resp/status 302)))))))
+
+(defn update-org-plan
+  "POST /organizations/:id/update-plan — изменение тарифного плана организации"
+  [request]
+  (let [org-id (validate-id (get-in request [:params :id]))
+        plan-id (util/parse-int (get-in request [:params :plan_id]) nil)
+        user-id (:id (:identity request))]
+    (if (or (nil? org-id) (nil? plan-id))
+      (-> (resp/redirect (str "/organizations/" org-id "?error=invalid_params"))
+          (resp/status 302))
+      (let [result (tariff/update-org-plan! org-id plan-id user-id)]
+        (if (:success result)
+          (do
+            (logger/log-info (format "Тариф организации %d изменён на план %d" org-id plan-id))
+            (-> (resp/redirect (str "/organizations/" org-id "?success=plan_updated"))
+                (resp/status 302)))
+          (-> (resp/redirect (str "/organizations/" org-id "?error=plan_failed"))
               (resp/status 302)))))))

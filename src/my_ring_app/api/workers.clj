@@ -4,6 +4,7 @@
             [my-ring-app.model :as model]
             [my-ring-app.validation :as validation]
             [my-ring-app.auth :as auth]
+            [my-ring-app.tariff :as tariff]
             [my-ring-app.util :as util]
             [my-ring-app.logger :as logger]))
 
@@ -83,17 +84,20 @@
           worker-data (:params request)
           validation-result (validation/validate-worker worker-data)]
       (if (:valid? validation-result)
-        (let [data (parse-worker-params worker-data)
-              result (model/create-record "Работник" data org-id)]
-          (if (:success result)
-            (do
-              (logger/log-audit "CREATE" "Worker" (:id result)
-                                (format "Создан работник %s %s (API, org: %s)" (:фамилия data) (:имя data) (str org-id)))
-              (logger/log-info (format "API: POST /api/workers — создан работник ID=%s (org: %s)" (str (:id result)) (str org-id)))
-              (util/json-created
-               (format-worker (model/get-record-by-id "Работник" (str (:id result))))
-               "Работник успешно создан"))
-            (util/json-error 500 "CREATE_ERROR" (:message result))))
+        (let [limit-check (tariff/check-worker-limit org-id)]
+          (if (:allowed limit-check)
+            (let [data (parse-worker-params worker-data)
+                  result (model/create-record "Работник" data org-id)]
+              (if (:success result)
+                (do
+                  (logger/log-audit "CREATE" "Worker" (:id result)
+                                    (format "Создан работник %s %s (API, org: %s)" (:фамилия data) (:имя data) (str org-id)))
+                  (logger/log-info (format "API: POST /api/workers — создан работник ID=%s (org: %s)" (str (:id result)) (str org-id)))
+                  (util/json-created
+                   (format-worker (model/get-record-by-id "Работник" (str (:id result))))
+                   "Работник успешно создан"))
+                (util/json-error 500 "CREATE_ERROR" (:message result))))
+            (util/json-error 403 "LIMIT_EXCEEDED" (:message limit-check))))
         (do
           (logger/log-warn (format "API: Валидация не пройдена: %s" (str/join ", " (:errors validation-result))))
           (util/json-error-details 400 "VALIDATION_ERROR" "Ошибка валидации данных" (:errors validation-result)))))

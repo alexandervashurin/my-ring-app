@@ -20,6 +20,7 @@
 
 (defn setup-db [f]
   (migration/run-migrations!)
+  (auth/init-db!)
   (f))
 
 (defn cleanup-test-user [f]
@@ -263,3 +264,130 @@
       (is (number? (:id result)))
       (let [deact-result (auth/deactivate-organization (:id result))]
         (is (true? (:success deact-result)))))))
+
+;; ======================================================================
+;; Тесты: Organization Roles (org_role)
+;; ======================================================================
+
+(deftest test-get-org-role-permissions-org-admin
+  (testing "Администратор организации имеет все права"
+    (let [perms (auth/get-org-role-permissions "org_admin")]
+      (is (some #{:read} (:workers perms)))
+      (is (some #{:write} (:workers perms)))
+      (is (some #{:delete} (:workers perms)))
+      (is (some #{:read} (:salary perms)))
+      (is (some #{:write} (:salary perms)))
+      (is (some #{:read} (:users perms)))
+      (is (some #{:write} (:users perms))))))
+
+(deftest test-get-org-role-permissions-org-viewer
+  (testing "Наблюдатель организации имеет только права чтения"
+    (let [perms (auth/get-org-role-permissions "org_viewer")]
+      (is (some #{:read} (:workers perms)))
+      (is (nil? (some #{:write} (:workers perms))))
+      (is (some #{:read} (:salary perms)))
+      (is (nil? (some #{:write} (:salary perms)))))))
+
+(deftest test-get-org-role-permissions-unknown
+  (testing "Неизвестная org-роль возвращает пустые права"
+    (let [perms (auth/get-org-role-permissions "unknown_role")]
+      (is (empty? perms)))))
+
+(deftest test-get-effective-permissions-global-admin
+  (testing "Глобальный admin имеет все права независимо от org_role"
+    (let [perms (auth/get-effective-permissions {:role "admin" :org_role nil})]
+      (is (some #{:write} (:users perms))))))
+
+(deftest test-get-effective-permissions-org-overrides-global
+  (testing "org_role переопределяет глобальную роль"
+    (let [user {:role "viewer" :org_role "org_admin"}
+          perms (auth/get-effective-permissions user)]
+      (is (some #{:write} (:workers perms)))
+      (is (some #{:write} (:users perms))))))
+
+(deftest test-get-effective-permissions-no-org-role
+  (testing "Без org_role используются права глобальной роли"
+    (let [user {:role "manager" :org_role nil}
+          perms (auth/get-effective-permissions user)]
+      (is (some #{:write} (:workers perms)))
+      (is (nil? (some #{:write} (:users perms)))))))
+
+(deftest test-has-permission-check
+  (testing "Проверка конкретного права"
+    (let [admin-user {:role "admin"}
+          viewer-user {:role "viewer"}
+          org-admin-user {:role "viewer" :org_role "org_admin"}]
+      (is (true? (auth/has-permission? admin-user :workers :delete)))
+      (is (false? (auth/has-permission? viewer-user :workers :write)))
+      (is (true? (auth/has-permission? org-admin-user :users :read))))))
+
+(deftest test-create-user-with-org-role
+  (testing "Создание пользователя с org_role"
+    (let [result (auth/create-user test-username test-email test-password "viewer" 1 "org_manager")
+          user (auth/get-user-by-username test-username)]
+      (is (true? (:success result)))
+      (is (= "org_manager" (:org_role user))))))
+
+(deftest test-update-user-org-role
+  (testing "Обновление org_role пользователя"
+    (auth/create-user test-username test-email test-password "viewer" 1 "org_viewer")
+    (let [user (auth/get-user-by-username test-username)
+          result (auth/update-user-org-role! (:id user) "org_admin")]
+      (is (true? (:success result)))
+      (let [updated (auth/get-user-by-username test-username)]
+        (is (= "org_admin" (:org_role updated)))))))
+
+(deftest test-update-user-org-role-clear
+  (testing "Сброс org_role в nil"
+    (auth/create-user test-username test-email test-password "viewer" 1 "org_viewer")
+    (let [user (auth/get-user-by-username test-username)
+          result (auth/update-user-org-role! (:id user) nil)]
+      (is (true? (:success result)))
+      (let [updated (auth/get-user-by-username test-username)]
+        (is (nil? (:org_role updated)))))))
+
+(deftest test-update-user-org-role-invalid
+  (testing "Неверная org-роль отклоняется"
+    (let [result (auth/update-user-org-role! 1 "invalid_role")]
+      (is (false? (:success result))))))
+
+(deftest test-get-org-users
+  (testing "Получение пользователей организации"
+    (let [users (auth/get-org-users 1)]
+      (is (vector? users))
+      (is (every? #(= 1 (:organization_id %)) users)))))
+
+(deftest test-require-org-role-allows-org-admin
+  (testing "org_admin проходит через require-org-role"
+    (let [handler (fn [request] {:status 200})
+          wrapped (auth/require-org-role handler "org_admin")
+          result (wrapped {:identity {:role "manager" :org_role "org_admin"}})]
+      (is (= 200 (:status result))))))
+
+(deftest test-require-org-role-blocks-viewer
+  (testing "org_viewer не проходит require-org-role для org_admin"
+    (let [handler (fn [request] {:status 200})
+          wrapped (auth/require-org-role handler "org_admin")
+          result (wrapped {:identity {:role "viewer" :org_role "org_viewer"}})]
+      (is (= 403 (:status result))))))
+
+(deftest test-require-org-role-allows-global-admin
+  (testing "Глобальный admin проходит require-org-role"
+    (let [handler (fn [request] {:status 200})
+          wrapped (auth/require-org-role handler "org_admin")
+          result (wrapped {:identity {:role "admin"}})]
+      (is (= 200 (:status result))))))
+
+(deftest test-require-role-with-org-role-override
+  (testing "require-role использует org_role как effective-role (совпадает с allowed)"
+    (let [handler (fn [request] {:status 200})
+          wrapped (auth/require-role handler "org_admin")
+          result (wrapped {:identity {:role "viewer" :org_role "org_admin"}})]
+      (is (= 200 (:status result))))))
+
+(deftest test-require-role-ignores-org-role-when-not-matching
+  (testing "require-role с org_role не совпадающим с allowed возвращает 403"
+    (let [handler (fn [request] {:status 200})
+          wrapped (auth/require-role handler "admin" "manager")
+          result (wrapped {:identity {:role "viewer" :org_role "org_manager"}})]
+      (is (= 403 (:status result))))))

@@ -2,16 +2,32 @@
   "REST API для управления организациями"
   (:require [clojure.string :as str]
             [my-ring-app.auth :as auth]
+            [my-ring-app.tariff :as tariff]
             [my-ring-app.logger :as logger]
             [my-ring-app.util :as util]))
 
 (def ^:private validate-id util/validate-id)
 
+(def ^:private org-role-labels
+  {"org_admin" "Администратор организации"
+   "org_manager" "Менеджер организации"
+   "org_hr" "HR организации"
+   "org_viewer" "Наблюдатель организации"})
+
 (defn format-organization
   "Форматирование данных организации для API"
   [org]
   (when org
-    (select-keys org [:id :name :inn :phone :email :address :is_active :created_at :updated_at])))
+    (let [plan (try (tariff/get-org-plan (:id org)) (catch Exception _ nil))]
+      (merge (select-keys org [:id :name :inn :phone :email :address :is_active :created_at :updated_at :plan_id])
+             (when plan
+               {:plan {:id (:id plan)
+                       :code (:code plan)
+                       :name (:name plan)
+                       :max_workers (:max-workers plan)
+                       :max_orgs (:max-orgs plan)
+                       :price_monthly (:price-monthly plan)
+                       :features (:features plan)}})))))
 
 (defn get-organizations
   "GET /api/organizations — список всех активных организаций"
@@ -94,4 +110,37 @@
             (util/json-error 500 "DELETE_ERROR" (:message result))))))
     (catch Exception e
       (logger/log-error e "API: Ошибка при деактивации организации")
+      (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
+
+(defn get-org-users-api
+  "GET /api/organizations/:id/users — список пользователей организации"
+  [request]
+  (try
+    (let [id (-> request :route-params :id validate-id)]
+      (if (nil? id)
+        (util/json-error 400 "INVALID_ID" "Некорректный идентификатор")
+        (let [users (auth/get-org-users id)]
+          (logger/log-info (format "API: GET /api/organizations/%d/users (найдено: %d)" id (count users)))
+          (util/json-ok users))))
+    (catch Exception e
+      (logger/log-error e "API: Ошибка при получении пользователей организации")
+      (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
+
+(defn update-user-org-role-api
+  "PUT /api/organizations/:id/users/:user-id/role — обновление роли пользователя в организации"
+  [request]
+  (try
+    (let [id (-> request :route-params :id validate-id)
+          user-id (-> request :route-params :user-id validate-id)
+          org-role (get-in request [:params :org_role])]
+      (if (or (nil? id) (nil? user-id))
+        (util/json-error 400 "INVALID_ID" "Некорректный идентификатор")
+        (let [result (auth/update-user-org-role! user-id org-role)]
+          (if (:success result)
+            (do
+              (logger/log-info (format "API: PUT /api/organizations/%d/users/%d/role -> %s" id user-id (or org-role "default")))
+              (util/json-ok nil "Роль пользователя обновлена"))
+            (util/json-error 400 "UPDATE_ERROR" (:message result))))))
+    (catch Exception e
+      (logger/log-error e "API: Ошибка при обновлении роли пользователя")
       (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))

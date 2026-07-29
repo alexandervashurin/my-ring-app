@@ -15,7 +15,7 @@
   #{"Работник" "Цех" "Система_оплаты" "Категория_работника"
     "Разряд" "Режим_работы" "Оклад" "Почасовые_ставки"
     "Учет_рабочего_времени" "Начисление_заработной_платы"
-    "Пользователь" "Аудит_изменений" "Организация" "schema_migrations"})
+    "Пользователь" "Аудит_изменений" "Организация" "Тарифный_план" "Сессия" "schema_migrations"})
 
 (defn current-year-month
   "Возвращает текущий год и месяц как вектор [год месяц]"
@@ -602,25 +602,25 @@
    (try
      (let [result (jdbc/query db-spec
                               (if org-id
-                                ["SELECT r.фамилия, r.имя, r.отчество, ц.название_цеха,
-                                         MAX(n.общая_зарплата) as max_salary
-                                FROM Работник r
-                                LEFT JOIN Цех ц ON r.цех_id = ц.id
-                                LEFT JOIN Учет_рабочего_времени у ON r.id = у.работник_id
-                                LEFT JOIN Начисление_заработной_платы н ON у.id = н.учет_рабочего_времени_id
-                                WHERE r.organization_id = ?
-                                GROUP BY r.id, r.фамилия, r.имя, r.отчество, ц.название_цеха
-                                ORDER BY max_salary DESC
-                                LIMIT 5" org-id]
-                                ["SELECT r.фамилия, r.имя, r.отчество, ц.название_цеха,
-                                         MAX(n.общая_зарплата) as max_salary
-                                FROM Работник r
-                                LEFT JOIN Цех ц ON r.цех_id = ц.id
-                                LEFT JOIN Учет_рабочего_времени у ON r.id = у.работник_id
-                                LEFT JOIN Начисление_заработной_платы н ON у.id = н.учет_рабочего_времени_id
-                                GROUP BY r.id, r.фамилия, r.имя, r.отчество, ц.название_цеха
-                                ORDER BY max_salary DESC
-                                LIMIT 5"]))]
+                                 ["SELECT r.фамилия, r.имя, r.отчество, ц.название_цеха,
+                                          MAX(н.общая_зарплата) as max_salary
+                                 FROM Работник r
+                                 LEFT JOIN Цех ц ON r.цех_id = ц.id
+                                 LEFT JOIN Учет_рабочего_времени у ON r.id = у.работник_id
+                                 LEFT JOIN Начисление_заработной_платы н ON у.id = н.учет_рабочего_времени_id
+                                 WHERE r.organization_id = ?
+                                 GROUP BY r.id, r.фамилия, r.имя, r.отчество, ц.название_цеха
+                                 ORDER BY max_salary DESC
+                                 LIMIT 5" org-id]
+                                 ["SELECT r.фамилия, r.имя, r.отчество, ц.название_цеха,
+                                          MAX(н.общая_зарплата) as max_salary
+                                 FROM Работник r
+                                 LEFT JOIN Цех ц ON r.цех_id = ц.id
+                                 LEFT JOIN Учет_рабочего_времени у ON r.id = у.работник_id
+                                 LEFT JOIN Начисление_заработной_платы н ON у.id = н.учет_рабочего_времени_id
+                                 GROUP BY r.id, r.фамилия, r.имя, r.отчество, ц.название_цеха
+                                 ORDER BY max_salary DESC
+                                 LIMIT 5"]))]
        (logger/log-info (format "Получен топ работников по зарплате (%d записей)" (count result)))
        result)
      (catch Exception e

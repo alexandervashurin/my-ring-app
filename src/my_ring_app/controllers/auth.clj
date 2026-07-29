@@ -2,6 +2,7 @@
   "Контроллеры аутентификации"
   (:require [ring.util.response :as resp]
             [my-ring-app.auth :as auth]
+            [my-ring-app.session-audit :as session-audit]
             [my-ring-app.views.layout :as layout]
             [my-ring-app.views.auth :as auth-views]
             [my-ring-app.logger :as logger]
@@ -66,14 +67,18 @@
   [request]
   (let [username (str/trim (:username (:params request)))
         password (:password (:params request))
-        redirect-url (or (safe-redirect-url (:redirect-url (:session request))) "/")]
+        redirect-url (or (safe-redirect-url (:redirect-url (:session request))) "/")
+        ip-address (get-in request [:headers "x-forwarded-for"] (:remote-addr request "unknown"))
+        user-agent (get-in request [:headers "user-agent"])]
     (logger/log-info (format "Попытка входа пользователя: %s" username))
 
     (cond
       ;; Пустые данные
       (or (empty? username) (empty? password))
-      (-> (resp/redirect (str "/login?error=empty"))
-          (resp/status 302))
+      (do
+        (logger/log-warn (format "Попытка входа с пустыми данными: %s" username))
+        (-> (resp/redirect (str "/login?error=empty"))
+            (resp/status 302)))
 
       ;; Блокировка при множественных неудачных попытках
       (is-locked-out? username)
@@ -84,7 +89,7 @@
 
       ;; Аутентификация
       :else
-      (if-let [user (auth/authenticate username password)]
+      (if-let [user (auth/authenticate username password {:ip-address ip-address :user-agent user-agent})]
         ;; Успешный вход
         (do
           (clear-failed-logins! username)
@@ -103,8 +108,10 @@
 (defn logout
   "Выход из системы"
   [request]
-  (let [user (:identity request)]
+  (let [user (:identity request)
+        session-id (:session_id user)]
     (when user
+      (session-audit/log-logout! session-id)
       (logger/log-audit "LOGOUT" "User" (:id user)
                         (format "Пользователь %s вышел из системы" (:username user)))
       (logger/log-info (format "Пользователь %s вышел из системы" (:username user))))
@@ -158,6 +165,21 @@
                 (resp/status 302)))
           (-> (resp/redirect "/profile?error=wrong_password")
               (resp/status 302)))))))
+
+(defn sessions-page
+  "Страница истории сессий"
+  [request]
+  (let [user (:identity request)
+        org-id (auth/get-org-id request)
+        is-admin (= "admin" (:role user))
+        sessions (if is-admin
+                   (session-audit/get-recent-sessions 100 org-id)
+                   (session-audit/get-user-sessions (:id user) 100))
+        active-sessions (when is-admin (session-audit/get-active-sessions org-id))
+        failed-logins (session-audit/get-failed-logins 20 org-id)]
+    (logger/log-info (format "Открыта страница истории сессий (user: %s)" (:username user)))
+    (-> (resp/response (auth-views/render-sessions-page user sessions active-sessions failed-logins))
+        (resp/content-type "text/html; charset=utf-8"))))
 
 (defn access-denied
   "Страница доступа запрещён"

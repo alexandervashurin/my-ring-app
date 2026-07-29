@@ -1,7 +1,60 @@
 (ns my-ring-app.views.organizations
   "Представления для управления организациями"
   (:require [clojure.string :as string]
-            [my-ring-app.views.layout :as layout]))
+            [my-ring-app.views.layout :as layout]
+            [my-ring-app.tariff :as tariff]))
+
+(def ^:private org-role-labels
+  {"org_admin" "Администратор организации"
+   "org_manager" "Менеджер организации"
+   "org_hr" "HR организации"
+   "org_viewer" "Наблюдатель организации"})
+
+(def ^:private org-role-options
+  [["" "По умолчанию (глобальная роль)"]
+   ["org_admin" "Администратор организации"]
+   ["org_manager" "Менеджер организации"]
+   ["org_hr" "HR организации"]
+   ["org_viewer" "Наблюдатель организации"]])
+
+(defn- org-user-table-html [org-id users current-user]
+  (if (empty? users)
+    "<p>Пользователи не найдены.</p>"
+    (str
+     "<h3>Пользователи организации</h3>"
+     "<table class='data-table'>"
+     "<thead><tr>"
+     "<th>ID</th><th>Имя пользователя</th><th>Email</th><th>Глобальная роль</th><th>Роль в организации</th><th>Действия</th>"
+     "</tr></thead>"
+     "<tbody>"
+     (apply str
+            (for [u users]
+              (let [is-self (= (:id u) (:id current-user))
+                    current-org-role (or (:org_role u) "")
+                    role-label (or (get org-role-labels (:org_role u)) "По умолчанию")]
+                (str "<tr>"
+                     "<td>" (:id u) "</td>"
+                     "<td>" (layout/html-escape (:username u)) "</td>"
+                     "<td>" (layout/html-escape (:email u)) "</td>"
+                     "<td>" (layout/html-escape (or (:role u) "-")) "</td>"
+                     "<td>" (layout/html-escape role-label) "</td>"
+                     "<td>"
+                     (if is-self
+                       "<em>текущий пользователь</em>"
+                       (str
+                        "<form method='POST' action='/organizations/" org-id "/users/" (:id u) "/role' class='inline-form'>"
+                        (layout/csrf-field)
+                        "<select name='org_role' class='form-control form-control-sm'>"
+                        (apply str
+                               (for [[val label] org-role-options]
+                                 (str "<option value='" val "'"
+                                      (if (= val current-org-role) " selected" "")
+                                      ">" label "</option>")))
+                        "</select> "
+                        "<button type='submit' class='btn btn-sm btn-primary'>Изменить</button>"
+                        "</form>"))
+                     "</td></tr>"))))
+     "</tbody></table>")))
 
 (defn- org-table-html [organizations]
   (if (empty? organizations)
@@ -9,28 +62,31 @@
     (str
      "<table class='data-table'>"
      "<thead><tr>"
-     "<th>ID</th><th>Название</th><th>ИНН</th><th>Телефон</th><th>Email</th><th>Действия</th>"
+     "<th>ID</th><th>Название</th><th>ИНН</th><th>Телефон</th><th>Email</th><th>Тариф</th><th>Действия</th>"
      "</tr></thead>"
      "<tbody>"
      (apply str
             (for [org organizations]
-              (str "<tr>"
-                   "<td>" (:id org) "</td>"
-                   "<td><a href='/organizations/" (:id org) "'>"
-                   (layout/html-escape (:name org)) "</a></td>"
-                   "<td>" (layout/html-escape (or (:inn org) "-")) "</td>"
-                   "<td>" (layout/html-escape (or (:phone org) "-")) "</td>"
-                   "<td>" (layout/html-escape (or (:email org) "-")) "</td>"
-                   "<td>"
-                   "<a href='/organizations/" (:id org)
-                   "/edit' class='btn btn-sm btn-info'>Редактировать</a> "
-                   "<form method='POST' action='/organizations/" (:id org)
-                   "/delete' class='inline-form'>"
-                   (layout/csrf-field)
-                   "<button type='submit' class='btn btn-sm btn-danger' "
-                   "onclick=\"return confirm('Деактивировать организацию?')\">"
-                   "Деактивировать</button></form>"
-                    "</td></tr>")))
+              (let [plan (try (tariff/get-org-plan (:id org)) (catch Exception _ nil))
+                    plan-name (:name plan "Free")]
+                (str "<tr>"
+                     "<td>" (:id org) "</td>"
+                     "<td><a href='/organizations/" (:id org) "'>"
+                     (layout/html-escape (:name org)) "</a></td>"
+                     "<td>" (layout/html-escape (or (:inn org) "-")) "</td>"
+                     "<td>" (layout/html-escape (or (:phone org) "-")) "</td>"
+                     "<td>" (layout/html-escape (or (:email org) "-")) "</td>"
+                     "<td>" (layout/html-escape plan-name) "</td>"
+                     "<td>"
+                     "<a href='/organizations/" (:id org)
+                     "/edit' class='btn btn-sm btn-info'>Редактировать</a> "
+                     "<form method='POST' action='/organizations/" (:id org)
+                     "/delete' class='inline-form'>"
+                     (layout/csrf-field)
+                     "<button type='submit' class='btn btn-sm btn-danger' "
+                     "onclick=\"return confirm('Деактивировать организацию?')\">"
+                     "Деактивировать</button></form>"
+                     "</td></tr>"))))
      "</tbody></table>")))
 
 (defn render-organizations-page
@@ -111,9 +167,37 @@
       "</form>")
      title "organizations" lang)))
 
+(defn- render-tariff-info
+  [organization current-user]
+  (let [plan (tariff/get-org-plan (:id organization))
+        worker-check (tariff/check-worker-limit (:id organization))
+        is-admin (= "admin" (:role current-user))]
+    (str "<div class='tariff-card' style='margin: 15px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9;'>"
+         "<h3>Тарифный план</h3>"
+         "<table class='detail-table'>"
+         "<tr><td><strong>План:</strong></td><td>" (layout/html-escape (:name plan)) "</td></tr>"
+         "<tr><td><strong>Работники:</strong></td><td>" (:current worker-check) " / " (:limit worker-check) "</td></tr>"
+         "<tr><td><strong>Цена:</strong></td><td>" (:price-monthly plan) " ₽/мес</td></tr>"
+         "</table>"
+         (when is-admin
+           (str "<div style='margin-top: 10px;'>"
+                "<form method='POST' action='/organizations/" (:id organization) "/update-plan' class='inline-form'>"
+                (layout/csrf-field)
+                "<select name='plan_id' class='form-control form-control-sm' style='width: auto; display: inline;'>"
+                (apply str
+                       (for [p (tariff/get-all-plans)]
+                         (str "<option value='" (:id p) "'"
+                              (if (= (:id p) (:id plan)) " selected" "")
+                              ">" (layout/html-escape (:name p))
+                              " (" (:price-monthly p) " ₽/мес)" "</option>")))
+                "</select> "
+                "<button type='submit' class='btn btn-sm btn-primary'>Сменить план</button>"
+                "</form></div>"))
+         "</div>")))
+
 (defn render-organization-detail
   "Страница детального просмотра организации"
-  [organization user]
+  [organization user & {:keys [users]}]
   (let [lang "ru"]
     (layout/wrap-html
      (str
@@ -123,6 +207,9 @@
       "/edit' class='btn btn-info'>Редактировать</a> "
       "<a href='/organizations' class='btn btn-secondary'>Назад</a>"
       "</div>"
+      (when (= (:role user) "admin")
+        (str "<div class='alert alert-info'>Вы — глобальный администратор, "
+             "поэтому видите все организации.</div>"))
       "<div class='detail-card'>"
       "<table class='detail-table'>"
       "<tr><td><strong>ID:</strong></td><td>"
@@ -144,5 +231,8 @@
       (layout/html-escape (str (:created_at organization)))
       "</td></tr>"
       "</table>"
-      "</div>")
+      "</div>"
+      (render-tariff-info organization user)
+      "<hr>"
+      (org-user-table-html (:id organization) users user))
      (:name organization) "organizations" lang)))

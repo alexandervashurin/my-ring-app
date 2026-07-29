@@ -1,6 +1,43 @@
 # Change Log
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
+## [Unreleased] - 2026-07-29
+
+### ✨ New Features
+
+**Q3 2027 — Тарифные планы:**
+- **Таблицa `Тарифный_план`**: Free/Pro/Enterprise с лимитами работников, организаций и функциями
+- **Миграция 006**: колонка `plan_id` в `Организация`, сидирование 3 планов
+- **Новый модуль `tariff.clj`**: загрузка планов из БД, проверка лимитов, middleware `require-feature`
+- **Проверка лимитов**: создание работника блокируется при превышении лимита тарифа
+- **API тарифов**: `/api/tariffs`, `/api/tariffs/current`, `/api/tariffs/org/:id`, `/api/tariffs/check-workers`
+- **UI тарифов**: страница организации показывает тариф, использование работников, форму смены плана
+- **`format-organization`**: API возвращает данные тарифа в ответе организации
+- **`allowed-tables`**: `Тарифный_план` добавлен в белый список
+
+**Q3 2027 — Роли организации:**
+- **Организационные роли**: `org_role` на уровне организации — `org_admin`, `org_manager`, `org_hr`, `org_viewer`
+- **Миграция 005**: добавлена колонка `org_role` в таблицу `Пользователь`
+- **Новый middleware**: `require-org-role` для проверки ролей на уровне организации
+- **Эффективные права**: `get-effective-permissions` объединяет глобальные и организационные права
+- **Управление ролями**: новый API `/api/organizations/:id/users` и `/api/organizations/:id/users/:user-id/role`
+- **UI ролей**: страница организации показывает пользователей с возможностью смены org_role
+- **Идемпотентные миграции**: `migration.clj` — ALTER TABLE ADD COLUMN пропускается, если колонка уже существует
+
+**Q3 2027 — Аудит сессий:**
+- **Миграция 007**: таблица `Сессия` с индексами для логирования входов/выходов
+- **Новый модуль `session_audit.clj`**: `log-login!`, `log-logout!`, `get-user-sessions`, `get-recent-sessions`, `get-failed-logins`, `get-active-sessions`, `get-session-count-by-day`
+- **Интеграция с `auth.clj`**: `authenticate` логирует успешные/неудачные попытки входа в БД
+- **Интеграция с `controllers/auth.clj`**: logout логирует завершение сессии
+- **API сессий**: `/api/sessions`, `/api/sessions/active`, `/api/sessions/failed`, `/api/sessions/stats`
+- **UI сессий**: страница `/sessions` с таблицами истории, активных сессий и неудачных попыток
+- **`allowed-tables`**: `Сессия` добавлен в белый список
+- **`format-session`**: исправлен расчёт длительности (Duration/between вместо `-`)
+
+### 🧪 Tests
+- **180 тестов, 461 утверждений** (+20 тестов, +46 утверждений)
+- Новые: `session_audit_test.clj` — 20 тестов для логирования, получения, фильтрации и форматирования сессий
+
 ## [Unreleased] - 2026-07-28
 
 ### ✨ New Features

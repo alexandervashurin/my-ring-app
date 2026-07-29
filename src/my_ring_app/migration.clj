@@ -75,13 +75,31 @@
     {:up (str/join "\n" (:up sections))
      :down (str/join "\n" (:down sections))}))
 
+(defn- column-exists?
+  "Проверка существования колонки в таблице (через PRAGMA table_info)"
+  [table column]
+  (try
+    (let [columns (jdbc/query db-spec [(str "PRAGMA table_info(" table ")")])
+          col-names (set (map :name columns))]
+      (contains? col-names column))
+    (catch Exception _ false)))
+
 (defn- execute-sql!
   "Выполнение SQL-строки, разбитой на отдельные операторы.
-   SQLite не поддерживает несколько операторов в одном execute! call."
+   SQLite не поддерживает несколько операторов в одном execute! call.
+   Пропускает ALTER TABLE ADD COLUMN, если колонка уже существует."
   [sql]
   (let [stmts (split-sql-statements sql)]
     (doseq [stmt stmts]
-      (jdbc/execute! db-spec [stmt]))))
+      (let [trimmed (str/trim stmt)
+            alter-match (re-find #"(?i)ALTER\s+TABLE\s+(\S+)\s+ADD\s+(COLUMN\s+)?(\S+)" trimmed)]
+        (if alter-match
+          (let [table (nth alter-match 1)
+                column (nth alter-match 3)]
+            (if (column-exists? table column)
+              (logger/log-info (format "Колонка %s.%s уже существует, пропускаю" table column))
+              (jdbc/execute! db-spec [stmt])))
+          (jdbc/execute! db-spec [stmt]))))))
 
 (defn- load-migration-files
   "Загрузка всех файлов миграций из resources/migrations/"

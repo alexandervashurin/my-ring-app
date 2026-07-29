@@ -3,6 +3,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [my-ring-app.config :as config :refer [db-spec]]
             [my-ring-app.logger :as logger]
+            [my-ring-app.session-audit :as session-audit]
             [buddy.hashers :as hashers]
             [ring.util.response :as resp]
             [clojure.string :as str]
@@ -13,14 +14,22 @@
 ;; ======================================================================
 
 (def roles
-  "Доступные роли пользователей"
+  "Доступные глобальные роли пользователей"
   {:admin "Администратор — полный доступ"
    :manager "Менеджер — CRUD работников, зарплата, учёт времени"
    :viewer "Наблюдатель — только просмотр"
    :hr "HR — CRUD работников, без зарплаты"})
 
+(def org-roles
+  "Доступные роли на уровне организации.
+   org_role переопределяет глобальную роль в рамках организации."
+  {:org_admin "Администратор организации — полный доступ внутри организации"
+   :org_manager "Менеджер организации — управление работниками, зарплатой, учётом времени"
+   :org_hr "HR организации — управление работниками, без зарплаты"
+   :org_viewer "Наблюдатель организации — только просмотр"})
+
 (defn get-role-permissions
-  "Получение прав для роли"
+  "Получение прав для глобальной роли"
   [role]
   (case role
     "admin" {:workers [:read :write :delete]
@@ -45,11 +54,106 @@
               :tables [:read]}
     {}))
 
+(defn get-org-role-permissions
+  "Получение прав для роли организации.
+   org_role переопределяет глобальную роль в рамках организации."
+  [org-role]
+  (case org-role
+    "org_admin" {:workers [:read :write :delete]
+                 :salary [:read :write]
+                 :work-time [:read :write]
+                 :users [:read :write]
+                 :dashboard [:read]
+                 :tables [:read]}
+    "org_manager" {:workers [:read :write :delete]
+                   :salary [:read :write]
+                   :work-time [:read :write]
+                   :dashboard [:read]
+                   :tables [:read]}
+    "org_hr" {:workers [:read :write :delete]
+              :work-time [:read :write]
+              :dashboard [:read]
+              :tables [:read]}
+    "org_viewer" {:workers [:read]
+                  :salary [:read]
+                  :work-time [:read]
+                  :dashboard [:read]
+                  :tables [:read]}
+    {}))
+
+(defn get-effective-permissions
+  "Получение эффективных прав пользователя.
+   Если у пользователя есть org_role, она переопределяет глобальную роль
+   в рамках контекста организации. Глобальный admin имеет все права везде."
+  [user]
+  (let [global-role (:role user)
+        org-role (:org_role user)]
+    (if (= "admin" global-role)
+      {:workers [:read :write :delete]
+       :salary [:read :write]
+       :work-time [:read :write]
+       :users [:read :write]
+       :dashboard [:read]
+       :tables [:read]}
+      (if org-role
+        (get-org-role-permissions org-role)
+        (get-role-permissions global-role)))))
+
+(defn has-permission?
+  "Проверка наличия конкретного права у пользователя.
+   Пример: (has-permission? user :workers :write)
+   Возвращает true/false."
+  [user resource action]
+  (let [perms (get-effective-permissions user)
+        resource-perms (get perms resource)]
+    (boolean (some #{action} resource-perms))))
+
 ;; ======================================================================
 ;; Константы и настройки организации
 ;; ======================================================================
 
 (def ^:private default-org-id 1)
+
+;; ======================================================================
+;; Функции работы с ролями организации
+;; ======================================================================
+
+(defn update-user-org-role!
+  "Обновление org_role пользователя.
+   Только администратор организации может менять роль."
+  [user-id org-role]
+  (try
+    (let [valid-roles #{nil "org_admin" "org_manager" "org_hr" "org_viewer"}]
+      (if (and org-role (not (contains? valid-roles org-role)))
+        {:success false :message "Неверная роль организации"}
+        (let [result (jdbc/update! db-spec :Пользователь
+                                   {:org_role org-role
+                                    :updated_at (str (time/local-date-time))}
+                                   ["id = ?" user-id])
+              affected (first result)]
+          (if (pos? affected)
+            (do
+              (logger/log-audit "UPDATE" "User" user-id
+                                (format "Роль организации изменена на %s" (or org-role "по умолчанию")))
+              {:success true :message "Роль организации обновлена"})
+            {:success false :message "Пользователь не найден"}))))
+    (catch Exception e
+      (logger/log-error e "Ошибка при обновлении роли организации" {:user-id user-id})
+      {:success false :message "Внутренняя ошибка при обновлении роли"})))
+
+(defn get-org-users
+  "Получение списка пользователей организации с ролями"
+  [org-id]
+  (try
+    (vec (jdbc/query db-spec
+                     ["SELECT id, username, email, role, org_role, organization_id, is_active, created_at, last_login
+                      FROM Пользователь
+                      WHERE organization_id = ? AND is_active = 1
+                      ORDER BY CASE WHEN role = 'admin' THEN 0 ELSE 1 END, username"
+                      org-id]))
+    (catch Exception e
+      (logger/log-error e "Ошибка при получении пользователей организации" {:org-id org-id})
+      [])))
 
 ;; ======================================================================
 ;; Функции работы с организациями
@@ -160,7 +264,7 @@
 
 (defn create-user
   "Создание нового пользователя"
-  [username email password role & [org-id]]
+  [username email password role & [org-id org-role]]
   (try
     (let [password-hash (hashers/encrypt password)
           result (jdbc/insert! db-spec :Пользователь
@@ -168,11 +272,12 @@
                                 :email email
                                 :password_hash password-hash
                                 :role role
+                                :org_role org-role
                                 :organization_id (or org-id default-org-id)
                                 :is_active 1})
           new-id (val (first (first result)))]
       (logger/log-audit "CREATE" "User" new-id
-                        (format "Создан пользователь %s (роль: %s, org: %d)" username role (or org-id default-org-id)))
+                        (format "Создан пользователь %s (роль: %s, org_role: %s, org: %d)" username role (or org-role "-") (or org-id default-org-id)))
       {:success true :id new-id :message "Пользователь создан"})
     (catch Exception e
       (logger/log-error e "Ошибка при создании пользователя"
@@ -222,13 +327,13 @@
   ([] (get-all-users nil))
   ([org-id]
    (try
-     (vec
-       (if org-id
-         (jdbc/query db-spec ["SELECT id, username, email, role, organization_id, is_active, created_at, last_login
-                               FROM Пользователь WHERE is_active = 1 AND organization_id = ? ORDER BY username"
-                              org-id])
-         (jdbc/query db-spec ["SELECT id, username, email, role, organization_id, is_active, created_at, last_login
-                               FROM Пользователь WHERE is_active = 1 ORDER BY username"])))
+      (vec
+        (if org-id
+          (jdbc/query db-spec ["SELECT id, username, email, role, org_role, organization_id, is_active, created_at, last_login
+                                FROM Пользователь WHERE is_active = 1 AND organization_id = ? ORDER BY username"
+                               org-id])
+          (jdbc/query db-spec ["SELECT id, username, email, role, org_role, organization_id, is_active, created_at, last_login
+                                FROM Пользователь WHERE is_active = 1 ORDER BY username"])))
      (catch Exception e
        (logger/log-error e "Ошибка при получении списка пользователей")
        []))))
@@ -239,35 +344,47 @@
 
 (defn authenticate
   "Проверка учётных данных пользователя
-   Возвращает пользователя при успехе, nil при ошибке"
-  [username password]
-  (try
-    (let [user (get-user-by-username username)]
-      (if (and user
-               (hashers/check password (:password_hash user)))
-        (do
-          ;; Обновляем last_login
-          (jdbc/update! db-spec :Пользователь
-                        {:last_login (str (time/local-date-time))}
-                        ["id = ?" (:id user)])
-          (logger/log-audit "LOGIN" "User" (:id user)
-                            (format "Пользователь %s вошёл в систему (org: %s)"
-                                    username (or (:org_name user) "default")))
-          (logger/log-info (format "Успешная аутентификация: %s (org: %s)" username (or (:org_name user) "default")))
-          {:id (:id user)
-           :username (:username user)
-           :email (:email user)
-           :role (:role user)
-           :organization_id (:organization_id user)
-           :org_name (:org_name user)
-           :permissions (get-role-permissions (:role user))})
-        (do
-          (when user
-            (logger/log-warn (format "Неверный пароль для пользователя: %s" username)))
-          nil)))
-    (catch Exception e
-      (logger/log-error e "Ошибка при аутентификации" {:username username})
-      nil)))
+   Возвращает пользователя при успехе, nil при ошибке.
+   Опционально принимает options с :ip-address и :user-agent для логирования сессии."
+  ([username password] (authenticate username password nil))
+  ([username password options]
+   (try
+     (let [user (get-user-by-username username)
+           ip-address (:ip-address options)
+           user-agent (:user-agent options)]
+       (if (and user
+                (hashers/check password (:password_hash user)))
+         (do
+           ;; Обновляем last_login
+           (jdbc/update! db-spec :Пользователь
+                         {:last_login (str (time/local-date-time))}
+                         ["id = ?" (:id user)])
+           ;; Логирование успешного входа в БД
+           (let [session-id (session-audit/log-login! (:id user) username ip-address user-agent
+                                                       (:organization_id user) true)]
+             (logger/log-audit "LOGIN" "User" (:id user)
+                               (format "Пользователь %s вошёл в систему (org: %s)"
+                                       username (or (:org_name user) "default")))
+             (logger/log-info (format "Успешная аутентификация: %s (org: %s)" username (or (:org_name user) "default")))
+             {:id (:id user)
+              :username (:username user)
+              :email (:email user)
+              :role (:role user)
+              :org_role (:org_role user)
+              :organization_id (:organization_id user)
+              :org_name (:org_name user)
+              :permissions (get-effective-permissions user)
+              :session_id session-id}))
+          (do
+           (when user
+             ;; Логирование неудачной попытки входа
+             (session-audit/log-login! (:id user) username ip-address user-agent
+                                       (:organization_id user) false "Неверный пароль")
+             (logger/log-warn (format "Неверный пароль для пользователя: %s" username)))
+           nil)))
+     (catch Exception e
+       (logger/log-error e "Ошибка при аутентификации" {:username username})
+       nil))))
 
 ;; ======================================================================
 ;; Middleware для сессионной аутентификации
@@ -317,12 +434,32 @@
           (resp/status 302)))))
 
 (defn require-role
-  "Middleware требующий определённой роли"
+  "Middleware требующий определённой глобальной роли.
+   Глобальный admin всегда проходит. Также проверяет org_role."
   [handler & allowed-roles]
   (let [allowed (set allowed-roles)]
     (fn [request]
-      (let [user (:identity request)]
-        (if (and user (contains? allowed (:role user)))
+      (let [user (:identity request)
+            effective-role (or (:org_role user) (:role user))]
+        (if (and user (or (= "admin" (:role user))
+                          (contains? allowed effective-role)
+                          (contains? allowed (:role user))))
+          (handler request)
+          (-> (resp/response "Доступ запрещён: недостаточно прав")
+              (resp/status 403)
+              (resp/content-type "text/html; charset=utf-8")))))))
+
+(defn require-org-role
+  "Middleware требующий определённой роли организации.
+   Глобальный admin всегда проходит. Если у пользователя есть org_role,
+   проверяется соответствие org_role, иначе — глобальная роль."
+  [handler & allowed-roles]
+  (let [allowed (set allowed-roles)]
+    (fn [request]
+      (let [user (:identity request)
+            effective-role (or (:org_role user) (:role user))]
+        (if (and user (or (= "admin" (:role user))
+                          (contains? allowed effective-role)))
           (handler request)
           (-> (resp/response "Доступ запрещён: недостаточно прав")
               (resp/status 403)

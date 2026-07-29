@@ -16,6 +16,7 @@
             [my-ring-app.auth :as auth]
             [my-ring-app.migration :as migration]
             [my-ring-app.cache :as cache]
+            [my-ring-app.tariff :as tariff]
             [my-ring-app.rate-limit :as rate-limit]
             [my-ring-app.api-version :as api-version]))
 
@@ -128,6 +129,9 @@
 
   ;; Загрузка кэша справочников
   (cache/load-all!)
+
+  ;; Загрузка тарифных планов
+  (tariff/load-plans!)
 
   (let [port (:port config/app-config)]
     (logger/log-info (format "Сервер запускается на порту %d" port))
