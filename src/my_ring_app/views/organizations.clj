@@ -173,7 +173,7 @@
   (let [plan (tariff/get-org-plan (:id organization))
         worker-check (tariff/check-worker-limit (:id organization))
         is-admin (= "admin" (:role current-user))]
-    (str "<div class='tariff-card' style='margin: 15px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9;'>"
+    (str "<div class='tariff-card' >"
          "<h3>Тарифный план</h3>"
          "<table class='detail-table'>"
          "<tr><td><strong>План:</strong></td><td>" (layout/html-escape (:name plan)) "</td></tr>"

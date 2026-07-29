@@ -129,7 +129,7 @@
   "Рендеринг контейнеров для графиков Chart.js"
   []
   (str "<div class='dashboard-header'>"
-       "<h1 style='margin-bottom: 30px;'>📊 Дашборд аналитики</h1>"
+       "<h1>📊 Дашборд аналитики</h1>"
        "<div class='dashboard-actions'>"
        "<button onclick='location.reload()' class='btn btn-refresh' title='Обновить данные'>🔄 Обновить</button>"
        "</div>"

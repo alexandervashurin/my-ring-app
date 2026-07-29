@@ -7,12 +7,12 @@
   (let [content (apply str 
                 (map (fn [tbl]
                        (str "<h3>" (html-escape (:table tbl)) "</h3>"
-                            "<table border='1' cellpadding='8' cellspacing='0' style='border-collapse: collapse; margin: 10px 0; width: 100%;'>"
-                            "<thead style='background: #667eea; color: white;'>"
+                            "<table border='1' cellpadding='8' cellspacing='0' >"
+                            "<thead >"
                             "<tr>" 
                             (apply str 
                               (map (fn [col] 
-                                     (str "<th style='padding: 10px;'>" (html-escape col) "</th>")) 
+                                     (str "<th >" (html-escape col) "</th>")) 
                                    (keys (first (:rows tbl)))))
                             "</tr>"
                             "</thead>"
@@ -22,7 +22,7 @@
                                      (str "<tr>"
                                           (apply str 
                                             (map (fn [[k v]] 
-                                                   (str "<td style='padding: 8px; border: 1px solid #ddd;'>" 
+                                                   (str "<td >" 
                                                         (if (nil? v) "NULL" (html-escape (str v))) 
                                                         "</td>"))
                                                  row))

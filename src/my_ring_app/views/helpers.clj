@@ -28,7 +28,7 @@
   "Рендер списка ошибок валидации"
   [errors]
   (when (seq errors)
-    (str "<div class='alert alert-error' style='margin-bottom: 20px;'>"
+    (str "<div class='alert alert-error'>"
          "<strong>⚠️ Ошибки валидации:</strong>"
          "<ul style='margin: 10px 0 0 20px;'>"
           (apply str 

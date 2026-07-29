@@ -38,7 +38,7 @@
                                             "<a href='" (url (str "/workers/" (:id w) "/work-time")) "' class='btn btn-sm btn-info' title='Учет времени'>⏰</a> "
                                             "<a href='" (url (str "/workers/" (:id w) "/salary")) "' class='btn btn-sm btn-success' title='Зарплата'>💰</a> "
                                             "<a href='" (url (str "/workers/" (:id w) "/edit")) "' class='btn btn-sm btn-warning' title='Редактировать'>✏️</a> "
-                                             "<form method='POST' action='" (url (str "/workers/" (:id w) "/delete")) "' style='display: inline;' onsubmit='" (html-escape (str "return confirm(\"Удалить работника " (helpers/escape-js-string (:фамилия w)) " " (helpers/escape-js-string (:имя w)) "?\")")) "'>"
+                                             "<form method='POST' action='" (url (str "/workers/" (:id w) "/delete")) "' class='inline-form' onsubmit='" (html-escape (str "return confirm(\"Удалить работника " (helpers/escape-js-string (:фамилия w)) " " (helpers/escape-js-string (:имя w)) "?\")")) "'>"
                                            (csrf-field)
                                            "<button type='submit' class='btn btn-sm btn-danger' title='Удалить'>🗑️</button>"
                                            "</form>"
@@ -48,23 +48,23 @@
                              "</tbody>"
                              "</table>"))]
     (str "<div class='table-container'>"
-         "<div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;'>"
+         "<div class='flex-between' style='margin-bottom: 20px;'>"
          "<h2>📋 Список работников</h2>"
          "<a href='" (url "/workers/new") "' class='btn btn-success'>➕ Добавить работника</a>"
          "</div>"
          
          ;; Форма поиска
-         "<div style='background: #f0f4ff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #bbdefb;'>"
-         "<form method='GET' action='" (url "/workers") "' style='display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;'>"
-         "<div style='flex: 1; min-width: 250px;'>"
-         "<label style='display: block; margin-bottom: 5px; font-weight: 600; color: #1976d2;'>Поиск по ФИО или цеху:</label>"
+         "<div class='search-box'>"
+         "<form method='GET' action='" (url "/workers") "' >"
+         "<div >"
+         "<label >Поиск по ФИО или цеху:</label>"
          "<input type='text' name='search' placeholder='Введите фамилию, имя, отчество или цех...' value='" (html-escape (or search-query "")) "'"
-         " style='width: 100%; padding: 12px; border: 2px solid #bbdefb; border-radius: 6px; font-size: 14px; transition: border-color 0.3s;'>"
+         " >"
          "</div>"
-         "<button type='submit' class='btn btn-primary' style='padding: 12px 24px; white-space: nowrap;'>🔍 Найти</button>"
+         "<button type='submit' class='btn btn-primary' >🔍 Найти</button>"
          (when search-query
-            (str "<a href='" (url "/workers") "' class='btn btn-secondary' style='padding: 12px 24px; white-space: nowrap; margin-left: 10px;'>Сбросить фильтр</a>"
-                "<div style='margin-top: 15px; padding: 12px; background: #e3f2fd; border-radius: 6px; color: #1976d2; font-size: 14px;'>"
+            (str "<a href='" (url "/workers") "' class='btn btn-secondary' >Сбросить фильтр</a>"
+                "<div class='search-results-info'>"
                  "<strong>Результаты поиска:</strong> найдено " (count workers) " работников по запросу: <em>\"" (html-escape search-query) "\"</em>"
                 "</div>"))
          "</form>"
@@ -98,7 +98,7 @@
          ;; Отображение ошибок валидации
          (helpers/render-error-messages errors)
 
-         "<form method='POST' action='" (html-escape form-action) "' style='background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>"
+         "<form method='POST' action='" (html-escape form-action) "' class='form-card'>"
          (csrf-field)
 
          ;; Фамилия
@@ -189,7 +189,7 @@
          "</div>"
          
          ;; Кнопки
-         "<div style='display: flex; gap: 10px; margin-top: 20px;'>"
+         "<div class='flex-row' style='margin-top: 20px;'>"
          "<button type='submit' class='btn btn-primary'>"
          (if (= mode :create) "Создать" "Сохранить")
          "</button>"

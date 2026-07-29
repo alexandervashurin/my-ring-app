@@ -29,13 +29,13 @@
                    (str "<tr>"
                         "<td>" (html-escape (str (:год r))) "</td>"
                         "<td>" (html-escape (str (:месяц r))) "</td>"
-                        "<td style='color: #1976d2; font-weight: bold;'>" (html-escape (str (:всего_часов_за_месяц_по_плану r))) "</td>"
-                        "<td style='color: #43a047; font-weight: bold;'>" (html-escape (str (:всего_часов_в_месяц_по_факту r))) "</td>"
+                        "<td class='cell-blue'>" (html-escape (str (:всего_часов_за_месяц_по_плану r))) "</td>"
+                        "<td class='cell-green'>" (html-escape (str (:всего_часов_в_месяц_по_факту r))) "</td>"
                         "<td>" (html-escape (str (or (:количество_отработанных_дней r) "-"))) "</td>"
                         "<td>" (html-escape (str (or (:количество_рабочих_часов_в_день r) "-"))) "</td>"
-                        "<td style='color: #c62828; font-weight: bold;'>" (html-escape (str (or (:всего_отработанных_часов r) "-"))) "</td>"
-                        "<td style='color: #ff9800;'>" (html-escape (str (:больничные_дни r))) "</td>"
-                        "<td style='color: #2196f3;'>" (html-escape (str (:командировочные_дни r))) "</td>"
+                        "<td class='cell-red'>" (html-escape (str (or (:всего_отработанных_часов r) "-"))) "</td>"
+                        "<td class='cell-orange'>" (html-escape (str (:больничные_дни r))) "</td>"
+                        "<td class='cell-info'>" (html-escape (str (:командировочные_дни r))) "</td>"
                        "<td>"
                         "<a href='" (url (str "/work-time/" (html-escape (str (:id r))) "/edit")) "' class='btn btn-sm btn-warning' title='Редактировать'>✏️</a>"
                        "</td>"
@@ -53,14 +53,14 @@
          
          ;; Хлебные крошки
             (helpers/breadcrumbs
-              (str "<a href='" (url "/workers") "' style='color: #667eea; text-decoration: none;'>&larr; Назад к списку работников</a>")
-               (str "<a href='" (url (str "/workers/" (html-escape (str (:id worker))) "/salary")) "' style='color: #4CAF50; text-decoration: none;'>💰 Зарплата</a>"))
+              (str "<a href='" (url "/workers") "' class='back-link'>&larr; Назад к списку работников</a>")
+               (str "<a href='" (url (str "/workers/" (html-escape (str (:id worker))) "/salary")) "' class='green-link'>💰 Зарплата</a>"))
          
          ;; Информация о работнике
-         "<div style='background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 20px;'>"
-          "<p style='margin: 5px 0;'><strong>👨‍💼 ФИО:</strong> " (html-escape (:фамилия worker)) " " (html-escape (:имя worker)) " " (html-escape (or (:отчество worker) "")) "</p>"
-          "<p style='margin: 5px 0;'><strong>🏭 Цех:</strong> " (html-escape (:цех worker)) "</p>"
-          "<p style='margin: 5px 0;'><strong>📅 Дата приема:</strong> " (html-escape (:дата_приема worker)) "</p>"
+         "<div class='info-box'>"
+          "<p ><strong>👨‍💼 ФИО:</strong> " (html-escape (:фамилия worker)) " " (html-escape (:имя worker)) " " (html-escape (or (:отчество worker) "")) "</p>"
+          "<p ><strong>🏭 Цех:</strong> " (html-escape (:цех worker)) "</p>"
+          "<p ><strong>📅 Дата приема:</strong> " (html-escape (:дата_приема worker)) "</p>"
          "</div>"
          
          ;; Таблица учета времени
@@ -82,18 +82,18 @@
            
            ;; Хлебные крошки
             (helpers/breadcrumbs
-              (str "<a href='" (url (str "/workers/" (html-escape (str (:id worker))) "/work-time")) "' style='color: #667eea; text-decoration: none;'>&larr; Назад к учету времени</a>"))
+              (str "<a href='" (url (str "/workers/" (html-escape (str (:id worker))) "/work-time")) "' class='back-link'>&larr; Назад к учету времени</a>"))
            
            ;; Информация о работнике
-           "<div style='background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 20px;'>"
-            "<p style='margin: 5px 0;'><strong>👨‍💼 Работник:</strong> " (html-escape (:фамилия worker)) " " (html-escape (:имя worker)) " " (html-escape (or (:отчество worker) "")) "</p>"
-            "<p style='margin: 5px 0;'><strong>🏭 Цех:</strong> " (html-escape (:цех worker)) "</p>"
+           "<div class='info-box'>"
+            "<p ><strong>👨‍💼 Работник:</strong> " (html-escape (:фамилия worker)) " " (html-escape (:имя worker)) " " (html-escape (or (:отчество worker) "")) "</p>"
+            "<p ><strong>🏭 Цех:</strong> " (html-escape (:цех worker)) "</p>"
            "</div>"
            
            ;; Ошибки валидации
            (helpers/render-error-messages errors)
            
-           (str "<form method='POST' action='" (url (str "/work-time/" (html-escape (str (:id work-time-record))) "/update")) "' style='background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>")
+           (str "<form method='POST' action='" (url (str "/work-time/" (html-escape (str (:id work-time-record))) "/update")) "' class='form-card'>")
            (csrf-field)
 
            ;; Год
@@ -157,7 +157,7 @@
             "</div>"
            
            ;; Кнопки
-           "<div style='display: flex; gap: 10px; margin-top: 20px;'>"
+           "<div class='flex-row' style='margin-top: 20px;'>"
            "<button type='submit' class='btn btn-primary'>Сохранить</button>"
             (str "<a href='" (url (str "/workers/" (html-escape (str (:id worker))) "/work-time")) "' class='btn btn-secondary'>Отмена</a>")
            "</div>"
