@@ -1,7 +1,8 @@
 (ns my-ring-app.views.dashboard
   (:require [clojure.string :as str]
             [my-ring-app.views.layout :as layout]
-            [my-ring-app.views.helpers :as helpers]))
+            [my-ring-app.views.helpers :as helpers]
+            [my-ring-app.config :refer [url]]))
 
 (defn- format-currency
   "Форматирование суммы в виде валюты"
@@ -212,7 +213,7 @@
        "<tbody>"
        (apply str (for [w recent-hires]
                      (str "<tr>"
-                          "<td><a href='/workers/" (layout/html-escape (str (:id w))) "/edit' class='worker-link'>"
+                          "<td><a href='" (url (str "/workers/" (layout/html-escape (str (:id w))) "/edit")) "' class='worker-link'>"
                           (layout/html-escape (str (:фамилия w) " " (:имя w) " " (:отчество w))) "</a></td>"
                          "<td>" (layout/html-escape (or (:цех w) "-")) "</td>"
                          "<td>" (layout/html-escape (:дата_приема w)) "</td>"

@@ -6,7 +6,8 @@
             [my-ring-app.views.layout :as layout]
             [my-ring-app.views.auth :as auth-views]
             [my-ring-app.logger :as logger]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [my-ring-app.config :refer [url]]))
 
 ;; ======================================================================
 ;; Защита от brute-force атак
@@ -67,7 +68,7 @@
   [request]
   (let [username (str/trim (:username (:params request)))
         password (:password (:params request))
-        redirect-url (or (safe-redirect-url (:redirect-url (:session request))) "/")
+        redirect-url (or (safe-redirect-url (:redirect-url (:session request))) (url "/"))
         ip-address (get-in request [:headers "x-forwarded-for"] (:remote-addr request "unknown"))
         user-agent (get-in request [:headers "user-agent"])]
     (logger/log-info (format "Попытка входа пользователя: %s" username))
@@ -77,14 +78,14 @@
       (or (empty? username) (empty? password))
       (do
         (logger/log-warn (format "Попытка входа с пустыми данными: %s" username))
-        (-> (resp/redirect (str "/login?error=empty"))
+        (-> (resp/redirect (url (str "/login?error=empty")))
             (resp/status 302)))
 
       ;; Блокировка при множественных неудачных попытках
       (is-locked-out? username)
       (do
         (logger/log-warn (format "Аккаунт %s заблокирован из-за множественных неудачных попыток" username))
-        (-> (resp/redirect (str "/login?error=locked"))
+        (-> (resp/redirect (url (str "/login?error=locked")))
             (resp/status 302)))
 
       ;; Аутентификация
@@ -102,7 +103,7 @@
         (do
           (record-failed-login! username)
           (logger/log-warn (format "Неудачная попытка входа: %s" username))
-          (-> (resp/redirect (str "/login?error=invalid"))
+          (-> (resp/redirect (url (str "/login?error=invalid")))
               (resp/status 302)))))))
 
 (defn logout
@@ -115,7 +116,7 @@
       (logger/log-audit "LOGOUT" "User" (:id user)
                         (format "Пользователь %s вышел из системы" (:username user)))
       (logger/log-info (format "Пользователь %s вышел из системы" (:username user))))
-    (-> (resp/redirect "/")
+    (-> (resp/redirect (url "/"))
         (resp/status 302)
         (assoc :session nil))))
 
@@ -128,7 +129,7 @@
         (logger/log-info (format "Открыт профиль пользователя %s" (:username user)))
         (-> (resp/response (auth-views/render-profile-page user))
             (resp/content-type "text/html; charset=utf-8")))
-      (-> (resp/redirect "/login")
+      (-> (resp/redirect (url "/login"))
           (resp/status 302)))))
 
 (defn change-password
@@ -139,7 +140,7 @@
         new-password (:new-password (:params request))
         confirm-password (:confirm-password (:params request))]
     (if (not user)
-      (-> (resp/redirect "/login")
+      (-> (resp/redirect (url "/login"))
           (resp/status 302))
       (do
         (logger/log-info (format "Попытка смены пароля для %s" (:username user)))
@@ -155,15 +156,15 @@
                 (if (:success result)
                   (do
                     (logger/log-info (format "Пароль изменён для %s" (:username user)))
-                    (-> (resp/redirect "/profile?success=password_changed")
+                    (-> (resp/redirect (url "/profile?success=password_changed"))
                         (resp/status 302)))
-                  (-> (resp/redirect "/profile?error=change_failed")
+                  (-> (resp/redirect (url "/profile?error=change_failed"))
                       (resp/status 302))))
-              (-> (resp/redirect "/profile?error=short_password")
+              (-> (resp/redirect (url "/profile?error=short_password"))
                   (resp/status 302)))
-            (-> (resp/redirect "/profile?error=passwords_mismatch")
+            (-> (resp/redirect (url "/profile?error=passwords_mismatch"))
                 (resp/status 302)))
-          (-> (resp/redirect "/profile?error=wrong_password")
+          (-> (resp/redirect (url "/profile?error=wrong_password"))
               (resp/status 302)))))))
 
 (defn sessions-page

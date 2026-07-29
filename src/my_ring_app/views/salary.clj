@@ -1,6 +1,7 @@
 (ns my-ring-app.views.salary
   (:require [my-ring-app.views.layout :refer [wrap-html html-escape]]
-            [my-ring-app.views.helpers :as helpers]))
+            [my-ring-app.views.helpers :as helpers]
+            [my-ring-app.config :refer [url]]))
 
 (def ^:private month-names
   {1 "январь" 2 "февраль" 3 "март" 4 "апрель"
@@ -90,8 +91,8 @@
          "<h2>💰 Расчет зарплаты</h2>"
          
          ;; Хлебные крошки
-         (helpers/breadcrumbs
-           "<a href='/workers' style='color: #667eea; text-decoration: none;'>&larr; Назад к списку работников</a>")
+          (helpers/breadcrumbs
+            (str "<a href='" (url "/workers") "' style='color: #667eea; text-decoration: none;'>&larr; Назад к списку работников</a>"))
          
          ;; Информация о работнике
          "<div style='background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 20px;'>"

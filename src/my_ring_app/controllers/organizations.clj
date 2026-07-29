@@ -6,7 +6,8 @@
             [my-ring-app.tariff :as tariff]
             [my-ring-app.views.organizations :as org-views]
             [my-ring-app.logger :as logger]
-            [my-ring-app.util :as util]))
+            [my-ring-app.util :as util]
+            [my-ring-app.config :refer [url]]))
 
 (def ^:private validate-id util/validate-id)
 
@@ -45,16 +46,16 @@
     (logger/log-info "Попытка создания организации")
     (if (or (nil? name) (str/blank? name))
       (-> (resp/response (org-views/render-organization-form params (:identity request)
-                                                            :errors ["Название организации обязательно"]))
+                                                             :errors ["Название организации обязательно"]))
           (resp/content-type "text/html; charset=utf-8"))
       (let [result (auth/create-organization params)]
         (if (:success result)
           (do
             (logger/log-info (format "Организация создана, ID=%s" (str (:id result))))
-            (-> (resp/redirect "/organizations?success=created")
+            (-> (resp/redirect (url "/organizations?success=created"))
                 (resp/status 302)))
           (-> (resp/response (org-views/render-organization-form params (:identity request)
-                                                                :errors [(:message result)]))
+                                                                 :errors [(:message result)]))
               (resp/content-type "text/html; charset=utf-8")))))))
 
 (defn edit-organization-form
@@ -62,7 +63,7 @@
   [request]
   (let [id (validate-id (get-in request [:params :id]))]
     (if (nil? id)
-      (-> (resp/redirect "/organizations?error=not_found")
+      (-> (resp/redirect (url "/organizations?error=not_found"))
           (resp/status 302))
       (let [org (auth/get-organization-by-id id)]
         (if org
@@ -70,7 +71,7 @@
             (logger/log-info (format "Открыта форма редактирования организации ID=%d" id))
             (-> (resp/response (org-views/render-organization-form org (:identity request)))
                 (resp/content-type "text/html; charset=utf-8")))
-          (-> (resp/redirect "/organizations?error=not_found")
+          (-> (resp/redirect (url "/organizations?error=not_found"))
               (resp/status 302)))))))
 
 (defn update-organization
@@ -79,7 +80,7 @@
   (let [id (validate-id (get-in request [:params :id]))
         params (:params request)]
     (if (nil? id)
-      (-> (resp/redirect "/organizations?error=not_found")
+      (-> (resp/redirect (url "/organizations?error=not_found"))
           (resp/status 302))
       (do
         (logger/log-info (format "Попытка обновления организации ID=%d" id))
@@ -87,7 +88,7 @@
           (if (:success result)
             (do
               (logger/log-info (format "Организация ID=%d обновлена" id))
-              (-> (resp/redirect "/organizations?success=updated")
+              (-> (resp/redirect (url "/organizations?success=updated"))
                   (resp/status 302)))
             (let [org (auth/get-organization-by-id id)]
               (-> (resp/response (org-views/render-organization-form (merge org params) (:identity request)
@@ -99,7 +100,7 @@
   [request]
   (let [id (validate-id (get-in request [:params :id]))]
     (if (nil? id)
-      (-> (resp/redirect "/organizations?error=not_found")
+      (-> (resp/redirect (url "/organizations?error=not_found"))
           (resp/status 302))
       (do
         (logger/log-info (format "Попытка деактивации организации ID=%d" id))
@@ -107,9 +108,9 @@
           (if (:success result)
             (do
               (logger/log-info (format "Организация ID=%d деактивирована" id))
-              (-> (resp/redirect "/organizations?success=deactivated")
+              (-> (resp/redirect (url "/organizations?success=deactivated"))
                   (resp/status 302)))
-            (-> (resp/redirect "/organizations?error=delete_failed")
+            (-> (resp/redirect (url "/organizations?error=delete_failed"))
                 (resp/status 302))))))))
 
 (defn organization-detail
@@ -117,7 +118,7 @@
   [request]
   (let [id (validate-id (get-in request [:params :id]))]
     (if (nil? id)
-      (-> (resp/redirect "/organizations?error=not_found")
+      (-> (resp/redirect (url "/organizations?error=not_found"))
           (resp/status 302))
       (let [org (auth/get-organization-by-id id)]
         (if org
@@ -125,7 +126,7 @@
             (logger/log-info (format "Просмотр организации ID=%d" id))
             (-> (resp/response (org-views/render-organization-detail org (:identity request) :users users))
                 (resp/content-type "text/html; charset=utf-8")))
-          (-> (resp/redirect "/organizations?error=not_found")
+          (-> (resp/redirect (url "/organizations?error=not_found"))
               (resp/status 302)))))))
 
 (defn update-user-org-role
@@ -135,15 +136,15 @@
         user-id (validate-id (get-in request [:params :user-id]))
         org-role (get-in request [:params :org_role])]
     (if (or (nil? org-id) (nil? user-id))
-      (-> (resp/redirect (str "/organizations/" org-id "?error=invalid"))
+      (-> (resp/redirect (url (str "/organizations/" org-id "?error=invalid")))
           (resp/status 302))
       (let [result (auth/update-user-org-role! user-id org-role)]
         (if (:success result)
           (do
             (logger/log-info (format "Роль пользователя %d в организации %d изменена на %s" user-id org-id (or org-role "default")))
-            (-> (resp/redirect (str "/organizations/" org-id "?success=role_updated"))
+            (-> (resp/redirect (url (str "/organizations/" org-id "?success=role_updated")))
                 (resp/status 302)))
-          (-> (resp/redirect (str "/organizations/" org-id "?error=role_failed"))
+          (-> (resp/redirect (url (str "/organizations/" org-id "?error=role_failed")))
               (resp/status 302)))))))
 
 (defn update-org-plan
@@ -153,13 +154,13 @@
         plan-id (util/parse-int (get-in request [:params :plan_id]) nil)
         user-id (:id (:identity request))]
     (if (or (nil? org-id) (nil? plan-id))
-      (-> (resp/redirect (str "/organizations/" org-id "?error=invalid_params"))
+      (-> (resp/redirect (url (str "/organizations/" org-id "?error=invalid_params")))
           (resp/status 302))
       (let [result (tariff/update-org-plan! org-id plan-id user-id)]
         (if (:success result)
           (do
             (logger/log-info (format "Тариф организации %d изменён на план %d" org-id plan-id))
-            (-> (resp/redirect (str "/organizations/" org-id "?success=plan_updated"))
+            (-> (resp/redirect (url (str "/organizations/" org-id "?success=plan_updated")))
                 (resp/status 302)))
-          (-> (resp/redirect (str "/organizations/" org-id "?error=plan_failed"))
+          (-> (resp/redirect (url (str "/organizations/" org-id "?error=plan_failed")))
               (resp/status 302)))))))

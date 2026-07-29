@@ -86,4 +86,11 @@
 (def app-config
   {:port (Integer/parseInt (or (System/getenv "PORT") "3000"))
    :env (or (System/getenv "ENV") "development")
-   :db-type (get-db-type)})
+   :db-type (get-db-type)
+   :base-url (or (System/getenv "BASE_URL") "")})
+
+(defn url
+  "Формирование URL с учётом base-url.
+  (url \"/workers\") => \"/workers\" или \"/my-app/workers\""
+  [path]
+  (str (:base-url app-config) path))

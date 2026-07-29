@@ -2,7 +2,8 @@
   "Представления для управления организациями"
   (:require [clojure.string :as string]
             [my-ring-app.views.layout :as layout]
-            [my-ring-app.tariff :as tariff]))
+            [my-ring-app.tariff :as tariff]
+            [my-ring-app.config :refer [url]]))
 
 (def ^:private org-role-labels
   {"org_admin" "Администратор организации"
@@ -42,7 +43,7 @@
                      (if is-self
                        "<em>текущий пользователь</em>"
                        (str
-                        "<form method='POST' action='/organizations/" org-id "/users/" (:id u) "/role' class='inline-form'>"
+                        (str "<form method='POST' action='" (url (str "/organizations/" org-id "/users/" (:id u) "/role")) "' class='inline-form'>")
                         (layout/csrf-field)
                         "<select name='org_role' class='form-control form-control-sm'>"
                         (apply str
@@ -71,17 +72,17 @@
                     plan-name (:name plan "Free")]
                 (str "<tr>"
                      "<td>" (:id org) "</td>"
-                     "<td><a href='/organizations/" (:id org) "'>"
-                     (layout/html-escape (:name org)) "</a></td>"
+(str "<td><a href='" (url (str "/organizations/" (:id org))) "'>"
+                      (layout/html-escape (:name org)) "</a></td>")
                      "<td>" (layout/html-escape (or (:inn org) "-")) "</td>"
                      "<td>" (layout/html-escape (or (:phone org) "-")) "</td>"
                      "<td>" (layout/html-escape (or (:email org) "-")) "</td>"
                      "<td>" (layout/html-escape plan-name) "</td>"
                      "<td>"
-                     "<a href='/organizations/" (:id org)
-                     "/edit' class='btn btn-sm btn-info'>Редактировать</a> "
-                     "<form method='POST' action='/organizations/" (:id org)
-                     "/delete' class='inline-form'>"
+(str "<a href='" (url (str "/organizations/" (:id org)
+                  "/edit")) "' class='btn btn-sm btn-info'>Редактировать</a> ")
+                  (str "<form method='POST' action='" (url (str "/organizations/" (:id org)
+                  "/delete")) "' class='inline-form'>")
                      (layout/csrf-field)
                      "<button type='submit' class='btn btn-sm btn-danger' "
                      "onclick=\"return confirm('Деактивировать организацию?')\">"
@@ -103,7 +104,7 @@
       (when error
         (str "<div class='alert alert-error'>"
              (layout/html-escape error) "</div>"))
-      "<a href='/organizations/new' class='btn btn-primary'>+ Новая организация</a>"
+      (str "<a href='" (url "/organizations/new") "' class='btn btn-primary'>+ Новая организация</a>")
       "</div>"
       (org-table-html organizations))
      "Организации" "organizations" lang)))
@@ -115,8 +116,8 @@
         is-edit (some? (:id organization))
         title (if is-edit "Редактирование организации" "Новая организация")
         action (if is-edit
-                 (str "/organizations/" (:id organization) "/update")
-                 "/organizations/create")]
+                  (url (str "/organizations/" (:id organization) "/update"))
+                  (url "/organizations/create"))]
     (layout/wrap-html
      (str
       "<div class='page-header'>"
@@ -162,7 +163,7 @@
       "<button type='submit' class='btn btn-primary'>"
       (if is-edit "Сохранить" "Создать")
       "</button> "
-      "<a href='/organizations' class='btn btn-secondary'>Отмена</a>"
+      (str "<a href='" (url "/organizations") "' class='btn btn-secondary'>Отмена</a>")
       "</div>"
       "</form>")
      title "organizations" lang)))
@@ -181,7 +182,7 @@
          "</table>"
          (when is-admin
            (str "<div style='margin-top: 10px;'>"
-                "<form method='POST' action='/organizations/" (:id organization) "/update-plan' class='inline-form'>"
+                (str "<form method='POST' action='" (url (str "/organizations/" (:id organization) "/update-plan")) "' class='inline-form'>")
                 (layout/csrf-field)
                 "<select name='plan_id' class='form-control form-control-sm' style='width: auto; display: inline;'>"
                 (apply str
@@ -203,9 +204,9 @@
      (str
       "<div class='page-header'>"
       "<h2>" (layout/html-escape (:name organization)) "</h2>"
-      "<a href='/organizations/" (:id organization)
-      "/edit' class='btn btn-info'>Редактировать</a> "
-      "<a href='/organizations' class='btn btn-secondary'>Назад</a>"
+(str "<a href='" (url (str "/organizations/" (:id organization)
+       "/edit")) "' class='btn btn-info'>Редактировать</a> ")
+       (str "<a href='" (url "/organizations") "' class='btn btn-secondary'>Назад</a>")
       "</div>"
       (when (= (:role user) "admin")
         (str "<div class='alert alert-info'>Вы — глобальный администратор, "

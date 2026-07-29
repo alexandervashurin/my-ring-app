@@ -1,6 +1,7 @@
 (ns my-ring-app.views.auth
   "Представления аутентификации"
   (:require [my-ring-app.views.layout :refer [wrap-html html-escape csrf-field]]
+            [my-ring-app.config :refer [url]]
             [clojure.string :as str]))
 
 (defn render-login-page
@@ -18,7 +19,7 @@
           (when error-text
             (str "<div class='error-message'>" error-text "</div>"))
 
-          "<form method='POST' action='/login' class='login-form'>"
+          "<form method='POST' action='" (url "/login") "' class='login-form'>"
           (csrf-field)
           "<div class='form-group'>"
           "<label for='username'>Имя пользователя</label>"
@@ -67,7 +68,7 @@
 
         "<div class='profile-card'>"
         "<h2>🔑 Смена пароля</h2>"
-        "<form method='POST' action='/change-password' class='profile-form'>"
+        "<form method='POST' action='" (url "/change-password") "' class='profile-form'>"
         (csrf-field)
         "<div class='form-group'>"
         "<label for='current-password'>Текущий пароль</label>"
@@ -151,7 +152,7 @@
         "<p class='denied-message'>У вас недостаточно прав для доступа к этой странице.</p>"
         "<p class='denied-user'>Вы вошли как: <strong>" (html-escape (:username user)) "</strong> (" 
         (html-escape (:role user)) ")</p>"
-        "<a href='/' class='btn btn-primary'>Вернуться на главную</a>"
+        "<a href='" (url "/") "' class='btn btn-primary'>Вернуться на главную</a>"
         "</div>")
    "Доступ запрещён"
    nil))

@@ -1,7 +1,7 @@
 (ns my-ring-app.auth
   "Модуль аутентификации и авторизации пользователей"
   (:require [clojure.java.jdbc :as jdbc]
-            [my-ring-app.config :as config :refer [db-spec]]
+            [my-ring-app.config :as config :refer [db-spec url]]
             [my-ring-app.logger :as logger]
             [my-ring-app.session-audit :as session-audit]
             [buddy.hashers :as hashers]
@@ -430,7 +430,7 @@
   (fn [request]
     (if (authenticated? request)
       (handler request)
-      (-> (resp/redirect "/login")
+      (-> (resp/redirect (url "/login"))
           (resp/status 302)))))
 
 (defn require-role

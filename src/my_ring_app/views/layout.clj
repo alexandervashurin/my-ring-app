@@ -1,7 +1,8 @@
 (ns my-ring-app.views.layout
   (:require [clojure.string :as str]
             [ring.util.anti-forgery :as af]
-            [my-ring-app.i18n :as i18n]))
+            [my-ring-app.i18n :as i18n]
+            [my-ring-app.config :refer [url]]))
 
 (defn html-escape
   "Экранирование HTML-символов для защиты от XSS"
@@ -28,13 +29,13 @@
          (apply str (for [lang languages]
                       (if (= (name lang) current-lang)
                         (str "<span class='lang-current'>" (i18n/get-language-name lang) "</span>")
-                        (str "<a href='/lang/" lang "' class='lang-link'>" (i18n/get-language-name lang) "</a>"))))
+                        (str "<a href='" (url (str "/lang/" lang)) "' class='lang-link'>" (i18n/get-language-name lang) "</a>"))))
          "</div>")))
 
 (defn- generate-css
   "Генерация ссылки на внешний CSS-файл"
   []
-  "<link rel='stylesheet' href='/css/app.css'>")
+  (str "<link rel='stylesheet' href='" (url "/css/app.css") "'>"))
 
 (defn- generate-header
   "Генерация шапки страницы"
@@ -46,8 +47,8 @@
                                             "manager" "Менеджер"
                                             "viewer" "Наблюдатель"
                                             "hr" "HR-специалист"} (:role user) (:role user))) ")</span>"
-                         "<a href='/profile' class='btn btn-sm btn-info btn-user-action'>" (i18n/t current-lang :auth :profile) "</a>"
-                         "<form method='POST' action='/logout' class='inline-form'>"
+                          "<a href='" (url "/profile") "' class='btn btn-sm btn-info btn-user-action'>" (i18n/t current-lang :auth :profile) "</a>"
+                          "<form method='POST' action='" (url "/logout") "' class='inline-form'>"
                          (csrf-field)
                          "<button type='submit' class='btn btn-sm btn-secondary'>" (i18n/t current-lang :auth :logout) "</button>"
                          "</form>"
@@ -74,13 +75,13 @@
         has-salary-access (contains? #{"admin" "manager"} user-role)
         is-admin (= user-role "admin")]
     (str "<nav>"
-         "<a href='/'" (active-class "home") ">Главная</a>"
-         "<a href='/dashboard'" (active-class "dashboard") ">Дашборд</a>"
-         "<a href='/workers'" (active-class "workers") ">Работники</a>"
+         "<a href='" (url "/") "'" (active-class "home") ">Главная</a>"
+         "<a href='" (url "/dashboard") "'" (active-class "dashboard") ">Дашборд</a>"
+         "<a href='" (url "/workers") "'" (active-class "workers") ">Работники</a>"
          (when is-admin
-           "<a href='/organizations'" (active-class "organizations") ">Организации</a>")
+           (str "<a href='" (url "/organizations") "'" (active-class "organizations") ">Организации</a>"))
          (when has-salary-access
-           "<a href='/db'" (active-class "db") ">Все таблицы</a>")
+           (str "<a href='" (url "/db") "'" (active-class "db") ">Все таблицы</a>"))
          "</nav>")))
 
 (defn wrap-html
@@ -98,8 +99,8 @@
          "<meta name='apple-mobile-web-app-capable' content='yes'>"
          "<meta name='apple-mobile-web-app-status-bar-style' content='default'>"
          "<meta name='apple-mobile-web-app-title' content='HR System'>"
-         "<link rel='manifest' href='/manifest.json'>"
-         "<link rel='apple-touch-icon' href='/icons/icon-192x192.png'>"
+         "<link rel='manifest' href='" (url "/manifest.json") "'>"
+         "<link rel='apple-touch-icon' href='" (url "/icons/icon-192x192.png") "'>"
          "<title>" title " - " (i18n/t lang :common :title) "</title>"
          (generate-css)
          "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js' integrity='sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g' crossorigin='anonymous'></script>"
@@ -109,14 +110,14 @@
          (generate-header user lang)
          (generate-navigation (or active-page "home") user lang)
          content
-          "<script src='/js/validation.js'></script>"
-          "<script src='/js/app.js'></script>"
-          "<script src='/js/charts.js'></script>"
+          "<script src='" (url "/js/validation.js") "'></script>"
+          "<script src='" (url "/js/app.js") "'></script>"
+          "<script src='" (url "/js/charts.js") "'></script>"
          "<script>"
          "// Регистрация Service Worker"
          "if ('serviceWorker' in navigator) {"
          "  window.addEventListener('load', function() {"
-         "    navigator.serviceWorker.register('/sw.js')"
+          "    navigator.serviceWorker.register('" (url "/sw.js") "')"
          "      .then(function(registration) {"
          "        console.log('[PWA] Service Worker зарегистрирован:', registration.scope);"
          "      })"

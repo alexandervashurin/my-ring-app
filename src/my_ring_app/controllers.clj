@@ -14,7 +14,8 @@
             [my-ring-app.util :as util]
             [my-ring-app.auth :as auth]
             [my-ring-app.tariff :as tariff]
-            [my-ring-app.cache :as cache]))
+            [my-ring-app.cache :as cache]
+            [my-ring-app.config :refer [url]]))
 
 ;; ======================================================================
 ;; Вспомогательные функции
@@ -179,10 +180,10 @@
                      (logger/log-audit "CREATE" "Worker" (:id result)
                                        (format "Создан работник %s %s (org: %s)" (:фамилия params) (:имя params) (str org-id)))
                      (logger/log-info (format "Работник успешно создан, ID=%s (org: %s)" (:id result) (str org-id)))
-                     (resp/redirect "/workers"))
-                   (do
-                     (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при создании работника")
-                     (render-new-worker-error-response (load-worker-form-data) [(:message result)] params))))
+                      (resp/redirect (url "/workers")))
+                    (do
+                      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при создании работника")
+                      (render-new-worker-error-response (load-worker-form-data) [(:message result)] params))))
                (catch Exception e
                  (logger/log-error ^Throwable e "Критическая ошибка при создании работника")
                  (render-new-worker-error-response (load-worker-form-data) ["Внутренняя ошибка при создании работника"] params))))
@@ -213,9 +214,9 @@
                      (logger/log-audit "UPDATE" "Worker" worker-id
                                        (format "Обновлен работник %s %s" (:фамилия params) (:имя params)))
                      (logger/log-info (format "Работник успешно обновлен, ID=%s" worker-id))
-                     (resp/redirect "/workers"))
-                   (do
-                     (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении работника")
+                      (resp/redirect (url "/workers")))
+                    (do
+                      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении работника")
                      (render-edit-worker-error-response (model/get-record-by-id "Работник" (str worker-id))
                                                         (load-worker-form-data) [(:message result)]))))
                 (do
@@ -238,10 +239,10 @@
                (do
                  (logger/log-audit "DELETE" "Worker" worker-id "Работник удален")
                  (logger/log-info (format "Работник успешно удален, ID=%s" worker-id))
-                 (resp/redirect "/workers"))
-               (do
-                 (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при удалении работника")
-                 (resp/redirect "/workers"))))))))))
+                  (resp/redirect (url "/workers")))
+                (do
+                  (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при удалении работника")
+                  (resp/redirect (url "/workers")))))))))))
 
 ;; ======================================================================
 ;; Контроллеры зарплаты
@@ -265,7 +266,7 @@
              (if worker
                (-> (resp/response (salary/render-salary-page worker salary-info salary-history))
                    (resp/content-type "text/html; charset=utf-8"))
-               (resp/redirect "/workers")))))))))
+                (resp/redirect (url "/workers"))))))))))
 
 ;; ======================================================================
 ;; Контроллеры учета времени
@@ -287,7 +288,7 @@
              (if worker
                (-> (resp/response (work-time/render-work-time-page worker work-time-records))
                    (resp/content-type "text/html; charset=utf-8"))
-               (resp/redirect "/workers")))))))))
+                (resp/redirect (url "/workers"))))))))))
 
 (defn edit-work-time-form
   ([] (edit-work-time-form nil))
@@ -305,7 +306,7 @@
              (if (and work-time-record worker)
                (-> (resp/response (work-time/render-edit-work-time-form work-time-record worker))
                    (resp/content-type "text/html; charset=utf-8"))
-               (resp/redirect "/workers")))))))))
+                (resp/redirect (url "/workers"))))))))))
 
 (defn update-work-time
   ([] (update-work-time nil nil))
@@ -329,7 +330,7 @@
                         (logger/log-audit "UPDATE" "WorkTime" work-time-id
                                           (format "Обновлен учет времени для работника ID=%s" (str worker-id)))
                         (logger/log-info (format "Учет времени успешно обновлен, ID=%s" work-time-id))
-                        (resp/redirect (str "/workers/" (or worker-id "?error=unknown") "/work-time"))))
+                        (resp/redirect (url (str "/workers/" (or worker-id "?error=unknown") "/work-time")))))
                    (do
                      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении учета времени")
                      (let [work-time-record (model/get-work-time-by-id (str work-time-id))

@@ -1,6 +1,7 @@
 (ns my-ring-app.views.work-time
   (:require [my-ring-app.views.layout :refer [wrap-html html-escape csrf-field]]
-            [my-ring-app.views.helpers :as helpers]))
+            [my-ring-app.views.helpers :as helpers]
+            [my-ring-app.config :refer [url]]))
 
 (defn- render-work-time-table
   "Рендер таблицы учета рабочего времени"
@@ -36,7 +37,7 @@
                         "<td style='color: #ff9800;'>" (html-escape (str (:больничные_дни r))) "</td>"
                         "<td style='color: #2196f3;'>" (html-escape (str (:командировочные_дни r))) "</td>"
                        "<td>"
-                        "<a href='/work-time/" (html-escape (str (:id r))) "/edit' class='btn btn-sm btn-warning' title='Редактировать'>✏️</a>"
+                        "<a href='" (url (str "/work-time/" (html-escape (str (:id r))) "/edit")) "' class='btn btn-sm btn-warning' title='Редактировать'>✏️</a>"
                        "</td>"
                        "</tr>"))
                 records))
@@ -51,9 +52,9 @@
          "<h2>⏰ Учет рабочего времени</h2>"
          
          ;; Хлебные крошки
-         (helpers/breadcrumbs
-           "<a href='/workers' style='color: #667eea; text-decoration: none;'>&larr; Назад к списку работников</a>"
-            (str "<a href='/workers/" (html-escape (str (:id worker))) "/salary' style='color: #4CAF50; text-decoration: none;'>💰 Зарплата</a>"))
+            (helpers/breadcrumbs
+              (str "<a href='" (url "/workers") "' style='color: #667eea; text-decoration: none;'>&larr; Назад к списку работников</a>")
+               (str "<a href='" (url (str "/workers/" (html-escape (str (:id worker))) "/salary")) "' style='color: #4CAF50; text-decoration: none;'>💰 Зарплата</a>"))
          
          ;; Информация о работнике
          "<div style='background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 20px;'>"
@@ -81,7 +82,7 @@
            
            ;; Хлебные крошки
             (helpers/breadcrumbs
-              (str "<a href='/workers/" (html-escape (str (:id worker))) "/work-time' style='color: #667eea; text-decoration: none;'>&larr; Назад к учету времени</a>"))
+              (str "<a href='" (url (str "/workers/" (html-escape (str (:id worker))) "/work-time")) "' style='color: #667eea; text-decoration: none;'>&larr; Назад к учету времени</a>"))
            
            ;; Информация о работнике
            "<div style='background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 20px;'>"
@@ -92,7 +93,7 @@
            ;; Ошибки валидации
            (helpers/render-error-messages errors)
            
-           (str "<form method='POST' action='/work-time/" (html-escape (str (:id work-time-record))) "/update' style='background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>")
+           (str "<form method='POST' action='" (url (str "/work-time/" (html-escape (str (:id work-time-record))) "/update")) "' style='background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>")
            (csrf-field)
 
            ;; Год
@@ -158,7 +159,7 @@
            ;; Кнопки
            "<div style='display: flex; gap: 10px; margin-top: 20px;'>"
            "<button type='submit' class='btn btn-primary'>Сохранить</button>"
-            (str "<a href='/workers/" (html-escape (str (:id worker))) "/work-time' class='btn btn-secondary'>Отмена</a>")
+            (str "<a href='" (url (str "/workers/" (html-escape (str (:id worker))) "/work-time")) "' class='btn btn-secondary'>Отмена</a>")
            "</div>"
            
            "</form>"
