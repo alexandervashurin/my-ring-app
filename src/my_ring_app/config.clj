@@ -94,3 +94,10 @@
   (url \"/workers\") => \"/workers\" или \"/my-app/workers\""
   [path]
   (str (:base-url app-config) path))
+
+(defn with-db
+  "Выполняет f с переопределённым db-spec (для тестов).
+  (with-db test-db (fn [] (jdbc/query ...)))"
+  [db f]
+  (with-redefs [db-spec db]
+    (f)))
