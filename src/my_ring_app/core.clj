@@ -5,7 +5,6 @@
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
             [ring.middleware.content-type :refer [wrap-content-type]]
-            [ring.middleware.file-info :refer [wrap-file-info]]
             [ring.middleware.session :refer [wrap-session]]
             [ring.middleware.session.cookie :as cookie]
             [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
@@ -108,7 +107,6 @@
       (api-version/wrap-api-version)
       wrap-logging
       wrap-content-type
-      wrap-file-info
       wrap-keyword-params
       wrap-params
       (wrap-json-body {:keywords? true})

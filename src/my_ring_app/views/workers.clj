@@ -48,7 +48,7 @@
                              "</tbody>"
                              "</table>"))]
     (str "<div class='table-container'>"
-         "<div class='flex-between' style='margin-bottom: 20px;'>"
+         "<div class='flex-between mb-20'>"
          "<h2>📋 Список работников</h2>"
          "<a href='" (url "/workers/new") "' class='btn btn-success'>➕ Добавить работника</a>"
          "</div>"
@@ -189,7 +189,7 @@
          "</div>"
          
          ;; Кнопки
-         "<div class='flex-row' style='margin-top: 20px;'>"
+         "<div class='flex-row mt-20'>"
          "<button type='submit' class='btn btn-primary'>"
          (if (= mode :create) "Создать" "Сохранить")
          "</button>"

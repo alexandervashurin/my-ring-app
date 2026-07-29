@@ -1,7 +1,8 @@
 (ns my-ring-app.i18n
   "Интернационализация (i18n) — поддержка нескольких языков"
   (:require [clojure.edn :as edn]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [my-ring-app.logger :as logger]))
 
 ;; ======================================================================
 ;; Загрузка переводов
@@ -13,7 +14,7 @@
     (try
       (edn/read-string (slurp (io/resource "i18n.edn")))
       (catch Exception e
-        (println "Error loading i18n.edn:" (.getMessage e))
+        (logger/log-error e "Error loading i18n.edn")
         {}))))
 
 ;; ======================================================================

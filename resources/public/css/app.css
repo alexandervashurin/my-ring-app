@@ -740,6 +740,18 @@ nav a.active {
   align-items: center;
 }
 
+.flex-between.mb-20 {
+  margin-bottom: 20px;
+}
+
+.flex-row.mt-20 {
+  margin-top: 20px;
+}
+
+.table-container.mt-30 {
+  margin-top: 30px;
+}
+
 .flex-row {
   display: flex;
   gap: 10px;
@@ -774,6 +786,14 @@ nav a.active {
 
 .back-link:hover {
   text-decoration: underline;
+}
+
+.breadcrumbs {
+  margin-bottom: 20px;
+}
+
+.alert-error ul {
+  margin: 10px 0 0 20px;
 }
 
 .green-link {
@@ -873,6 +893,15 @@ nav a.active {
 }
 
 /* Форма с карточкой */
+.mt-10 {
+  margin-top: 10px;
+}
+
+.form-control-inline {
+  width: auto;
+  display: inline;
+}
+
 .form-card {
   background: white;
   padding: 25px;

@@ -3,7 +3,6 @@
   (:require [ring.util.response :as resp]
             [my-ring-app.auth :as auth]
             [my-ring-app.session-audit :as session-audit]
-            [my-ring-app.views.layout :as layout]
             [my-ring-app.views.auth :as auth-views]
             [my-ring-app.logger :as logger]
             [clojure.string :as str]

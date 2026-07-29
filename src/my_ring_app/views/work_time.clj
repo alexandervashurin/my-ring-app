@@ -157,7 +157,7 @@
             "</div>"
            
            ;; Кнопки
-           "<div class='flex-row' style='margin-top: 20px;'>"
+           "<div class='flex-row mt-20'>"
            "<button type='submit' class='btn btn-primary'>Сохранить</button>"
             (str "<a href='" (url (str "/workers/" (html-escape (str (:id worker))) "/work-time")) "' class='btn btn-secondary'>Отмена</a>")
            "</div>"

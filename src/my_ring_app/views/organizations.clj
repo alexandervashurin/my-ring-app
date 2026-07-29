@@ -181,10 +181,10 @@
          "<tr><td><strong>Цена:</strong></td><td>" (:price-monthly plan) " ₽/мес</td></tr>"
          "</table>"
          (when is-admin
-           (str "<div style='margin-top: 10px;'>"
-                (str "<form method='POST' action='" (url (str "/organizations/" (:id organization) "/update-plan")) "' class='inline-form'>")
-                (layout/csrf-field)
-                "<select name='plan_id' class='form-control form-control-sm' style='width: auto; display: inline;'>"
+            (str "<div class='mt-10'>"
+                 (str "<form method='POST' action='" (url (str "/organizations/" (:id organization) "/update-plan")) "' class='inline-form'>")
+                 (layout/csrf-field)
+                 "<select name='plan_id' class='form-control form-control-sm form-control-inline'>"
                 (apply str
                        (for [p (tariff/get-all-plans)]
                          (str "<option value='" (:id p) "'"

@@ -3,11 +3,11 @@
   (:require [clojure.string :as str]
             [ring.util.response :as resp]))
 
-(defn parse-int
+(defn ^Integer parse-int
   "Безопасное преобразование строки в число"
   [s default]
   (try
-    (if (or (nil? s) (str/blank? s))
+    (if (nil? s)
       default
       (Integer/parseInt (str/trim (str s))))
     (catch NumberFormatException _
@@ -65,8 +65,8 @@
    :категория_работника_id (parse-int (:категория_работника_id params) nil)
    :разряд_id (parse-int (:разряд_id params) nil)
    :режим_работы_id (parse-int (:режим_работы_id params) nil)
-   :оклад_id (when (seq (:оклад_id params)) (parse-int (:оклад_id params) nil))
-   :почасовая_ставка_id (when (seq (:почасовая_ставка_id params)) (parse-int (:почасовая_ставка_id params) nil))})
+   :оклад_id (when (:оклад_id params) (parse-int (:оклад_id params) nil))
+   :почасовая_ставка_id (when (:почасовая_ставка_id params) (parse-int (:почасовая_ставка_id params) nil))})
 
 (defn parse-work-time-params
   "Парсинг параметров учета рабочего времени из request params"
@@ -75,10 +75,10 @@
    :месяц (parse-int (:месяц params) nil)
    :всего_часов_за_месяц_по_плану (parse-int (:всего_часов_за_месяц_по_плану params) nil)
    :всего_часов_в_месяц_по_факту (parse-int (:всего_часов_в_месяц_по_факту params) nil)
-   :количество_отработанных_дней (when (seq (:количество_отработанных_дней params)) (parse-int (:количество_отработанных_дней params) nil))
-   :количество_рабочих_часов_в_день (when (seq (:количество_рабочих_часов_в_день params)) (parse-int (:количество_рабочих_часов_в_день params) nil))
-   :всего_отработанных_часов (when (seq (:всего_отработанных_часов params)) (parse-int (:всего_отработанных_часов params) nil))
-   :сколько_должны_отработать (when (seq (:сколько_должны_отработать params)) (parse-int (:сколько_должны_отработать params) nil))
+   :количество_отработанных_дней (when (:количество_отработанных_дней params) (parse-int (:количество_отработанных_дней params) nil))
+   :количество_рабочих_часов_в_день (when (:количество_рабочих_часов_в_день params) (parse-int (:количество_рабочих_часов_в_день params) nil))
+   :всего_отработанных_часов (when (:всего_отработанных_часов params) (parse-int (:всего_отработанных_часов params) nil))
+   :сколько_должны_отработать (when (:сколько_должны_отработать params) (parse-int (:сколько_должны_отработать params) nil))
    :больничные_дни (parse-int (:больничные_дни params) 0)
    :командировочные_дни (parse-int (:командировочные_дни params) 0)})
 

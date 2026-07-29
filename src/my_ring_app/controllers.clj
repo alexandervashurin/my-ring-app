@@ -162,37 +162,43 @@
                    (resp/status 404)
                    (resp/content-type "text/html; charset=utf-8"))))))))))
 
+(defn- handle-create-exception [params e]
+  (logger/log-error ^Throwable e "Критическая ошибка при создании работника")
+  (render-new-worker-error-response (load-worker-form-data) ["Внутренняя ошибка при создании работника"] params))
+
+(defn- handle-create-result [params org-id result]
+  (if (:success result)
+    (do
+      (logger/log-audit "CREATE" "Worker" (:id result)
+                        (format "Создан работник %s %s (org: %s)" (:фамилия params) (:имя params) (str org-id)))
+      (logger/log-info (format "Работник успешно создан, ID=%s (org: %s)" (:id result) (str org-id)))
+      (resp/redirect (url "/workers")))
+    (do
+      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при создании работника")
+      (render-new-worker-error-response (load-worker-form-data) [(:message result)] params))))
+
 (defn create-worker
   ([] (create-worker nil))
   ([request-or-params]
-   (let [params (extract-params request-or-params)
-         org-id (extract-org-id request-or-params)]
+   (let [params (extract-params request-or-params)]
      (logger/log-info "Попытка создания работника")
-     (let [limit-check (tariff/check-worker-limit org-id)]
-       (if (:allowed limit-check)
+     (let [org-id (extract-org-id request-or-params)
+           limit-check (tariff/check-worker-limit org-id)]
+       (if (not (:allowed limit-check))
+         (do
+           (logger/log-warn (format "Лимит работников превышен: %s" (:message limit-check)))
+           (render-new-worker-error-response (load-worker-form-data) [(:message limit-check)] params))
          (let [validation-result (validation/validate-worker params)]
-           (if (:valid? validation-result)
-             (try
-               (let [data (parse-worker-params params)
-                     result (model/create-record "Работник" data org-id)]
-                 (if (:success result)
-                   (do
-                     (logger/log-audit "CREATE" "Worker" (:id result)
-                                       (format "Создан работник %s %s (org: %s)" (:фамилия params) (:имя params) (str org-id)))
-                     (logger/log-info (format "Работник успешно создан, ID=%s (org: %s)" (:id result) (str org-id)))
-                      (resp/redirect (url "/workers")))
-                    (do
-                      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при создании работника")
-                      (render-new-worker-error-response (load-worker-form-data) [(:message result)] params))))
-               (catch Exception e
-                 (logger/log-error ^Throwable e "Критическая ошибка при создании работника")
-                 (render-new-worker-error-response (load-worker-form-data) ["Внутренняя ошибка при создании работника"] params))))
+           (if (not (:valid? validation-result))
              (do
                (logger/log-warn (format "Валидация не пройдена: %s" (str/join ", " (:errors validation-result))))
-               (render-new-worker-error-response (load-worker-form-data) (:errors validation-result) params))))
-          (do
-            (logger/log-warn (format "Лимит работников превышен: %s" (:message limit-check)))
-            (render-new-worker-error-response (load-worker-form-data) [(:message limit-check)] params))))))
+               (render-new-worker-error-response (load-worker-form-data) (:errors validation-result) params))
+             (let [data (parse-worker-params params)]
+               (try
+                 (let [result (model/create-record "Работник" data org-id)]
+                   (handle-create-result params org-id result))
+                 (catch Exception e
+                   (handle-create-exception params e)))))))))))
 
 (defn update-worker
   ([id] (update-worker id nil))

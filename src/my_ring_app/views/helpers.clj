@@ -30,7 +30,7 @@
   (when (seq errors)
     (str "<div class='alert alert-error'>"
          "<strong>⚠️ Ошибки валидации:</strong>"
-         "<ul style='margin: 10px 0 0 20px;'>"
+         "<ul>"
           (apply str 
             (map (fn [error]
                    (str "<li>" (html-escape error) "</li>"))
@@ -41,6 +41,6 @@
 (defn breadcrumbs
   "Генерация хлебных крошек"
   [& links]
-  (str "<div style='margin-bottom: 20px;'>"
+  (str "<div class='breadcrumbs'>"
        (apply str (interpose " | " links))
        "</div>"))

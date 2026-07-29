@@ -52,7 +52,7 @@
   [history]
   (if (empty? history)
     ""
-    (str "<div class='table-container' style='margin-top: 30px;'>"
+    (str "<div class='table-container mt-30'>"
          "<h3>📈 История начислений</h3>"
          "<table class='data-table'>"
          "<thead>"

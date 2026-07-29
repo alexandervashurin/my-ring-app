@@ -2,7 +2,7 @@
   "Тесты для REST API работников"
   (:require [clojure.test :refer :all]
             [clojure.edn :as edn]
-            [my-ring-app.api.workers :refer :all :reload true]
+            [my-ring-app.api.workers :refer :all ]
             [my-ring-app.model :as model]
             [my-ring-app.migration :as migration]
             [my-ring-app.test-helper :refer [make-request]]))

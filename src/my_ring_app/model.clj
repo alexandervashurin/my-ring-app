@@ -95,7 +95,7 @@
 (defn safe-delete [table where-clause]
   (try
     (logger/log-sql (str "DELETE FROM " table) where-clause)
-    (long (jdbc/delete! db-spec table where-clause))
+    (first (jdbc/delete! db-spec table where-clause))
     (catch Exception e
       (logger/log-error e (format "Ошибка удаления из %s" table) {:table table :where where-clause})
       0)))
