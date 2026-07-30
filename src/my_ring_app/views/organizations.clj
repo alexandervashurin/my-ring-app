@@ -2,6 +2,7 @@
   "Представления для управления организациями"
   (:require [clojure.string :as string]
             [my-ring-app.views.layout :as layout]
+            [my-ring-app.views.helpers :as helpers]
             [my-ring-app.tariff :as tariff]
             [my-ring-app.config :refer [url]]))
 
@@ -129,36 +130,11 @@
              "</div>"))
       "<form method='POST' action='" action "' class='form'>"
       (layout/csrf-field)
-      "<div class='form-group'>"
-      "<label for='name'>Название *</label>"
-      "<input type='text' id='name' name='name' value='"
-      (layout/html-escape (or (:name organization) ""))
-      "' required class='form-control'>"
-      "</div>"
-      "<div class='form-group'>"
-      "<label for='inn'>ИНН</label>"
-      "<input type='text' id='inn' name='inn' value='"
-      (layout/html-escape (or (:inn organization) ""))
-      "' class='form-control'>"
-      "</div>"
-      "<div class='form-group'>"
-      "<label for='phone'>Телефон</label>"
-      "<input type='text' id='phone' name='phone' value='"
-      (layout/html-escape (or (:phone organization) ""))
-      "' class='form-control'>"
-      "</div>"
-      "<div class='form-group'>"
-      "<label for='email'>Email</label>"
-      "<input type='email' id='email' name='email' value='"
-      (layout/html-escape (or (:email organization) ""))
-      "' class='form-control'>"
-      "</div>"
-      "<div class='form-group'>"
-      "<label for='address'>Адрес</label>"
-      "<input type='text' id='address' name='address' value='"
-      (layout/html-escape (or (:address organization) ""))
-      "' class='form-control'>"
-      "</div>"
+      (helpers/text-input "Название" :name (:name organization) {:required true})
+      (helpers/text-input "ИНН" :inn (:inn organization))
+      (helpers/text-input "Телефон" :phone (:phone organization))
+      (helpers/text-input "Email" :email (:email organization) {:type "email"})
+      (helpers/textarea-input "Адрес" :address (:address organization))
       "<div class='form-actions'>"
       "<button type='submit' class='btn btn-primary'>"
       (if is-edit "Сохранить" "Создать")

@@ -112,23 +112,17 @@
          (helpers/select-input "Разряд" :разряд_id разряды :id :номер_разряда разряд-id {:required true})
          (helpers/select-input "Режим работы" :режим_работы_id режимы :id :название_режима режим-id {:required true})
          
-         ;; Оклад (показывается только при системе оплаты "Оклад")
-         "<div class='form-group payment-field' id='oklad-field' style='display: none;'>"
-         "<label>Оклад</label>"
-         "<select name='оклад_id'>"
-         "<option value=''>Выберите оклад</option>"
-         (apply str (map #(helpers/option-tag % :id :оклад_в_месяц оклад-id) оклады))
-         "</select>"
-         "</div>"
-         
-         ;; Почасовая ставка (показывается только при системе оплаты "Почасовая")
-         "<div class='form-group payment-field' id='stavka-field' style='display: none;'>"
-         "<label>Почасовая ставка</label>"
-         "<select name='почасовая_ставка_id'>"
-         "<option value=''>Выберите ставку</option>"
-         (apply str (map #(helpers/option-tag % :id :ставка_в_час ставка-id) ставки))
-         "</select>"
-         "</div>"
+          (helpers/select-input "Оклад" :оклад_id оклады :id :оклад_в_месяц оклад-id
+                                {:placeholder "Выберите оклад"
+                                 :container-class "payment-field"
+                                 :container-id "oklad-field"
+                                 :container-style "display: none;"})
+
+          (helpers/select-input "Почасовая ставка" :почасовая_ставка_id ставки :id :ставка_в_час ставка-id
+                                {:placeholder "Выберите ставку"
+                                 :container-class "payment-field"
+                                 :container-id "stavka-field"
+                                 :container-style "display: none;"})
          
          ;; Кнопки
          "<div class='flex-row mt-20'>"

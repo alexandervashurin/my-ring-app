@@ -6,6 +6,7 @@
             [my-ring-app.session-audit :as session-audit]
             [buddy.hashers :as hashers]
             [ring.util.response :as resp]
+            [my-ring-app.util :as util]
             [clojure.string :as str]
             [java-time :as time]))
 
@@ -445,9 +446,7 @@
                           (contains? allowed effective-role)
                           (contains? allowed (:role user))))
           (handler request)
-          (-> (resp/response "Доступ запрещён: недостаточно прав")
-              (resp/status 403)
-              (resp/content-type "text/html; charset=utf-8")))))))
+          (util/html-response "Доступ запрещён: недостаточно прав" 403))))))
 
 (defn require-org-role
   "Middleware требующий определённой роли организации.
@@ -461,9 +460,7 @@
         (if (and user (or (= "admin" (:role user))
                           (contains? allowed effective-role)))
           (handler request)
-          (-> (resp/response "Доступ запрещён: недостаточно прав")
-              (resp/status 403)
-              (resp/content-type "text/html; charset=utf-8")))))))
+          (util/html-response "Доступ запрещён: недостаточно прав" 403))))))
 
 ;; ======================================================================
 ;; Вспомогательные функции
@@ -519,12 +516,12 @@
       (when (or (empty? users)
                 (zero? (:count (first users))))
         ;; Создаём админа по умолчанию с безопасным паролем
-        (let [admin-password (or (System/getenv "ADMIN_PASSWORD")
+        (let [admin-password (or (System/getProperty "ADMIN_PASSWORD") (System/getenv "ADMIN_PASSWORD")
                                   (when (= "production" (:env config/app-config))
                                     (throw (IllegalStateException. "ADMIN_PASSWORD env var is required in production")))
                                   "changeme!")
-              admin-email (or (System/getenv "ADMIN_EMAIL") "admin@example.com")
-              is-default-password (and (nil? (System/getenv "ADMIN_PASSWORD"))
+              admin-email (or (System/getProperty "ADMIN_EMAIL") (System/getenv "ADMIN_EMAIL") "admin@example.com")
+              is-default-password (and (nil? (System/getProperty "ADMIN_PASSWORD")) (nil? (System/getenv "ADMIN_PASSWORD"))
                                        (not= "production" (:env config/app-config)))
               result (create-user "admin" admin-email admin-password "admin" default-org-id)]
           (if (:success result)

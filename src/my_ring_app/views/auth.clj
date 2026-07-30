@@ -1,6 +1,7 @@
 (ns my-ring-app.views.auth
   "Представления аутентификации"
   (:require [my-ring-app.views.layout :refer [wrap-html html-escape csrf-field]]
+            [my-ring-app.views.helpers :as helpers]
             [my-ring-app.config :refer [url]]
             [clojure.string :as str]))
 
@@ -20,20 +21,11 @@
             (str "<div class='error-message'>" error-text "</div>"))
 
           "<form method='POST' action='" (url "/login") "' class='login-form'>"
-          (csrf-field)
-          "<div class='form-group'>"
-          "<label for='username'>Имя пользователя</label>"
-          "<input type='text' id='username' name='username' required "
-          "placeholder='Введите имя пользователя' autofocus>"
-          "</div>"
+           (csrf-field)
+           (helpers/text-input "Имя пользователя" :username nil {:required true :attrs {:placeholder "Введите имя пользователя" :autofocus true}})
+           (helpers/password-input "Пароль" :password nil {:required true :attrs {:placeholder "Введите пароль"}})
 
-          "<div class='form-group'>"
-          "<label for='password'>Пароль</label>"
-          "<input type='password' id='password' name='password' required "
-          "placeholder='Введите пароль'>"
-          "</div>"
-
-          "<button type='submit' class='btn btn-primary btn-block'>Войти</button>"
+           "<button type='submit' class='btn btn-primary btn-block'>Войти</button>"
           "</form>"
 
           "<div class='login-footer'>"
@@ -70,18 +62,9 @@
         "<h2>🔑 Смена пароля</h2>"
         "<form method='POST' action='" (url "/change-password") "' class='profile-form'>"
         (csrf-field)
-        "<div class='form-group'>"
-        "<label for='current-password'>Текущий пароль</label>"
-        "<input type='password' id='current-password' name='current-password' required>"
-        "</div>"
-        "<div class='form-group'>"
-        "<label for='new-password'>Новый пароль</label>"
-        "<input type='password' id='new-password' name='new-password' required minlength='6'>"
-        "</div>"
-        "<div class='form-group'>"
-        "<label for='confirm-password'>Подтверждение пароля</label>"
-        "<input type='password' id='confirm-password' name='confirm-password' required minlength='6'>"
-        "</div>"
+        (helpers/password-input "Текущий пароль" :current-password nil {:required true})
+        (helpers/password-input "Новый пароль" :new-password nil {:required true :attrs {:minlength "6"}})
+        (helpers/password-input "Подтверждение пароля" :confirm-password nil {:required true :attrs {:minlength "6"}})
         "<button type='submit' class='btn btn-warning'>Изменить пароль</button>"
         "</form>"
         "</div>")

@@ -110,22 +110,8 @@
          (generate-header user lang)
          (generate-navigation (or active-page "home") user lang)
          content
-          "<script src='" (url "/js/validation.js") "'></script>"
-          "<script src='" (url "/js/app.js") "'></script>"
-          "<script src='" (url "/js/charts.js") "'></script>"
-         "<script>"
-         "// Регистрация Service Worker"
-         "if ('serviceWorker' in navigator) {"
-         "  window.addEventListener('load', function() {"
-          "    navigator.serviceWorker.register('" (url "/sw.js") "')"
-         "      .then(function(registration) {"
-         "        console.log('[PWA] Service Worker зарегистрирован:', registration.scope);"
-         "      })"
-         "      .catch(function(error) {"
-         "        console.log('[PWA] Ошибка регистрации Service Worker:', error);"
-         "      });"
-         "  });"
-         "}"
-         "</script>"
+           "<script src='" (url "/js/validation.js") "'></script>"
+           "<script src='" (url "/js/app.js") "'></script>"
+           "<script src='" (url "/js/charts.js") "'></script>"
          "</body>"
          "</html>")))

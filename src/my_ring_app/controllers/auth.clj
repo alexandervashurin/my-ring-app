@@ -5,6 +5,7 @@
             [my-ring-app.session-audit :as session-audit]
             [my-ring-app.views.auth :as auth-views]
             [my-ring-app.logger :as logger]
+            [my-ring-app.util :as util]
             [clojure.string :as str]
             [my-ring-app.config :refer [url]]))
 
@@ -59,8 +60,7 @@
   (let [error (:error (:query-params request))
         redirect-url (:redirect-url (:session request))]
     (logger/log-info "Открыта страница входа")
-    (-> (resp/response (auth-views/render-login-page error redirect-url))
-        (resp/content-type "text/html; charset=utf-8"))))
+    (util/html-response (auth-views/render-login-page error redirect-url))))
 
 (defn login-submit
   "Обработка формы входа"
@@ -126,8 +126,7 @@
     (if user
       (do
         (logger/log-info (format "Открыт профиль пользователя %s" (:username user)))
-        (-> (resp/response (auth-views/render-profile-page user))
-            (resp/content-type "text/html; charset=utf-8")))
+        (util/html-response (auth-views/render-profile-page user)))
       (-> (resp/redirect (url "/login"))
           (resp/status 302)))))
 
@@ -178,12 +177,9 @@
         active-sessions (when is-admin (session-audit/get-active-sessions org-id))
         failed-logins (session-audit/get-failed-logins 20 org-id)]
     (logger/log-info (format "Открыта страница истории сессий (user: %s)" (:username user)))
-    (-> (resp/response (auth-views/render-sessions-page user sessions active-sessions failed-logins))
-        (resp/content-type "text/html; charset=utf-8"))))
+    (util/html-response (auth-views/render-sessions-page user sessions active-sessions failed-logins))))
 
 (defn access-denied
   "Страница доступа запрещён"
   [request]
-  (-> (resp/response (auth-views/render-access-denied (:identity request)))
-      (resp/status 403)
-      (resp/content-type "text/html; charset=utf-8")))
+  (util/html-response (auth-views/render-access-denied (:identity request)) 403))

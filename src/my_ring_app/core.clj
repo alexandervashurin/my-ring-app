@@ -5,6 +5,7 @@
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
             [ring.middleware.content-type :refer [wrap-content-type]]
+            [ring.middleware.resource :refer [wrap-resource]]
             [ring.middleware.session :refer [wrap-session]]
             [ring.middleware.session.cookie :as cookie]
             [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
@@ -48,7 +49,7 @@
           (assoc-in [:headers "Referrer-Policy"] "strict-origin-when-cross-origin")
           (assoc-in [:headers "Permissions-Policy"] "camera=(), microphone=(), geolocation=()")
           (assoc-in [:headers "Content-Security-Policy"]
-                    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'")))))
+                    "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data:; font-src 'self'; connect-src 'self'")))))
 
 (defn wrap-csrf-error
   "Обработка ошибок CSRF"
@@ -92,10 +93,13 @@
                                      :max-age 28800
                                      :path "/"}
                      :cookie-name "session-id"
-                     :store (cookie/cookie-store {:key (or (System/getenv "SESSION_SECRET")
-                                                            (when (= "production" (:env config/app-config))
-                                                              (throw (IllegalStateException. "SESSION_SECRET env var is required in production")))
-                                                             "d3v-s3cr3t-k3y!1")})})
+                     :store (cookie/cookie-store {:key (let [secret (System/getenv "SESSION_SECRET")]
+                                                         (if secret
+                                                           (.getBytes secret)
+                                                           (do
+                                                             (when (= "production" (:env config/app-config))
+                                                               (throw (IllegalStateException. "SESSION_SECRET env var is required in production")))
+                                                             (.getBytes "d3v-s3cr3t-k3y!1"))))})})
       auth/wrap-authentication
       auth/wrap-org-context
       wrap-anti-forgery
@@ -106,15 +110,31 @@
       (api-version/wrap-api-v1-rewrite)
       (api-version/wrap-api-version)
       wrap-logging
+      (wrap-resource "public")
       wrap-content-type
       wrap-keyword-params
       wrap-params
       (wrap-json-body {:keywords? true})
       wrap-json-response))
 
+(defn load-env!
+  "Загружает переменные из .env файла"
+  []
+  (try
+    (with-open [rdr (clojure.java.io/reader ".env")]
+      (doseq [line (line-seq rdr)]
+        (when-let [[_ k v] (re-matches #"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$" line)]
+          (System/setProperty k v)
+          (logger/log-info (str "Загружена переменная: " k)))))
+    (catch java.io.FileNotFoundException _
+      (logger/log-warn ".env файл не найден"))
+    (catch Exception e
+      (logger/log-warn (str "Ошибка загрузки .env: " (.getMessage e))))))
+
 (defn -main
   "Точка входа приложения"
   [& args]
+  (load-env!)
   (logger/log-info "========================================")
   (logger/log-info "Запуск приложения 'Система управления персоналом'")
   (logger/log-info "========================================")

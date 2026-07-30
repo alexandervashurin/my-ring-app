@@ -237,6 +237,35 @@ nav a.active {
   background: #f9f9f9;
 }
 
+.raw-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 13px;
+}
+
+.raw-table th,
+.raw-table td {
+  border: 1px solid #ddd;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.raw-table th {
+  background: #667eea;
+  color: white;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.raw-table tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.raw-table tr:hover {
+  background: #e8f0fe;
+}
+
 .empty-state {
   padding: 40px;
   text-align: center;

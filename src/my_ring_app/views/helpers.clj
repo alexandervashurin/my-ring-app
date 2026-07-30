@@ -31,6 +31,23 @@
          "<input type='" input-type "' name='" (html-escape (name name)) "' value='" (html-escape (or (str value) "")) "'" required extra-attrs ">"
          "</div>")))
 
+(defn password-input
+  "Генерация поля пароля формы
+   (password-input 'Пароль' :password nil {:required true})"
+  [label name value & [opts]]
+  (text-input label name value (merge {:type "password"} opts)))
+
+(defn textarea-input
+  "Генерация textarea для формы
+   (textarea-input 'Адрес' :address '' {:required true})"
+  [label name value & [opts]]
+  (let [required (if (:required opts) " required" "")
+        extra-attrs (apply str (for [[k v] (:attrs opts)] (str " " (name k) "='" (html-escape (str v)) "'")))]
+    (str "<div class='form-group'>"
+         "<label>" (html-escape label) (when (:required opts) " *") "</label>"
+         "<textarea name='" (html-escape (name name)) "'" required extra-attrs ">" (html-escape (or (str value) "")) "</textarea>"
+         "</div>")))
+
 (defn option-tag
   "Генерация опции для выпадающего списка"
   [item value-key label-key selected-value]
@@ -45,8 +62,11 @@
   [label name items value-key label-key selected & [opts]]
   (let [required (if (:required opts) " required" "")
         placeholder (or (:placeholder opts) (str "Выберите " (str/lower-case label)))
+        container-class (or (:container-class opts) "")
+        container-id (when (:container-id opts) (str " id='" (html-escape (:container-id opts)) "'"))
+        container-style (when (:container-style opts) (str " style='" (html-escape (:container-style opts)) "'"))
         extra-attrs (apply str (for [[k v] (:attrs opts)] (str " " (name k) "='" (html-escape (str v)) "'")))]
-    (str "<div class='form-group'>"
+    (str "<div class='form-group" (when (not= container-class "") (str " " container-class)) "'" container-id container-style ">"
          "<label>" (html-escape label) (when (:required opts) " *") "</label>"
          "<select name='" (html-escape (name name)) "'" required extra-attrs ">"
          "<option value=''>" (html-escape placeholder) "</option>"

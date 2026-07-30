@@ -29,9 +29,7 @@
 (defn- bad-request
   "Возвращает ответ с ошибкой 400"
   [message]
-  (-> (resp/response message)
-      (resp/status 400)
-      (resp/content-type "text/html; charset=utf-8")))
+  (util/html-response message 400))
 
 (defn- extract-org-id
   "Извлечение organization_id из запроса"
@@ -68,20 +66,20 @@
 (defn- render-new-worker-error-response
   "Рендер ответа с ошибкой для формы создания работника"
   [form-data errors params]
-  (-> (resp/response (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
-                                                    (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
-                                                    :errors errors
-                                                    :worker-data params))
-      (resp/content-type "text/html; charset=utf-8")))
+  (util/html-response
+    (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
+                                    (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
+                                    :errors errors
+                                    :worker-data params)))
 
 (defn- render-edit-worker-error-response
   "Рендер ответа с ошибкой для формы редактирования работника"
   [worker form-data errors]
-  (-> (resp/response (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
-                                                       (:категории form-data) (:разряды form-data)
-                                                       (:режимы form-data) (:оклады form-data) (:ставки form-data)
-                                                       :errors errors))
-      (resp/content-type "text/html; charset=utf-8")))
+  (util/html-response
+    (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
+                                      (:категории form-data) (:разряды form-data)
+                                      (:режимы form-data) (:оклады form-data) (:ставки form-data)
+                                      :errors errors)))
 
 ;; ======================================================================
 ;; Контроллер главной страницы
@@ -89,8 +87,7 @@
 
 (defn home-page []
   (logger/log-info "Открыта главная страница")
-  (-> (resp/response (home/render-home))
-      (resp/content-type "text/html; charset=utf-8")))
+  (util/html-response (home/render-home)))
 
 ;; ======================================================================
 ;; Контроллер дашборда
@@ -101,9 +98,8 @@
   ([request]
    (logger/log-info "Открыта страница дашборда")
    (let [org-id (extract-org-id request)
-         dashboard-data (model/get-dashboard-data org-id)]
-     (-> (resp/response (dashboard/render-dashboard-page dashboard-data))
-         (resp/content-type "text/html; charset=utf-8")))))
+          dashboard-data (model/get-dashboard-data org-id)]
+      (util/html-response (dashboard/render-dashboard-page dashboard-data)))))
 
 ;; ======================================================================
 ;; Контроллеры работников
@@ -119,9 +115,8 @@
                    (model/search-workers query org-id)
                    (model/get-workers-with-details org-id))]
      (logger/log-info (format "Открыт список работников (поиск: %s, найдено: %d, org: %s)"
-                              (or query "-") (count workers) (str org-id)))
-     (-> (resp/response (workers/render-workers-page workers query))
-         (resp/content-type "text/html; charset=utf-8")))))
+                               (or query "-") (count workers) (str org-id)))
+      (util/html-response (workers/render-workers-page workers query)))))
 
 (defn new-worker-form
   ([] (new-worker-form nil))
@@ -131,11 +126,11 @@
           errors (when-let [err-str (:errors params)]
                    (str/split err-str #","))]
      (logger/log-info "Открыта форма создания работника")
-     (-> (resp/response (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
-                                                       (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
-                                                       :errors errors
-                                                       :worker-data params))
-         (resp/content-type "text/html; charset=utf-8")))))
+     (util/html-response
+       (workers/render-new-worker-page (:цеха form-data) (:системы_оплаты form-data) (:категории form-data)
+                                       (:разряды form-data) (:режимы form-data) (:оклады form-data) (:ставки form-data)
+                                       :errors errors
+                                       :worker-data params)))))
 
 (defn edit-worker-form
   ([id] (edit-worker-form id nil))
@@ -153,14 +148,12 @@
           errors (when-let [err-str (:errors params)]
                            (str/split err-str #","))]
              (if worker
-               (-> (resp/response (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
-                                                                    (:категории form-data) (:разряды form-data)
-                                                                    (:режимы form-data) (:оклады form-data) (:ставки form-data)
-                                                                    :errors errors))
-                   (resp/content-type "text/html; charset=utf-8"))
-               (-> (resp/response "Работник не найден")
-                   (resp/status 404)
-                   (resp/content-type "text/html; charset=utf-8"))))))))))
+                (util/html-response
+                  (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
+                                                    (:категории form-data) (:разряды form-data)
+                                                    (:режимы form-data) (:оклады form-data) (:ставки form-data)
+                                                    :errors errors))
+                (util/html-response "Работник не найден" 404)))))))))
 
 (defn- handle-create-exception [params e]
   (logger/log-error ^Throwable e "Критическая ошибка при создании работника")
@@ -269,10 +262,9 @@
                  [current-year current-month] (model/current-year-month)
                  salary-info (model/get-worker-salary worker-id current-year current-month org-id)
                  salary-history (model/get-worker-salary-history worker-id org-id)]
-             (if worker
-               (-> (resp/response (salary/render-salary-page worker salary-info salary-history))
-                   (resp/content-type "text/html; charset=utf-8"))
-                (resp/redirect (url "/workers"))))))))))
+              (if worker
+                (util/html-response (salary/render-salary-page worker salary-info salary-history))
+                 (resp/redirect (url "/workers"))))))))))
 
 ;; ======================================================================
 ;; Контроллеры учета времени
@@ -291,10 +283,9 @@
            (logger/log-info (format "Открыта страница учета времени работника ID=%s (org: %s)" worker-id (str org-id)))
            (let [worker (model/get-record-by-id "Работник" (str worker-id))
                  work-time-records (model/get-worker-work-time worker-id org-id)]
-             (if worker
-               (-> (resp/response (work-time/render-work-time-page worker work-time-records))
-                   (resp/content-type "text/html; charset=utf-8"))
-                (resp/redirect (url "/workers"))))))))))
+              (if worker
+                (util/html-response (work-time/render-work-time-page worker work-time-records))
+                 (resp/redirect (url "/workers"))))))))))
 
 (defn edit-work-time-form
   ([] (edit-work-time-form nil))
@@ -309,10 +300,9 @@
            (let [work-time-record (model/get-work-time-by-id (str work-time-id))
                  worker (when work-time-record
                           (model/get-record-by-id "Работник" (:работник_id work-time-record)))]
-             (if (and work-time-record worker)
-               (-> (resp/response (work-time/render-edit-work-time-form work-time-record worker))
-                   (resp/content-type "text/html; charset=utf-8"))
-                (resp/redirect (url "/workers"))))))))))
+              (if (and work-time-record worker)
+                (util/html-response (work-time/render-edit-work-time-form work-time-record worker))
+                 (resp/redirect (url "/workers"))))))))))
 
 (defn update-work-time
   ([] (update-work-time nil nil))
@@ -338,17 +328,15 @@
                         (logger/log-info (format "Учет времени успешно обновлен, ID=%s" work-time-id))
                         (resp/redirect (url (str "/workers/" (or worker-id "?error=unknown") "/work-time")))))
                    (do
-                     (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении учета времени")
-                     (let [work-time-record (model/get-work-time-by-id (str work-time-id))
-                           worker (model/get-record-by-id "Работник" (:работник_id work-time-record))]
-                       (-> (resp/response (work-time/render-edit-work-time-form work-time-record worker :errors [(:message result)]))
-                           (resp/content-type "text/html; charset=utf-8"))))))
+                      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении учета времени")
+                      (let [work-time-record (model/get-work-time-by-id (str work-time-id))
+                            worker (model/get-record-by-id "Работник" (:работник_id work-time-record))]
+                        (util/html-response (work-time/render-edit-work-time-form work-time-record worker :errors [(:message result)]))))))
                (do
-                  (logger/log-warn (format "Валидация учета времени не пройдена: %s" (str/join ", " (:errors validation-result))))
-                 (let [work-time-record (merge (model/get-work-time-by-id (str work-time-id)) params)
-                       worker (model/get-record-by-id "Работник" (:работник_id work-time-record))]
-                   (-> (resp/response (work-time/render-edit-work-time-form work-time-record worker :errors (:errors validation-result)))
-                       (resp/content-type "text/html; charset=utf-8"))))))))))))
+                   (logger/log-warn (format "Валидация учета времени не пройдена: %s" (str/join ", " (:errors validation-result))))
+                  (let [work-time-record (merge (model/get-work-time-by-id (str work-time-id)) params)
+                        worker (model/get-record-by-id "Работник" (:работник_id work-time-record))]
+                    (util/html-response (work-time/render-edit-work-time-form work-time-record worker :errors (:errors validation-result)))))))))))))
 
 ;; ======================================================================
 ;; Контроллеры БД
@@ -357,14 +345,13 @@
 (defn all-tables-page
   ([] (all-tables-page nil))
   ([request]
-   (logger/log-info "Открыта страница просмотра всех таблиц")
-   (let [tables (model/get-tables)
-         tables-data (mapv (fn [table-name]
-                             {:table table-name
-                              :rows (model/get-table-data table-name)})
-                           tables)]
-     (-> (resp/response (tables/render-all-tables-page tables-data))
-         (resp/content-type "text/html; charset=utf-8")))))
+    (logger/log-info "Открыта страница просмотра всех таблиц")
+    (let [tables (model/get-tables)
+          tables-data (mapv (fn [table-name]
+                              {:table table-name
+                               :rows (model/get-table-data table-name)})
+                            tables)]
+      (util/html-response (tables/render-all-tables-page tables-data)))))
 
 ;; ======================================================================
 ;; Контроллер ошибок
@@ -380,6 +367,4 @@
                   nil
                   user
                   lang)]
-    (-> (resp/response content)
-        (resp/status 404)
-        (resp/content-type "text/html; charset=utf-8"))))
+    (util/html-response content 404)))

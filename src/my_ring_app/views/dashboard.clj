@@ -187,9 +187,9 @@
        "</tr>"
        "</thead>"
        "<tbody>"
-       (apply str (for [w top-workers]
-                    (str "<tr>"
-                         "<td>" (layout/html-escape (str (:фамилия w) " " (:имя w) " " (:отчество w))) "</td>"
+(apply str (for [w top-workers]
+                     (str "<tr>"
+                          "<td>" (helpers/render-full-name w) "</td>"
                          "<td>" (layout/html-escape (or (:цех w) "-")) "</td>"
                          "<td>" (format-currency (:max_salary w)) "</td>"
                          "</tr>")))
@@ -214,7 +214,7 @@
        (apply str (for [w recent-hires]
                      (str "<tr>"
                           "<td><a href='" (url (str "/workers/" (layout/html-escape (str (:id w))) "/edit")) "' class='worker-link'>"
-                          (layout/html-escape (str (:фамилия w) " " (:имя w) " " (:отчество w))) "</a></td>"
+                          (helpers/render-full-name w) "</a></td>"
                          "<td>" (layout/html-escape (or (:цех w) "-")) "</td>"
                          "<td>" (layout/html-escape (:дата_приема w)) "</td>"
                          "</tr>")))

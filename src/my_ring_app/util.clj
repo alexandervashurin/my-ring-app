@@ -82,6 +82,16 @@
    :больничные_дни (parse-int (:больничные_дни params) 0)
    :командировочные_дни (parse-int (:командировочные_дни params) 0)})
 
+(defn html-response
+  "Стандартный HTML ответ с Content-Type"
+  ([data]
+   (-> (resp/response data)
+       (resp/content-type "text/html; charset=utf-8")))
+  ([data status]
+   (-> (resp/response data)
+       (resp/status status)
+       (resp/content-type "text/html; charset=utf-8"))))
+
 (defn json-response
   "Стандартный JSON ответ с Content-Type"
   ([data]
