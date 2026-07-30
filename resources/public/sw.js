@@ -6,7 +6,7 @@
 const CACHE_NAME = 'hr-system-v1';
 const STATIC_ASSETS = [
   '/',
-  '/css/style.css',
+  '/css/app.css',
   '/js/app.js',
   '/js/charts.js',
   '/manifest.json'
@@ -84,25 +84,17 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request)
       .then((cachedResponse) => {
         if (cachedResponse) {
-          // Возвращаем из кэша
           console.log('[SW] Найдено в кэше:', event.request.url);
-          
-          // Обновляем кэш в фоне (stale-while-revalidate)
           fetchAndCache(event.request);
-          
           return cachedResponse;
         }
-        
-        // Загружаем из сети
         return fetchAndCache(event.request);
       })
-      .catch((error) => {
-        console.error('[SW] Ошибка при загрузке:', error);
-        
-        // Возвращаем offline страницу для навигации
+      .catch(() => {
         if (event.request.mode === 'navigate') {
           return caches.match('/offline.html');
         }
+        return new Response('', { status: 503, statusText: 'Service Unavailable' });
       })
   );
 });

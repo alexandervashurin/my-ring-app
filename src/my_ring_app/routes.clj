@@ -47,6 +47,12 @@
 
 (defroutes app-routes
   ;; ======================================================================
+  ;; Favicon
+  ;; ======================================================================
+  (GET "/favicon.ico" [] (-> (resp/resource-response "public/favicon.ico" {:root "resources"})
+                              (resp/content-type "image/x-icon")))
+
+  ;; ======================================================================
   ;; API Documentation (Swagger UI)
   ;; ======================================================================
   (GET "/api-docs" [] (-> (resp/redirect "/api-docs.html") (resp/status 302)))

@@ -99,8 +99,9 @@
          "<meta name='apple-mobile-web-app-capable' content='yes'>"
          "<meta name='apple-mobile-web-app-status-bar-style' content='default'>"
          "<meta name='apple-mobile-web-app-title' content='HR System'>"
-         "<link rel='manifest' href='" (url "/manifest.json") "'>"
-         "<link rel='apple-touch-icon' href='" (url "/icons/icon-192x192.png") "'>"
+          "<link rel='icon' href='" (url "/favicon.ico") "' type='image/x-icon'>"
+          "<link rel='manifest' href='" (url "/manifest.json") "'>"
+          "<link rel='apple-touch-icon' href='" (url "/icons/icon-192x192.png") "'>"
          "<title>" title " - " (i18n/t lang :common :title) "</title>"
          (generate-css)
          "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js' integrity='sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g' crossorigin='anonymous'></script>"
