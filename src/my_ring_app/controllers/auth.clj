@@ -65,8 +65,9 @@
 (defn login-submit
   "Обработка формы входа"
   [request]
-  (let [username (str/trim (:username (:params request)))
-        password (:password (:params request))
+  (let [params (:params request {})
+        username (str/trim (or (:username params) (get params "username") ""))
+        password (or (:password params) (get params "password") "")
         redirect-url (or (safe-redirect-url (:redirect-url (:session request))) (url "/"))
         ip-address (get-in request [:headers "x-forwarded-for"] (:remote-addr request "unknown"))
         user-agent (get-in request [:headers "user-agent"])]
