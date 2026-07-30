@@ -102,22 +102,42 @@
           (jdbc/execute! db-spec [stmt]))))))
 
 (defn- load-migration-files
-  "Загрузка всех файлов миграций из resources/migrations/"
+  "Загрузка всех файлов миграций из resources/migrations/.
+   Работает как из файловой системы (dev), так и из JAR (production)."
   []
-  (let [dir (io/resource "migrations")]
-    (when dir
-      (let [files (-> (io/file dir)
-                      .listFiles
-                      (->> (filter #(.endsWith (.getName ^java.io.File %) ".sql"))
-                           (sort-by #(.getName ^java.io.File %))))]
-        (mapv (fn [^java.io.File f]
-                (let [name (.getName f)
-                      version (str/replace name #"\.sql$" "")
-                      content (slurp f)]
-                  {:version version
-                   :filename name
-                   :parsed (parse-migration-file content)}))
-              files)))))
+  (let [dir-url (io/resource "migrations")]
+    (when dir-url
+      (let [process-file (fn [name content]
+                           (let [version (str/replace name #"\.sql$" "")]
+                             {:version version
+                              :filename name
+                              :parsed (parse-migration-file content)}))]
+        (if (= "file" (.getProtocol dir-url))
+          ;; Development — ресурсы на файловой системе
+          (let [files (-> (io/file dir-url)
+                          .listFiles
+                          (->> (filter #(.endsWith (.getName ^java.io.File %) ".sql"))
+                               (sort-by #(.getName ^java.io.File %))))]
+            (mapv (fn [^java.io.File f]
+                    (process-file (.getName f) (slurp f)))
+                  files))
+          ;; Production — ресурсы внутри JAR
+          (let [jar-path (second (re-find #"jar:file:(.+)!/" (str dir-url)))
+                jar-file (java.util.jar.JarFile. jar-path)
+                prefix "migrations/"
+                entries (seq (java.util.Collections/list (.entries jar-file)))
+                sql-entries (->> entries
+                                 (filter #(and (.startsWith (.getName %) prefix)
+                                              (.endsWith (.getName %) ".sql")))
+                                 (sort-by #(.getName %)))]
+            (try
+              (mapv (fn [^java.util.jar.JarEntry e]
+                      (let [name (str/replace-first (.getName e) prefix "")
+                            content (slurp (.getInputStream jar-file e))]
+                        (process-file name content)))
+                    sql-entries)
+              (finally
+                (.close jar-file)))))))))
 
 ;; ======================================================================
 ;; Выполнение миграций
