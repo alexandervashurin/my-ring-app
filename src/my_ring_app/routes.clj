@@ -5,6 +5,7 @@
             [my-ring-app.controllers :as controllers]
             [my-ring-app.controllers.auth :as auth-controllers]
             [my-ring-app.controllers.organizations :as org-controllers]
+            [my-ring-app.controllers.references :as ref-controllers]
             [my-ring-app.api.workers :as api-workers]
             [my-ring-app.api.dashboard :as api-dashboard]
             [my-ring-app.api.salary :as api-salary]
@@ -239,6 +240,65 @@
 
   ;; Просмотр всех таблиц (только админ)
   (GET "/db" request ((admin-only controllers/all-tables-page) request))
+
+  ;; ======================================================================
+  ;; Справочники (manager-or-admin)
+  ;; ======================================================================
+  (GET "/shops" request ((manager-or-admin ref-controllers/list-shops) request))
+  (GET "/shops/new" request ((manager-or-admin ref-controllers/new-shop-form) request))
+  (POST "/shops/create" request ((manager-or-admin ref-controllers/create-shop) request))
+  (GET "/shops/:id/edit" request ((manager-or-admin ref-controllers/edit-shop-form) request))
+  (POST "/shops/:id/update" request ((manager-or-admin ref-controllers/update-shop) request))
+  (POST "/shops/:id/delete" request ((manager-or-admin ref-controllers/delete-shop) request))
+
+  (GET "/ranks" request ((manager-or-admin ref-controllers/list-ranks) request))
+  (GET "/ranks/new" request ((manager-or-admin ref-controllers/new-rank-form) request))
+  (POST "/ranks/create" request ((manager-or-admin ref-controllers/create-rank) request))
+  (GET "/ranks/:id/edit" request ((manager-or-admin ref-controllers/edit-rank-form) request))
+  (POST "/ranks/:id/update" request ((manager-or-admin ref-controllers/update-rank) request))
+  (POST "/ranks/:id/delete" request ((manager-or-admin ref-controllers/delete-rank) request))
+
+  (GET "/salary-systems" request ((manager-or-admin ref-controllers/list-systems) request))
+  (GET "/salary-systems/new" request ((manager-or-admin ref-controllers/new-system-form) request))
+  (POST "/salary-systems/create" request ((manager-or-admin ref-controllers/create-system) request))
+  (GET "/salary-systems/:id/edit" request ((manager-or-admin ref-controllers/edit-system-form) request))
+  (POST "/salary-systems/:id/update" request ((manager-or-admin ref-controllers/update-system) request))
+  (POST "/salary-systems/:id/delete" request ((manager-or-admin ref-controllers/delete-system) request))
+
+  (GET "/categories" request ((manager-or-admin ref-controllers/list-categories) request))
+  (GET "/categories/new" request ((manager-or-admin ref-controllers/new-category-form) request))
+  (POST "/categories/create" request ((manager-or-admin ref-controllers/create-category) request))
+  (GET "/categories/:id/edit" request ((manager-or-admin ref-controllers/edit-category-form) request))
+  (POST "/categories/:id/update" request ((manager-or-admin ref-controllers/update-category) request))
+  (POST "/categories/:id/delete" request ((manager-or-admin ref-controllers/delete-category) request))
+
+  (GET "/work-modes" request ((manager-or-admin ref-controllers/list-modes) request))
+  (GET "/work-modes/new" request ((manager-or-admin ref-controllers/new-mode-form) request))
+  (POST "/work-modes/create" request ((manager-or-admin ref-controllers/create-mode) request))
+  (GET "/work-modes/:id/edit" request ((manager-or-admin ref-controllers/edit-mode-form) request))
+  (POST "/work-modes/:id/update" request ((manager-or-admin ref-controllers/update-mode) request))
+  (POST "/work-modes/:id/delete" request ((manager-or-admin ref-controllers/delete-mode) request))
+
+  (GET "/salary-grades" request ((manager-or-admin ref-controllers/list-salary-grades) request))
+  (GET "/salary-grades/new" request ((manager-or-admin ref-controllers/new-salary-grade-form) request))
+  (POST "/salary-grades/create" request ((manager-or-admin ref-controllers/create-salary-grade) request))
+  (GET "/salary-grades/:id/edit" request ((manager-or-admin ref-controllers/edit-salary-grade-form) request))
+  (POST "/salary-grades/:id/update" request ((manager-or-admin ref-controllers/update-salary-grade) request))
+  (POST "/salary-grades/:id/delete" request ((manager-or-admin ref-controllers/delete-salary-grade) request))
+
+  (GET "/hourly-rates" request ((manager-or-admin ref-controllers/list-hourly-rates) request))
+  (GET "/hourly-rates/new" request ((manager-or-admin ref-controllers/new-hourly-rate-form) request))
+  (POST "/hourly-rates/create" request ((manager-or-admin ref-controllers/create-hourly-rate) request))
+  (GET "/hourly-rates/:id/edit" request ((manager-or-admin ref-controllers/edit-hourly-rate-form) request))
+  (POST "/hourly-rates/:id/update" request ((manager-or-admin ref-controllers/update-hourly-rate) request))
+  (POST "/hourly-rates/:id/delete" request ((manager-or-admin ref-controllers/delete-hourly-rate) request))
+
+  (GET "/tariffs" request ((manager-or-admin ref-controllers/list-tariffs) request))
+  (GET "/tariffs/new" request ((manager-or-admin ref-controllers/new-tariff-form) request))
+  (POST "/tariffs/create" request ((manager-or-admin ref-controllers/create-tariff) request))
+  (GET "/tariffs/:id/edit" request ((manager-or-admin ref-controllers/edit-tariff-form) request))
+  (POST "/tariffs/:id/update" request ((manager-or-admin ref-controllers/update-tariff) request))
+  (POST "/tariffs/:id/delete" request ((manager-or-admin ref-controllers/delete-tariff) request))
 
   ;; Страница не найдена
   (route/not-found (fn [request] (controllers/not-found-page request))))

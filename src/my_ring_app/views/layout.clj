@@ -80,6 +80,16 @@
          "<a href='" (url "/workers") "'" (active-class "workers") ">Работники</a>"
          (when is-admin
            (str "<a href='" (url "/organizations") "'" (active-class "organizations") ">Организации</a>"))
+         (when user
+           (str "<span class='nav-section'>Справочники</span>"
+                "<a href='" (url "/shops") "'" (active-class "shops") ">Цеха</a>"
+                "<a href='" (url "/ranks") "'" (active-class "ranks") ">Разряды</a>"
+                "<a href='" (url "/salary-systems") "'" (active-class "salary-systems") ">Системы оплаты</a>"
+                "<a href='" (url "/categories") "'" (active-class "categories") ">Категории</a>"
+                "<a href='" (url "/work-modes") "'" (active-class "work-modes") ">Режимы работы</a>"
+                "<a href='" (url "/salary-grades") "'" (active-class "salary-grades") ">Оклады</a>"
+                "<a href='" (url "/hourly-rates") "'" (active-class "hourly-rates") ">Почасовые ставки</a>"
+                "<a href='" (url "/tariffs") "'" (active-class "tariffs") ">Тарифы</a>"))
          (when has-salary-access
            (str "<a href='" (url "/db") "'" (active-class "db") ">Все таблицы</a>"))
          "</nav>")))
