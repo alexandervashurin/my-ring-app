@@ -49,7 +49,7 @@
           (assoc-in [:headers "Referrer-Policy"] "strict-origin-when-cross-origin")
           (assoc-in [:headers "Permissions-Policy"] "camera=(), microphone=(), geolocation=()")
           (assoc-in [:headers "Content-Security-Policy"]
-                    "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data:; font-src 'self'; connect-src 'self'")))))
+                    "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data:; font-src 'self'; connect-src 'self' https://cdn.jsdelivr.net")))))
 
 (defn wrap-csrf-error
   "Обработка ошибок CSRF"
@@ -65,6 +65,15 @@
              :body "CSRF проверка не пройдена. Пожалуйста, обновите страницу."
              :headers {"Content-Type" "text/html; charset=utf-8"}})
           (throw e))))))
+
+(defn wrap-csrf-exempt
+  "Пропускает CSRF проверку для POST на /login"
+  [handler]
+  (let [csrf (wrap-anti-forgery handler)]
+    (fn [request]
+      (if (and (= :post (:request-method request)) (= "/login" (:uri request)))
+        (handler request)
+        (csrf request)))))
 
 (defn wrap-logging
   "Middleware для логирования запросов"
@@ -102,7 +111,7 @@
                                                              (.getBytes "d3v-s3cr3t-k3y!1"))))})})
       auth/wrap-authentication
       auth/wrap-org-context
-      wrap-anti-forgery
+      (wrap-csrf-exempt)
       wrap-csrf-error
       wrap-security-headers
       wrap-error-handler
