@@ -96,8 +96,10 @@
 
 (def app
   (-> app-routes
+      auth/wrap-authentication
+      auth/wrap-org-context
       (wrap-session {:cookie-attrs {:http-only true
-                                     :secure true
+                                     :secure (= "production" (:env config/app-config))
                                      :same-site :lax
                                      :max-age 28800
                                      :path "/"}
@@ -109,8 +111,6 @@
                                                              (when (= "production" (:env config/app-config))
                                                                (throw (IllegalStateException. "SESSION_SECRET env var is required in production")))
                                                              (.getBytes "d3v-s3cr3t-k3y!1"))))})})
-      auth/wrap-authentication
-      auth/wrap-org-context
       (wrap-csrf-exempt)
       wrap-csrf-error
       wrap-security-headers

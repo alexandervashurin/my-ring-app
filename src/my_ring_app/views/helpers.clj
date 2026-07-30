@@ -21,14 +21,14 @@
 (defn text-input
   "Генерация текстового поля формы
    (text-input 'Имя' :имя '' {:required true})"
-  [label name value & [opts]]
+  [label field-name value & [opts]]
   (let [required (if (:required opts) " required" "")
         input-type (or (:type opts) "text")
         extra-classes (or (:class opts) "")
-        extra-attrs (apply str (for [[k v] (:attrs opts)] (str " " (name k) "='" (html-escape (str v)) "'")))]
+        extra-attrs (apply str (for [[k v] (:attrs opts)] (str " " (clojure.core/name k) "='" (html-escape (str v)) "'")))]
     (str "<div class='form-group'>"
          "<label>" (html-escape label) (when (:required opts) " *") "</label>"
-         "<input type='" input-type "' name='" (html-escape (name name)) "' value='" (html-escape (or (str value) "")) "'" required extra-attrs ">"
+         "<input type='" input-type "' name='" (html-escape (clojure.core/name field-name)) "' value='" (html-escape (or (str value) "")) "'" required extra-attrs ">"
          "</div>")))
 
 (defn password-input
@@ -40,12 +40,12 @@
 (defn textarea-input
   "Генерация textarea для формы
    (textarea-input 'Адрес' :address '' {:required true})"
-  [label name value & [opts]]
+  [label field-name value & [opts]]
   (let [required (if (:required opts) " required" "")
-        extra-attrs (apply str (for [[k v] (:attrs opts)] (str " " (name k) "='" (html-escape (str v)) "'")))]
+        extra-attrs (apply str (for [[k v] (:attrs opts)] (str " " (clojure.core/name k) "='" (html-escape (str v)) "'")))]
     (str "<div class='form-group'>"
          "<label>" (html-escape label) (when (:required opts) " *") "</label>"
-         "<textarea name='" (html-escape (name name)) "'" required extra-attrs ">" (html-escape (or (str value) "")) "</textarea>"
+         "<textarea name='" (html-escape (clojure.core/name field-name)) "'" required extra-attrs ">" (html-escape (or (str value) "")) "</textarea>"
          "</div>")))
 
 (defn option-tag
@@ -59,16 +59,16 @@
 (defn select-input
   "Генерация выпадающего списка формы
    (select-input 'Цех' :цех_id items :id :название_цеха selected-id {:required true})"
-  [label name items value-key label-key selected & [opts]]
+  [label field-name items value-key label-key selected & [opts]]
   (let [required (if (:required opts) " required" "")
         placeholder (or (:placeholder opts) (str "Выберите " (str/lower-case label)))
         container-class (or (:container-class opts) "")
         container-id (when (:container-id opts) (str " id='" (html-escape (:container-id opts)) "'"))
         container-style (when (:container-style opts) (str " style='" (html-escape (:container-style opts)) "'"))
-        extra-attrs (apply str (for [[k v] (:attrs opts)] (str " " (name k) "='" (html-escape (str v)) "'")))]
+        extra-attrs (apply str (for [[k v] (:attrs opts)] (str " " (clojure.core/name k) "='" (html-escape (str v)) "'")))]
     (str "<div class='form-group" (when (not= container-class "") (str " " container-class)) "'" container-id container-style ">"
          "<label>" (html-escape label) (when (:required opts) " *") "</label>"
-         "<select name='" (html-escape (name name)) "'" required extra-attrs ">"
+         "<select name='" (html-escape (clojure.core/name field-name)) "'" required extra-attrs ">"
          "<option value=''>" (html-escape placeholder) "</option>"
          (apply str (map #(option-tag % value-key label-key selected) items))
          "</select>"

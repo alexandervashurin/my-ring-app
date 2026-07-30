@@ -3,9 +3,8 @@
    Система управления персоналом
    ========================================================================== */
 
-const CACHE_NAME = 'hr-system-v1';
+const CACHE_NAME = 'hr-system-v2';
 const STATIC_ASSETS = [
-  '/',
   '/css/app.css',
   '/js/app.js',
   '/js/charts.js',
@@ -80,6 +79,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
+  // Не кэшируем HTML — они всегда должны быть свежими
+  if (requestUrl.pathname.endsWith('/') || !requestUrl.pathname.includes('.')) {
+    event.respondWith(fetchAndCache(event.request));
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {

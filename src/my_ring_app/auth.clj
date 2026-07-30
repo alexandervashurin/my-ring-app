@@ -353,8 +353,8 @@
      (let [user (get-user-by-username username)
            ip-address (:ip-address options)
            user-agent (:user-agent options)]
-       (if (and user
-                (hashers/check password (:password_hash user)))
+        (if (and user
+                 (hashers/check password (:password_hash user)))
          (do
            ;; Обновляем last_login
            (jdbc/update! db-spec :Пользователь
