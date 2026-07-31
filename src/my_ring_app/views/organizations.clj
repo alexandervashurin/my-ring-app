@@ -108,7 +108,7 @@
       (str "<a href='" (url "/organizations/new") "' class='btn btn-primary'>+ Новая организация</a>")
       "</div>"
       (org-table-html organizations))
-     "Организации" "organizations" lang)))
+     "Организации" "organizations" user lang)))
 
 (defn render-organization-form
   "Форма создания/редактирования организации"
@@ -142,7 +142,7 @@
       (str "<a href='" (url "/organizations") "' class='btn btn-secondary'>Отмена</a>")
       "</div>"
       "</form>")
-     title "organizations" lang)))
+     title "organizations" user lang)))
 
 (defn- render-tariff-info
   [organization current-user]
@@ -212,4 +212,4 @@
       (render-tariff-info organization user)
       "<hr>"
       (org-user-table-html (:id organization) users user))
-     (:name organization) "organizations" lang)))
+     (:name organization) "organizations" user lang)))

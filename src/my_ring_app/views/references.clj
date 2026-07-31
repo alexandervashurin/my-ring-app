@@ -37,7 +37,8 @@
                   "</tbody></table></div>")
              (str "<div class='empty-state'>Нет записей</div>")))
       table-title
-      page)))
+      page
+      nil)))
 
 (defn render-form-page
   [mode table-title fields data errors & [active-page]]
@@ -75,4 +76,5 @@
            "</form>"
             "</div>")
       table-title
-      page)))
+      page
+      nil)))

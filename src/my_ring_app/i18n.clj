@@ -22,11 +22,12 @@
 ;; ======================================================================
 
 (defn- get-translation
-  "Получение перевода по ключу"
+  "Получение перевода по ключу.
+   Ключи в i18n.edn — строки, поэтому поиск идёт по строковым ключам."
   [lang & keys]
   (try
-    (let [lang-data (get @translations (keyword lang) {})]
-      (reduce get lang-data (map keyword keys)))
+    (let [lang-data (get @translations (name lang) {})]
+      (reduce get lang-data (map name keys)))
     (catch Exception e
       nil)))
 

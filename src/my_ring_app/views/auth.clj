@@ -35,7 +35,7 @@
 
      "Вход в систему"
      nil
-     true)))
+     nil)))
 
 (defn render-profile-page
   "Рендер страницы профиля"
@@ -69,7 +69,8 @@
         "</form>"
         "</div>")
    "Профиль"
-   nil))
+   nil
+   user))
 
 (defn- session-table-html
   [sessions title empty-text is-admin?]
@@ -124,7 +125,7 @@
             (session-table-html active-sessions "Активные сессии" "Нет активных сессий" is-admin))
           (session-table-html failed-logins "Неудачные попытки входа" "Нет неудачных попыток" is-admin)
           (session-table-html sessions "История входов" "Нет записей" is-admin))
-     "История сессий" "sessions" lang)))
+     "История сессий" "sessions" user lang)))
 
 (defn render-access-denied
   "Рендер страницы доступа запрещён"
@@ -138,4 +139,5 @@
         "<a href='" (url "/") "' class='btn btn-primary'>Вернуться на главную</a>"
         "</div>")
    "Доступ запрещён"
-   nil))
+   nil
+   user))

@@ -4,6 +4,28 @@
             [my-ring-app.i18n :as i18n]
             [my-ring-app.config :refer [url]]))
 
+(def ^:dynamic *user*
+  "Текущий аутентифицированный пользователь.
+   Привязывается middleware my-ring-app.core/wrap-user-context.
+   Используется wrap-html, если user не передан явно."
+  nil)
+
+(def ^:private role-labels
+  "Человекочитаемые названия ролей (глобальных и организационных)"
+  {"admin" "Администратор"
+   "manager" "Менеджер"
+   "viewer" "Наблюдатель"
+   "hr" "HR-специалист"
+   "org_admin" "Администратор организации"
+   "org_manager" "Менеджер организации"
+   "org_hr" "HR организации"
+   "org_viewer" "Наблюдатель организации"})
+
+(defn- effective-role
+  "Эффективная роль пользователя (org_role переопределяет глобальную)"
+  [user]
+  (or (:org_role user) (:role user)))
+
 (defn html-escape
   "Экранирование HTML-символов для защиты от XSS"
   [s]
@@ -43,10 +65,7 @@
   (let [user-info (when user
                     (str "<div class='user-info'>"
                          "<span class='user-greeting'>👤 " (html-escape (:username user)) " ("
-                         (html-escape (get {"admin" "Администратор"
-                                            "manager" "Менеджер"
-                                            "viewer" "Наблюдатель"
-                                            "hr" "HR-специалист"} (:role user) (:role user))) ")</span>"
+                         (html-escape (get role-labels (effective-role user) (or (:role user) ""))) ")</span>"
                           "<a href='" (url "/profile") "' class='btn btn-sm btn-info btn-user-action'>" (i18n/t current-lang :auth :profile) "</a>"
                           "<form method='POST' action='" (url "/logout") "' class='inline-form'>"
                          (csrf-field)
@@ -71,9 +90,9 @@
   "Генерация навигационного меню"
   [active-page user lang]
   (let [active-class (fn [page] (if (= page active-page) " class='active'" ""))
-        user-role (:role user)
-        has-salary-access (contains? #{"admin" "manager"} user-role)
-        is-admin (= user-role "admin")]
+        role (effective-role user)
+        has-salary-access (contains? #{"admin" "manager" "org_admin" "org_manager"} role)
+        is-admin (contains? #{"admin" "org_admin"} role)]
     (str "<nav>"
          "<a href='" (url "/") "'" (active-class "home") ">Главная</a>"
          "<a href='" (url "/dashboard") "'" (active-class "dashboard") ">Дашборд</a>"
@@ -97,7 +116,8 @@
 (defn wrap-html
   "Оборачивает контент в полную HTML-страницу"
   [content title & [active-page user current-lang]]
-  (let [lang (or current-lang "ru")]
+  (let [user (or user *user*)
+        lang (or current-lang "ru")]
     (str "<!DOCTYPE html>"
          "<html lang='" lang "'>"
          "<head>"

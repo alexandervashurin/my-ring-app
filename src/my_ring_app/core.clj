@@ -18,11 +18,20 @@
             [my-ring-app.cache :as cache]
             [my-ring-app.tariff :as tariff]
             [my-ring-app.rate-limit :as rate-limit]
-            [my-ring-app.api-version :as api-version]))
+            [my-ring-app.api-version :as api-version]
+            [my-ring-app.views.layout :as layout]))
 
 ;; ======================================================================
 ;; Middleware
 ;; ======================================================================
+
+(defn wrap-user-context
+  "Связывает текущего аутентифицированного пользователя с шаблонами
+   через динамическую переменную layout/*user*."
+  [handler]
+  (fn [request]
+    (binding [layout/*user* (:identity request)]
+      (handler request))))
 
 (defn wrap-error-handler
   "Перехватывает необработанные исключения и возвращает 500"
@@ -96,8 +105,9 @@
 
 (def app
   (-> app-routes
-      auth/wrap-authentication
+      wrap-user-context
       auth/wrap-org-context
+      auth/wrap-authentication
       (wrap-session {:cookie-attrs {:http-only true
                                      :secure (= "production" (:env config/app-config))
                                      :same-site :lax
