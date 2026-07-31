@@ -17,7 +17,7 @@
         (if-not (validate-id worker-id)
           (do (.delete temp-file)
               (util/json-error 400 "INVALID_ID" "Неверный формат ID работника"))
-          (if-let [result (pdf/generate-worker-pdf worker-id (.getAbsolutePath temp-file))]
+          (if-let [result (pdf/generate-worker-pdf worker-id (.getAbsolutePath temp-file) (:org-id request))]
             (if (:success result)
               (do
                 (logger/log-info (format "API: GET /api/reports/worker/%s/pdf — сгенерирован PDF" worker-id))
@@ -37,7 +37,7 @@
   [request]
   (let [temp-file (java.io.File/createTempFile "workers_" ".pdf")]
     (try
-      (if-let [result (pdf/generate-workers-list-pdf (.getAbsolutePath temp-file))]
+      (if-let [result (pdf/generate-workers-list-pdf (.getAbsolutePath temp-file) (:org-id request))]
         (if (:success result)
           (do
             (logger/log-info "API: GET /api/reports/workers/pdf — сгенерирован PDF списка работников")
@@ -61,7 +61,7 @@
         month (parse-int (:month query-params) current-month)
         temp-file (java.io.File/createTempFile "salary_" ".pdf")]
     (try
-      (if-let [result (pdf/generate-salary-report-pdf (.getAbsolutePath temp-file) year month)]
+      (if-let [result (pdf/generate-salary-report-pdf (.getAbsolutePath temp-file) year month (:org-id request))]
         (if (:success result)
           (do
             (logger/log-info (format "API: GET /api/reports/salary/pdf — сгенерирован PDF за %d-%d" year month))

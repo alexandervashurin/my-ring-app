@@ -118,111 +118,118 @@
                   work-time)))
 
 (defn generate-worker-pdf
-  "Генерация PDF отчёта по работнику"
-  [worker-id output-path]
-  (try
-    (let [worker (model/get-worker-by-id worker-id)]
-      (if-not worker
-        (do
-          (logger/log-warn (format "PDF: работник ID=%s не найден" worker-id))
-          {:success false :message "Работник не найден"})
-        (let [salary-history (model/get-worker-salary-history worker-id)
-              work-time (model/get-worker-work-time worker-id)
-              fio (str/join " " (remove str/blank? [(:фамилия worker) (:имя worker) (:отчество worker)]))]
-          (pdf [(doc-meta (format "Отчёт по работнику: %s" fio) fio)
-                [:paragraph {:style :bold :size 16} "Отчёт по работнику"]
-                [:paragraph {:size 11} fio]
-                [:paragraph {:style :bold :size 12} "Общие сведения"]
-                (pdf-table [35 65] ["Параметр" "Значение"] (worker-info-rows worker))
-                [:paragraph {:style :bold :size 12} "Зарплата"]
-                (if (seq salary-history)
-                  (salary-history-table salary-history)
-                  [:paragraph {:size 10} "Данных о зарплате нет"])
-                [:paragraph {:style :bold :size 12} "Учёт рабочего времени"]
-                (if (seq work-time)
-                  (work-time-table work-time)
-                  [:paragraph {:size 10} "Данных об учёте рабочего времени нет"])]
-                output-path)
-          (logger/log-info (format "PDF: сформирован отчёт по работнику ID=%s" worker-id))
-          {:success true :message "PDF отчёт сформирован"})))
-    (catch Exception e
-      (logger/log-error e (format "Ошибка при генерации PDF отчёта по работнику ID=%s" worker-id)
-                        {:worker-id worker-id})
-      {:success false :message "Внутренняя ошибка при генерации PDF"})))
+  "Генерация PDF отчёта по работнику. Если org-id не nil — фильтрует по организации."
+  ([worker-id output-path]
+   (generate-worker-pdf worker-id output-path nil))
+  ([worker-id output-path org-id]
+   (try
+     (let [worker (model/get-worker-by-id worker-id org-id)]
+       (if-not worker
+         (do
+           (logger/log-warn (format "PDF: работник ID=%s не найден (org: %s)" worker-id (str org-id)))
+           {:success false :message "Работник не найден"})
+         (let [salary-history (model/get-worker-salary-history worker-id org-id)
+               work-time (model/get-worker-work-time worker-id org-id)
+               fio (str/join " " (remove str/blank? [(:фамилия worker) (:имя worker) (:отчество worker)]))]
+           (pdf [(doc-meta (format "Отчёт по работнику: %s" fio) fio)
+                 [:paragraph {:style :bold :size 16} "Отчёт по работнику"]
+                 [:paragraph {:size 11} fio]
+                 [:paragraph {:style :bold :size 12} "Общие сведения"]
+                 (pdf-table [35 65] ["Параметр" "Значение"] (worker-info-rows worker))
+                 [:paragraph {:style :bold :size 12} "Зарплата"]
+                 (if (seq salary-history)
+                   (salary-history-table salary-history)
+                   [:paragraph {:size 10} "Данных о зарплате нет"])
+                 [:paragraph {:style :bold :size 12} "Учёт рабочего времени"]
+                 (if (seq work-time)
+                   (work-time-table work-time)
+                   [:paragraph {:size 10} "Данных об учёте рабочего времени нет"])]
+                 output-path)
+           (logger/log-info (format "PDF: сформирован отчёт по работнику ID=%s (org: %s)" worker-id (str org-id)))
+           {:success true :message "PDF отчёт сформирован"})))
+     (catch Exception e
+       (logger/log-error e (format "Ошибка при генерации PDF отчёта по работнику ID=%s" worker-id)
+                         {:worker-id worker-id})
+       {:success false :message "Внутренняя ошибка при генерации PDF"}))))
 
 (defn generate-workers-list-pdf
-  "Генерация PDF списка работников"
-  [output-path]
-  (try
-    (let [workers (model/get-workers-with-details)]
-      (pdf [(doc-meta "Список работников" (format "Всего: %d" (count workers)) {:landscape? true})
-            [:paragraph {:style :bold :size 16} "Список работников"]
-            [:paragraph {:size 11} (format "Всего работников: %d" (count workers))]
-            (if (seq workers)
-              (pdf-table [6 18 13 16 14 14 18 12 7 14]
-                         ["ID" "Фамилия" "Имя" "Отчество" "Дата приёма" "Цех"
-                          "Система оплаты" "Категория" "Разряд" "Режим работы"]
-                         (map (fn [w]
-                                [(:id w)
-                                 (:фамилия w)
-                                 (:имя w)
-                                 (or (:отчество w) "")
-                                 (:дата_приема w)
-                                 (or (:цех w) "")
-                                 (or (:система w) "")
-                                 (or (:категория w) "")
-                                 (or (:разряд w) "")
-                                 (or (:режим w) "")])
-                              workers))
-              [:paragraph "Нет данных для отчёта"])]
-            output-path)
-      (logger/log-info (format "PDF: сформирован список работников (%d записей)" (count workers)))
-      {:success true :message "PDF отчёт сформирован"})
-    (catch Exception e
-      (logger/log-error e "Ошибка при генерации PDF списка работников")
-      {:success false :message "Внутренняя ошибка при генерации PDF"})))
+  "Генерация PDF списка работников. Если org-id не nil — фильтрует по организации."
+  ([output-path]
+   (generate-workers-list-pdf output-path nil))
+  ([output-path org-id]
+   (try
+     (let [workers (model/get-workers-with-details org-id)]
+       (pdf [(doc-meta "Список работников" (format "Всего: %d" (count workers)) {:landscape? true})
+             [:paragraph {:style :bold :size 16} "Список работников"]
+             [:paragraph {:size 11} (format "Всего работников: %d" (count workers))]
+             (if (seq workers)
+               (pdf-table [6 18 13 16 14 14 18 12 7 14]
+                          ["ID" "Фамилия" "Имя" "Отчество" "Дата приёма" "Цех"
+                           "Система оплаты" "Категория" "Разряд" "Режим работы"]
+                          (map (fn [w]
+                                 [(:id w)
+                                  (:фамилия w)
+                                  (:имя w)
+                                  (or (:отчество w) "")
+                                  (:дата_приема w)
+                                  (or (:цех w) "")
+                                  (or (:система w) "")
+                                  (or (:категория w) "")
+                                  (or (:разряд w) "")
+                                  (or (:режим w) "")])
+                               workers))
+               [:paragraph "Нет данных для отчёта"])]
+             output-path)
+       (logger/log-info (format "PDF: сформирован список работников (%d записей, org: %s)" (count workers) (str org-id)))
+       {:success true :message "PDF отчёт сформирован"})
+     (catch Exception e
+       (logger/log-error e "Ошибка при генерации PDF списка работников")
+       {:success false :message "Внутренняя ошибка при генерации PDF"}))))
 
 (defn generate-salary-report-pdf
-  "Генерация PDF отчёта по зарплате за указанный год и месяц"
-  [output-path year month]
-  (try
-    (if (not (and (number? year) (number? month) (<= 1 month 12)))
-      (do
-        (logger/log-warn (format "PDF: некорректные параметры отчёта по зарплате: %s-%s" (str year) (str month)))
-        {:success false :message "Некорректные параметры отчёта"})
-      (let [records (filter (fn [r]
-                              (and (= (int year) (int (:год r)))
-                                   (= (int month) (int (:месяц r)))))
-                            (model/get-salary-with-details))
-            total (reduce + (map (fn [r] (long (or (:общая_зарплата r) 0))) records))
-            period (format "%s %d года" (month-name month) (int year))]
-        (pdf [(doc-meta (format "Отчёт по зарплате за %s" period) period {:landscape? true})
-              [:paragraph {:style :bold :size 16} "Отчёт по зарплате"]
-              [:paragraph {:size 11} (str "Период: " period)]
-              [:paragraph {:size 11} (format "Количество записей: %d" (count records))]
-              (if (seq records)
-                (into (pdf-table [8 30 10 10 20 15 15]
-                                 ["ID" "Работник" "Год" "Месяц" "Общая зарплата"
-                                  "Больничные" "Командировочные"]
-                                 (map (fn [r]
-                                        [(:id r)
-                                         (str (:фамилия r) " " (:имя r))
-                                         (:год r)
-                                         (:месяц r)
-                                         (format-number (:общая_зарплата r))
-                                         (format-number (:зарплата_за_больничные_дни r))
-                                         (format-number (:зарплата_за_командировочные_дни r))])
+  "Генерация PDF отчёта по зарплате за указанный год и месяц.
+  Если org-id не nil — фильтрует по организации."
+  ([output-path year month]
+   (generate-salary-report-pdf output-path year month nil))
+  ([output-path year month org-id]
+   (try
+     (if (not (and (number? year) (number? month) (<= 1 month 12)))
+       (do
+         (logger/log-warn (format "PDF: некорректные параметры отчёта по зарплате: %s-%s" (str year) (str month)))
+         {:success false :message "Некорректные параметры отчёта"})
+       (let [records (filter (fn [r]
+                               (and (= (int year) (int (:год r)))
+                                    (= (int month) (int (:месяц r)))))
+                             (model/get-salary-with-details org-id))
+             total (reduce + (map (fn [r] (long (or (:общая_зарплата r) 0))) records))
+             period (format "%s %d года" (month-name month) (int year))]
+         (pdf [(doc-meta (format "Отчёт по зарплате за %s" period) period {:landscape? true})
+               [:paragraph {:style :bold :size 16} "Отчёт по зарплате"]
+               [:paragraph {:size 11} (str "Период: " period)]
+               [:paragraph {:size 11} (format "Количество записей: %d" (count records))]
+               (if (seq records)
+                 (into (pdf-table [8 30 10 10 20 15 15]
+                                  ["ID" "Работник" "Год" "Месяц" "Общая зарплата"
+                                   "Больничные" "Командировочные"]
+                                  (map (fn [r]
+                                         [(:id r)
+                                          (str (:фамилия r) " " (:имя r))
+                                          (:год r)
+                                          (:месяц r)
+                                          (format-number (:общая_зарплата r))
+                                          (format-number (:зарплата_за_больничные_дни r))
+                                          (format-number (:зарплата_за_командировочные_дни r))])
                                        records))
-                      [[[:pdf-cell [:chunk {:style :bold} "ИТОГО"]]
-                        [:pdf-cell {:colspan 3 :align :right} ""]
-                        [:pdf-cell [:chunk {:style :bold} (format-number total)]]
-                        [:pdf-cell ""]
-                        [:pdf-cell ""]]])
-                [:paragraph "Нет данных за указанный период"])]
-              output-path)
-        (logger/log-info (format "PDF: сформирован отчёт по зарплате за %s-%s (%d записей)" (str year) (str month) (count records)))
-        {:success true :message "PDF отчёт сформирован"}))
-    (catch Exception e
-      (logger/log-error e (format "Ошибка при генерации PDF отчёта по зарплате за %s-%s" (str year) (str month))
-                        {:year year :month month})
-      {:success false :message "Внутренняя ошибка при генерации PDF"})))
+                       [[[:pdf-cell [:chunk {:style :bold} "ИТОГО"]]
+                         [:pdf-cell {:colspan 3 :align :right} ""]
+                         [:pdf-cell [:chunk {:style :bold} (format-number total)]]
+                         [:pdf-cell ""]
+                         [:pdf-cell ""]]])
+                 [:paragraph "Нет данных за указанный период"])]
+               output-path)
+         (logger/log-info (format "PDF: сформирован отчёт по зарплате за %s-%s (%d записей, org: %s)" (str year) (str month) (count records) (str org-id)))
+         {:success true :message "PDF отчёт сформирован"}))
+     (catch Exception e
+       (logger/log-error e (format "Ошибка при генерации PDF отчёта по зарплате за %s-%s" (str year) (str month))
+                         {:year year :month month})
+       {:success false :message "Внутренняя ошибка при генерации PDF"}))))

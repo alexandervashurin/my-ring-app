@@ -20,6 +20,6 @@
   (fn [request]
     (let [uri (:uri request)
           new-uri (if (str/starts-with? uri "/api/v1/")
-                    (str "/api/" (subs uri 7))
+                    (str "/api" (subs uri 7))
                     uri)]
       (handler (assoc request :uri new-uri)))))
