@@ -1,6 +1,42 @@
 # Change Log
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
+## [Unreleased] - 2026-07-31
+
+### ✨ New Features
+
+**PDF-отчёты (clj-pdf 2.6.1):**
+- Новый модуль `pdf_reports.clj` — реальная генерация PDF вместо заглушек
+- **PDF по работнику**: `/api/reports/worker/:id/pdf` — карточка работника с ФИО, цехом, категорией, окладом/ставкой, зарплатой за месяц
+- **PDF список работников**: `/api/reports/workers/pdf` — таблица работников (landscape)
+- **PDF отчёт по зарплате**: `/api/reports/salary/pdf?year=&month=` — сводная таблица с итоговой строкой
+- **Кириллица**: рендеринг через TTF-шрифт (DejaVuSans), `:encoding :unicode`
+- **Org-фильтр**: все три генератора принимают `org-id` и ограничивают данные организацией
+- Зависимость `clj-pdf 2.6.1` добавлена в `project.clj`
+
+**Орг-фильтр в PDF:**
+- `pdf_reports.clj`: новые arity `[x y org-id]` для всех генераторов (старые сохранены)
+- `api/reports.clj`: передаёт `(:org-id request)` в генераторы
+
+### 🐛 Bug Fixes
+- **`model.clj`**: `(jdbc/query db-spec [(str query) params])` в java.jdbc 0.7.12 не разворачивает вектор параметров → пустые результаты. Заменено на `(into [query] params)` в `get-worker-salary`, `get-worker-salary-history`, `get-worker-work-time`
+- **`api_version.clj`**: `wrap-api-v1-rewrite` давал двойной слэш `/api//workers` → запросы `/api/v1/*` фактически не маршрутизировались; исправлено на `(str "/api" (subs uri 7))`
+
+### 🧪 Tests
+- **228 тестов, 582 утверждений, 0 failures/0 errors** (+48 тестов, +121 утверждение)
+- Новые: `api_version_test.clj` (2), `email_test.clj` (5), `sse_test.clj` (2), `logger_test.clj` (7)
+- `pdf_reports_test.clj` расширен org-фильтрами (3 новых теста: worker-org, workers-list-org, salary-org; итого 9 тестов/42 assertions)
+- Тесты изолированы от dev-БД: `test_helper.clj` применяет миграции + `auth/init-db!` в отдельной тестовой БД
+
+### 🚀 Deployment
+- Прод запущен вручную: `lein uberjar` + `java -jar` (порт 3000, `ENV=production`, `SESSION_SECRET`)
+- GitHub Actions-деплой недоступен: хост в частной сети, SSH на порту 50000, отсутствуют необходимые секреты
+- Настроены GitHub secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY` (ed25519, порт 50000)
+
+### 📝 Documentation
+- Добавлен `USER_GUIDE.md` — руководство пользователя (вход, роли, работники, справочники, учёт времени, зарплата, дашборд, организации/тарифы, отчёты/экспорт, мониторинг, FAQ)
+- Актуализированы `README.md`, `DOCUMENTATION.md`, `CHANGELOG.md`, `DEVELOPMENT_PLAN.md`
+
 ## [Unreleased] - 2026-07-29
 
 ### ✨ New Features

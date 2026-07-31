@@ -26,6 +26,9 @@
 - Учёт рабочего времени (отработанные часы, больничные, командировки)
 - Расчёт заработной платы (окладная, почасовая, сдельная, проектная системы)
 - Аналитика и отчётность (дашборд с метриками)
+- PDF-отчёты и экспорт данных (CSV/Excel/1С)
+- Мульти-тенантность: организации, роли, тарифные планы
+- Аудит действий, журнал сессий, мониторинг
 - Просмотр всех таблиц базы данных
 
 ### Целевая аудитория
@@ -99,6 +102,16 @@
 | **Кэш** | `cache.clj` | Кэширование справочников (Atom) |
 | **Rate Limit** | `rate_limit.clj` | Ограничение частоты запросов |
 | **API Version** | `api_version.clj` | Версионирование API (v1/v2) |
+| **Аутентификация** | `auth.clj` | Логин, хеши паролей, права доступа |
+| **Мультиязычность** | `i18n.clj` | Словари ru/en |
+| **Email** | `email.clj` | Отправка уведомлений (SMTP) |
+| **PDF-отчёты** | `pdf_reports.clj` | Генерация PDF (clj-pdf) |
+| **SSE** | `sse.clj` | Быстрый polling дашборда |
+| **Тарифы** | `tariff.clj` | Тарифные планы, лимиты организаций |
+| **Сессии** | `session_audit.clj` | Журнал входов и сессий |
+| **Контроллеры (auth)** | `controllers/auth.clj` | Вход/выход, профиль, смена пароля |
+| **Контроллеры (организации)** | `controllers/organizations.clj` | CRUD организаций |
+| **Контроллеры (справочники)** | `controllers/references.clj` | CRUD справочников |
 
 ---
 
@@ -143,6 +156,12 @@
 | Библиотека | Версия | Назначение |
 |------------|--------|------------|
 | **java-time** | 1.4.3 | Работа с датой и временем |
+| **data.json** | 2.4.0 | Работа с JSON |
+| **buddy-hashers** | 2.0.167 | Хеширование паролей (bcrypt) |
+| **clj-pdf** | 2.6.1 | Генерация PDF-отчётов |
+| **Apache POI** | 5.2.3 | Экспорт в Excel (XLSX) |
+| **data.csv** | 1.0.1 | Экспорт в CSV |
+| **data.xml** | 0.2.0-alpha6 | Выгрузка для 1С (XML) |
 
 ---
 
@@ -155,18 +174,40 @@ my-ring-app/
 ├── src/my_ring_app/
 │   ├── core.clj           # Точка входа, middleware
 │   ├── routes.clj         # Маршруты Compojure
-│   ├── controllers.clj    # Контроллеры (18 функций)
-│   ├── model.clj          # Модель данных (40+ функций)
-│   ├── validation.clj     # Валидация (2 функции)
-│   ├── logger.clj         # Логирование (7 функций)
+│   ├── controllers.clj    # Контроллеры
+│   ├── model.clj          # Модель данных
+│   ├── validation.clj     # Валидация
+│   ├── logger.clj         # Логирование
 │   ├── config.clj         # Конфигурация
 │   ├── migration.clj      # Система миграций БД
 │   ├── cache.clj          # Кэш справочников (Atom)
 │   ├── rate_limit.clj     # Rate limiting middleware
 │   ├── api_version.clj    # API versioning (v1/v2)
+│   ├── auth.clj           # Аутентификация и авторизация
+│   ├── email.clj          # Email уведомления
+│   ├── pdf_reports.clj    # Генерация PDF-отчётов
+│   ├── sse.clj            # Server-Sent Events (polling дашборда)
+│   ├── tariff.clj         # Тарифные планы
+│   ├── session_audit.clj  # Журнал сессий
 │   ├── util.clj           # Вспомогательные функции
+│   ├── i18n.clj           # Мультиязычность (ru/en)
+│   ├── controllers/
+│   │   ├── auth.clj       # Вход/выход, профиль, смена пароля
+│   │   ├── organizations.clj # Управление организациями
+│   │   └── references.clj # CRUD справочников
 │   ├── api/
-│   │   └── sse.clj        # Dashboard polling
+│   │   ├── dashboard.clj  # Дашборд и аналитика
+│   │   ├── workers.clj    # API работников
+│   │   ├── salary.clj     # Зарплата и учёт времени
+│   │   ├── export.clj     # Экспорт (CSV/Excel)
+│   │   ├── reports.clj    # PDF-отчёты
+│   │   ├── audit.clj      # Аудит
+│   │   ├── monitoring.clj # Мониторинг
+│   │   ├── notifications.clj # Уведомления
+│   │   ├── onec.clj       # Интеграция с 1С
+│   │   ├── organizations.clj # API организаций
+│   │   ├── tariff.clj     # API тарифов
+│   │   └── session_audit.clj # API сессий
 │   └── views/
 │       ├── layout.clj     # Общий HTML-шаблон, CSS
 │       ├── home.clj       # Главная страница
@@ -174,11 +215,13 @@ my-ring-app/
 │       ├── workers.clj    # Страница работников
 │       ├── salary.clj     # Страница зарплаты
 │       ├── work_time.clj  # Учёт рабочего времени
+│       ├── organizations.clj # Страницы организаций
+│       ├── references.clj # Страницы справочников
 │       ├── tables.clj     # Просмотр таблиц БД
 │       ├── auth.clj       # Страницы аутентификации
 │       └── helpers.clj    # Вспомогательные функции
 ├── resources/
-│   ├── migrations/         # SQL миграции
+│   ├── migrations/         # SQL миграции (000-007)
 │   ├── logback.xml        # Конфигурация логгера
 │   └── public/             # Статические файлы (CSS, JS)
 ├── test/my_ring_app/
@@ -188,8 +231,19 @@ my-ring-app/
 │   ├── util_test.clj      # Тесты вспомогательных функций
 │   ├── cache_test.clj     # Тесты кэша
 │   ├── migration_test.clj # Тесты миграций
+│   ├── auth_test.clj      # Тесты аутентификации
+│   ├── controllers_test.clj # Тесты контроллеров
+│   ├── tariff_test.clj    # Тесты тарифов
+│   ├── session_audit_test.clj # Тесты журнала сессий
+│   ├── email_test.clj     # Тесты email
+│   ├── pdf_reports_test.clj # Тесты PDF-отчётов
+│   ├── api_version_test.clj # Тесты версионирования API
+│   ├── sse_test.clj       # Тесты SSE
+│   ├── logger_test.clj    # Тесты логгера
+│   ├── test_helper.clj    # Изолированная тестовая БД
 │   └── api/
-│       └── export_test.clj # Тесты экспорта
+│       ├── export_test.clj # Тесты экспорта
+│       └── workers_test.clj # Тесты API работников
 ├── doc/
 │   └── intro.md           # Документация
 ├── igra.db                # SQLite база данных
@@ -198,6 +252,7 @@ my-ring-app/
 ├── fix_salary.sql         # Исправление начислений
 ├── project.clj            # Конфигурация Leiningen
 ├── README.md              # Основная документация
+├── USER_GUIDE.md          # Руководство пользователя
 ├── CHANGELOG.md           # История изменений
 └── LICENSE                # Лицензия EPL 2.0
 ```
@@ -235,12 +290,17 @@ app-routes
 
 #### routes.clj (Маршруты)
 
-**Endpoints (15 маршрутов):**
+**HTML Endpoints (основные):**
 
 | Метод | Путь | Контроллер | Описание |
 |-------|------|------------|----------|
 | GET | `/` | `home-page` | Главная страница |
 | GET | `/dashboard` | `dashboard-page` | Дашборд с аналитикой |
+| GET | `/login` | `auth-controllers/login-page` | Страница входа |
+| POST | `/login` | `auth-controllers/login-submit` | Вход |
+| POST | `/logout` | `auth-controllers/logout` | Выход |
+| GET | `/profile` | `auth-controllers/profile-page` | Профиль |
+| GET | `/sessions` | `auth-controllers/sessions-page` | Мои сессии |
 | GET | `/workers` | `workers-page` | Список работников (с поиском) |
 | GET | `/workers/new` | `new-worker-form` | Форма создания |
 | GET | `/workers/:id/edit` | `edit-worker-form` | Форма редактирования |
@@ -251,8 +311,33 @@ app-routes
 | GET | `/workers/:id/work-time` | `worker-work-time-page` | Учёт времени |
 | GET | `/work-time/:id/edit` | `edit-work-time-form` | Редактирование учёта |
 | POST | `/work-time/:id/update` | `update-work-time` | Обновление учёта |
+| GET | `/organizations` | `org-controllers/organizations-page` | Список организаций (admin) |
+| GET | `/organizations/new` | `new-organization-form` | Форма создания организации |
+| POST | `/organizations/create` | `create-organization` | Создание организации |
+| GET | `/organizations/:id` | `organization-detail` | Детали организации |
+| GET | `/organizations/:id/edit` | `edit-organization-form` | Форма редактирования |
+| POST | `/organizations/:id/update` | `update-organization` | Обновление организации |
+| POST | `/organizations/:id/delete` | `delete-organization` | Удаление организации |
+| GET | `/shops`, `/ranks`, `/payment-systems`, `/categories`, `/work-modes`, `/salaries`, `/hourly-rates` | `ref-controllers/*` | CRUD справочников |
+| GET | `/tariffs` | `ref-controllers/*` | Тарифные планы (admin) |
 | GET | `/db` | `all-tables-page` | Все таблицы БД |
 | * | `*` | `not-found-page` | 404 Not Found |
+
+**REST API (основные):** полный перечень см. в [README.md](README.md#-api-endpoints). Ключевые группы:
+
+- `/api/workers*` — CRUD работников, поиск
+- `/api/salary/:worker-id`, `/api/work-time/*` — зарплата и учёт времени
+- `/api/dashboard*`, `/api/analytics/*` — дашборд и аналитика
+- `/api/organizations*` — организации (мульти-тенантность)
+- `/api/tariffs*` — тарифные планы
+- `/api/reports/*/pdf` — PDF-отчёты
+- `/api/export/*` — экспорт CSV/Excel
+- `/api/1c/*` — интеграция с 1С
+- `/api/audit*`, `/api/sessions*` — аудит и сессии
+- `/api/health`, `/api/ready`, `/api/live`, `/api/metrics`, `/api/stats` — мониторинг
+- `/api-docs` — Swagger UI
+
+Все эндпоинты доступны также с префиксом версии: `/api/v1/*`, `/api/v2/*`.
 
 #### controllers.clj (Контроллеры)
 
@@ -377,7 +462,7 @@ SQL: SQL: SELECT * FROM "Работник" | PARAMS: []
 
 ## База данных
 
-### Схема БД (10 таблиц)
+### Схема БД (15 таблиц)
 
 #### Основные таблицы
 
@@ -446,13 +531,23 @@ CREATE TABLE Начисление_заработной_платы (
 
 | Таблица | Поля | Описание |
 |---------|------|----------|
-| **Пользователь** | id, username, password_hash, email, role, is_active, created_at | Аутентификация |
+| **Пользователь** | id, username, email, password_hash, role, is_active, organization_id, org_role, last_login, created_at, updated_at | Аутентификация, глобальная роль и роль в организации |
+| **Организация** | id, name, inn, phone, email, address, is_active, created_at, updated_at | Организации (мульти-тенантность) |
+| **Тарифный_план** | id, code, name, max_workers, max_orgs, features, price_monthly, price_yearly, is_active, sort_order, created_at | Тарифные планы (Free/Pro/Enterprise) |
+| **Сессия** | id, user_id, username, login_time, logout_time, ip_address, user_agent, success, fail_reason, organization_id | Журнал входов и сессий |
 | **Аудит_изменений** | id, entity_type, entity_id, action, user_id, username, old_values, new_values, ip_address, user_agent, details, created_at | Журнал изменений |
 | **schema_migrations** | version, applied_at | Отслеживание применённых миграций |
+
+> Работник и Пользователь связаны с Организацией через `organization_id` (мульти-тенантность).
 
 ### Связи между таблицами
 
 ```
+Организация
+  ├──→ Пользователь (one-to-many, organization_id)
+  ├──→ Работник (one-to-many, organization_id)
+  └──→ Тарифный_план (через API/настройки организации)
+
 Работник
   ├──→ Цех (many-to-one)
   ├──→ Система_оплаты (many-to-one)
@@ -467,6 +562,10 @@ CREATE TABLE Начисление_заработной_платы (
 
 Начисление_заработной_платы
   └──→ Учет_рабочего_времени (one-to-one)
+
+Сессия
+  ├──→ Пользователь (many-to-one)
+  └──→ Организация (many-to-one, nullable)
 ```
 
 ### Объём данных
@@ -852,14 +951,31 @@ lein test my-ring-app.validation-test
 
 | Файл | Тестов | Утверждений | Описание |
 |------|--------|-------------|----------|
-| `validation_test.clj` | 13 | 32 | Валидация работников и учёта времени |
-| `model_test.clj` | 5 | 8 | Тесты модели (БД) |
-| `core_test.clj` | 3 | 10 | Интеграционные тесты |
-| `util_test.clj` | 21 | 63 | Тесты вспомогательных функций |
-| `api/export_test.clj` | 8 | 32 | Тесты экспорта данных |
-| `cache_test.clj` | 5 | 18 | Тесты кэша справочников |
-| `migration_test.clj` | 4 | 12 | Тесты миграций |
-| **Итого** | **51** | **192** | |
+| `auth_test.clj` | 44 | 94 | Аутентификация и авторизация |
+| `controllers_test.clj` | 29 | 50 | Контроллеры |
+| `routes_test.clj` | 20 | 26 | Маршруты |
+| `session_audit_test.clj` | 20 | 46 | Журнал сессий |
+| `tariff_test.clj` | 15 | 52 | Тарифные планы |
+| `api/workers_test.clj` | 14 | 43 | API работников |
+| `i18n_test.clj` | 11 | 18 | Мультиязычность |
+| `validation_test.clj` | 10 | 35 | Валидация |
+| `pdf_reports_test.clj` | 9 | 42 | PDF-отчёты (вкл. org-фильтр) |
+| `rate_limit_test.clj` | 7 | 10 | Rate limiting |
+| `logger_test.clj` | 7 | 9 | Логгер |
+| `util_test.clj` | 6 | 54 | Вспомогательные функции |
+| `model_test.clj` | 6 | 10 | Модель (БД) |
+| `cache_test.clj` | 5 | 18 | Кэш справочников |
+| `email_test.clj` | 5 | 10 | Email-уведомления |
+| `api/export_test.clj` | 4 | 19 | Экспорт данных |
+| `layout_buttons_test.clj` | 4 | 12 | Кнопки шапки |
+| `migration_test.clj` | 4 | 9 | Миграции |
+| `config_test.clj` | 2 | 3 | Конфигурация |
+| `core_test.clj` | 2 | 5 | Интеграционные тесты |
+| `api_version_test.clj` | 2 | 6 | Версионирование API |
+| `sse_test.clj` | 2 | 11 | SSE polling |
+| **Итого** | **228** | **582** | |
+
+Тесты используют изолированную тестовую БД: `test_helper.clj` применяет миграции и вызывает `auth/init-db!`, не затрагивая рабочую `igra.db`.
 
 ### Покрытие тестами
 
@@ -1087,31 +1203,36 @@ sudo certbot --nginx -d your-domain.com
 | ~~Нет миграций БД~~ | ✅ Решено | migration.clj с таблицей schema_migrations |
 | ~~Нет type hints~~ | ✅ Решено | Все reflection warnings устранены |
 | ~~Нет connection pooling~~ | ✅ Решено | HikariCP с настраиваемым размером пула |
+| ~~Нет PDF-отчётов~~ | ✅ Решено | clj-pdf: отчёты по работнику, списку и зарплате |
+| ~~Нет мульти-тенантности~~ | ✅ Решено | Организации, org-роли, тарифные планы |
+| ~~Нет журнала сессий~~ | ✅ Решено | Таблица Сессия + API /api/sessions* |
 
 ### Технический долг (устранён)
 
-Все ранее выявленные проблемы устранены в Q1-Q2 2027:
+Все ранее выявленные проблемы устранены:
 - ✅ Миграции БД (migration.clj + SQL файлы)
 - ✅ CSS вынесен в отдельные файлы
 - ✅ Type hints добавлены (0 reflection warnings)
 - ✅ Connection pooling (HikariCP)
 - ✅ Rate limiting (скользящее окно по IP)
-- ✅ API versioning (/api/v1/)
+- ✅ API versioning (/api/v1/, /api/v2/)
 - ✅ Кэш справочников (Atom, автообновление)
 - ✅ Клиентская валидация (validation.js)
+- ✅ Мульти-тенантность (организации, org-роли, тарифы)
+- ✅ PDF-отчёты (clj-pdf, кириллица через TTF-шрифт)
+- ✅ Журнал сессий и аудит
+- ✅ Email-уведомления
 
 ### Рекомендации по улучшению
 
 **Краткосрочные:**
 - [ ] Покрытие тестами > 70%
-- [ ] Добавить тесты для API endpoints
 
-**Среднесрочные (Q3 2027):**
-- [ ] Мульти-тенантность
+**Среднесрочные:**
 - [ ] OAuth2 (Google/Yandex)
 - [ ] WebSocket для реалтайм обновлений
 
-**Долгосрочные (Q4 2027):**
+**Долгосрочные:**
 - [ ] GraphQL API
 - [ ] CLI утилита
 
@@ -1171,13 +1292,17 @@ WHERE у.год = 2025 AND у.месяц = 10;
 
 ### B. Changelog (кратко)
 
-**[Unreleased] - 2026-07-27**
-- ✅ Безопасность: XSS, CSRF, заголовки, brute-force protection, session revalidation
-- ✅ Обработка ошибок: глобальный handler, division-by-zero fix
-- ✅ Тесты: 42 теста, 165 утверждений
-- ✅ Рефакторинг: улучшена структура middleware, создан util.clj
-- ✅ Документация: полный README
-- ✅ Bug fixes: search, Excel export, ID validation, table name validation
+**[Unreleased] - 2026-07-31**
+- ✅ PDF-отчёты: по работнику, списку работников и зарплате (clj-pdf, кириллица)
+- ✅ Орг-фильтр в PDF-отчётах (по `organization_id`)
+- ✅ Исправлен баг параметрических запросов java.jdbc (вектор параметров)
+- ✅ Исправлен двойной слэш `/api//workers` в api_version.clj
+- ✅ Мульти-тенантность: организации, org-роли, тарифные планы
+- ✅ Журнал сессий (Сессия + API), аудит действий
+- ✅ Email-уведомления, версионирование API (v1/v2), SSE polling
+- ✅ Тесты: 228 тестов, 582 утверждений
+- ✅ USER_GUIDE.md — руководство пользователя
+- ✅ Деплой на прод: uberjar + java -jar (порт 3000, ENV=production)
 
 **[0.1.1] - 2026-02-04**
 - Обновлена документация
@@ -1195,4 +1320,4 @@ WHERE у.год = 2025 AND у.месяц = 10;
 
 ---
 
-*Документация актуальна на версию 2.0.0-SNAPSHOT. Последнее обновление: Июль 2026.*
+*Документация актуальна на версию 0.1.0-SNAPSHOT. Последнее обновление: Июль 2026.*

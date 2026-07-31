@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-EPL--2.0-green.svg)](LICENSE)
 [![Ring](https://img.shields.io/badge/Ring-1.9.6-purple.svg)](https://github.com/ring-clojure/ring)
 [![SQLite](https://img.shields.io/badge/SQLite-3.x-lightgrey.svg)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/tests-51%20tests%20%7C%20192%20assertions-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-228%20tests%20%7C%20582%20assertions-brightgreen.svg)]()
 [![Status](https://img.shields.io/badge/status-production--ready-success.svg)]()
 
 **Система управления персоналом** — полноценное веб-приложение для управления базой данных работников предприятия с поддержкой всех операций CRUD (Create, Read, Update, Delete).
@@ -64,15 +64,23 @@
 ## ✨ Функциональность
 
 ### Основные возможности:
-- ✅ **Просмотр** списка всех работников с расширенной информацией
-- ✅ **Добавление** новых работников в базу данных
-- ✅ **Редактирование** существующих записей
-- ✅ **Удаление** работников с подтверждением
+- ✅ **Просмотр** списка всех работников с расширенной информацией и поиском по ФИО и цеху
+- ✅ **CRUD** для работников, справочников и организаций
 - ✅ **Умные формы** с выпадающими списками для справочников
 - ✅ **Автоматическое переключение** между окладом и почасовой ставкой
-- ✅ **Просмотр всех таблиц** базы данных
-- ✅ **Современный адаптивный интерфейс**
-- ✅ **Поиск работников** по ФИО и цеху
+- ✅ **Современный адаптивный интерфейс** (ru/en)
+
+### Аутентификация и роли:
+- 🔐 **Регистрация, вход, выход** и смена пароля
+- 🛡️ **Глобальные роли**: `admin`, `manager`, `hr`, `viewer`
+- 🏢 **Роли в организациях**: `org_admin`, `org_manager`, `org_hr`, `org_viewer`
+- ⏱️ **Мульти-тенантность** — разграничение данных между организациями
+- 📋 **Журнал сессий** — активные сессии, неудачные входы, статистика
+
+### Мульти-тенантность и тарифы:
+- 🏭 **Организации** — управление организациями и их участниками
+- 💳 **Тарифные планы**: Free (10 работников/1 организация), Pro (50/3), Enterprise (без ограничений)
+- 📊 **Контроль лимитов** — проверка превышения числа работников по тарифу
 
 ### Работа со справочниками:
 - 📋 Цеха
@@ -82,11 +90,22 @@
 - 🕐 Режимы работы
 - 💸 Оклады
 - ⏱️ Почасовые ставки
+- 📑 Тарифные планы
 
-### Дополнительные функции:
+### Отчёты и экспорт:
 - 📊 **Расчёт зарплаты** — просмотр информации о зарплате работника
 - 🕐 **Учёт рабочего времени** — отслеживание отработанных часов, больничных и командировочных дней
+- 📄 **PDF-отчёты** — по работнику, списку работников и зарплате за период (с кириллицей)
+- 📁 **Экспорт** в CSV и Excel (XLSX), выгрузка в 1С (XML)
+- 📈 **Дашборд** с аналитикой (по цехам, категориям, распределению зарплат)
+
+### Прочее:
 - 🗄️ **Просмотр БД** — отображение всех таблиц базы данных с содержимым
+- 🕵️ **Аудит** — журнал изменений по сущностям и пользователям
+- 🩺 **Мониторинг** — health/ready/live, Prometheus-метрики, статистика
+- 🔔 **Email-уведомления** — тест SMTP, уведомления о новых работниках, днях рождения и юбилеях
+- 🔄 **Версионирование API** — поддержка `/api/v1/*` и `/api/v2/*`
+- ⚡ **SSE** — быстрый polling дашборда (`/api/dashboard/poll`)
 
 ## 🛠 Технологический стек
 
@@ -97,13 +116,26 @@
 | **Ring** | 1.9.6 | Веб-фреймворк, абстракция над HTTP |
 | **Compojure** | 1.7.0 | Библиотека маршрутизации для Ring |
 | **Jetty** | 9.4.x | Встроенный веб-сервер |
+| **buddy-hashers** | 2.0.167 | Хеширование паролей (bcrypt) |
+| **data.json** | 2.4.0 | Работа с JSON |
+| **java-time** | 1.4.3 | Работа с датами и временем |
 
 ### База данных
 | Технология | Версия | Назначение |
 |------------|--------|------------|
 | **SQLite** | 3.x | Встраиваемая реляционная СУБД |
+| **PostgreSQL** | 42.6.0 | Драйвер для PostgreSQL (опционально) |
 | **SQLite JDBC** | 3.45.1.0 | Драйвер для подключения к SQLite |
 | **java.jdbc** | 0.7.12 | Clojure-библиотека для работы с JDBC |
+| **HikariCP** | 4.1.0 | Пул соединений |
+
+### Отчёты и экспорт
+| Технология | Версия | Назначение |
+|------------|--------|------------|
+| **clj-pdf** | 2.6.1 | Генерация PDF-отчётов (кириллица через TTF-шрифт) |
+| **Apache POI** | 5.2.3 | Экспорт в Excel (XLSX) |
+| **data.csv** | 1.0.1 | Экспорт в CSV |
+| **data.xml** | 0.2.0-alpha6 | Выгрузка для 1С (XML) |
 
 ### Логирование
 | Технология | Версия | Назначение |
@@ -291,18 +323,27 @@ my-ring-app/
 │       ├── api_version.clj    # API versioning (v1/v2)
 │       ├── i18n.clj           # Мультиязычность (ru/en)
 │       ├── email.clj          # Email уведомления
-│       ├── pdf_reorts.clj     # Генерация PDF отчётов
+│       ├── pdf_reports.clj    # Генерация PDF отчётов
+│       ├── sse.clj            # Server-Sent Events (polling дашборда)
+│       ├── tariff.clj         # Тарифные планы и лимиты
+│       ├── session_audit.clj  # Журнал сессий
+│       ├── controllers/
+│       │   ├── auth.clj       # Вход/выход, профиль, смена пароля
+│       │   ├── organizations.clj # Управление организациями
+│       │   └── references.clj # CRUD справочников (цеха, разряды, и т.д.)
 │       ├── api/
-│       │   ├── dashboard.clj  # API дашборда
+│       │   ├── dashboard.clj  # API дашборда и аналитики
 │       │   ├── workers.clj    # API работников
-│       │   ├── salary.clj     # API зарплаты
+│       │   ├── salary.clj     # API зарплаты и учёта времени
 │       │   ├── export.clj     # API экспорта (CSV/Excel)
 │       │   ├── reports.clj    # API PDF отчётов
 │       │   ├── audit.clj      # API аудита
 │       │   ├── monitoring.clj # API мониторинга
 │       │   ├── notifications.clj # API уведомлений
 │       │   ├── onec.clj       # API интеграции с 1С
-│       │   └── sse.clj        # Dashboard polling
+│       │   ├── organizations.clj # API организаций
+│       │   ├── tariff.clj     # API тарифов
+│       │   └── session_audit.clj # API сессий
 │       └── views/
 │           ├── layout.clj     # Общий HTML-шаблон
 │           ├── home.clj       # Главная страница
@@ -310,6 +351,8 @@ my-ring-app/
 │           ├── workers.clj    # Страница работников
 │           ├── salary.clj     # Страница зарплаты
 │           ├── work_time.clj  # Учёт рабочего времени
+│           ├── organizations.clj # Страницы организаций
+│           ├── references.clj # Страницы справочников
 │           ├── tables.clj     # Просмотр таблиц БД
 │           ├── auth.clj       # Страницы входа/регистрации
 │           └── helpers.clj    # Вспомогательные функции
@@ -321,6 +364,16 @@ my-ring-app/
 │       ├── util_test.clj      # Тесты util.clj
 │       ├── cache_test.clj     # Тесты кэша
 │       ├── migration_test.clj # Тесты миграций
+│       ├── auth_test.clj      # Тесты аутентификации
+│       ├── controllers_test.clj # Тесты контроллеров
+│       ├── tariff_test.clj    # Тесты тарифов
+│       ├── session_audit_test.clj # Тесты журнала сессий
+│       ├── email_test.clj     # Тесты email
+│       ├── pdf_reports_test.clj # Тесты PDF-отчётов
+│       ├── api_version_test.clj # Тесты версионирования API
+│       ├── sse_test.clj       # Тесты SSE
+│       ├── logger_test.clj    # Тесты логгера
+│       ├── test_helper.clj    # Общие утилиты тестов (изолированная БД)
 │       └── api/
 │           ├── export_test.clj # Тесты экспорта
 │           └── workers_test.clj # Тесты API работников
@@ -361,6 +414,11 @@ my-ring-app/
 | `Почасовые_ставки` | Почасовые тарифные ставки |
 | `Учет_рабочего_времени` | Записи об отработанном времени |
 | `Начисление_заработной_платы` | Расчёты заработной платы |
+| `Пользователь` | Учётные записи (глобальные роли) |
+| `Организация` | Организации (мульти-тенантность) |
+| `Тарифный_план` | Тарифные планы (Free/Pro/Enterprise) |
+| `Сессия` | Журнал входов и сессий |
+| `Аудит_изменений` | Журнал аудита изменений |
 
 ### Работа с базой данных
 
@@ -474,6 +532,21 @@ tail -f logs/audit.log
 |-------|------|----------|
 | `GET` | `/` | Главная страница |
 | `GET` | `/dashboard` | Дашборд с аналитикой |
+| `GET` | `/login` | Страница входа |
+| `POST` | `/login` | Вход в систему |
+| `POST` | `/logout` | Выход из системы |
+| `GET` | `/profile` | Профиль пользователя |
+| `POST` | `/change-password` | Смена пароля |
+| `GET` | `/sessions` | Мои сессии |
+| `GET` | `/organizations` | Список организаций (admin) |
+| `GET` | `/organizations/new` | Форма создания организации |
+| `POST` | `/organizations/create` | Создание организации |
+| `GET` | `/organizations/:id` | Детали организации |
+| `GET` | `/organizations/:id/edit` | Форма редактирования |
+| `POST` | `/organizations/:id/update` | Обновление организации |
+| `POST` | `/organizations/:id/delete` | Удаление организации |
+| `POST` | `/organizations/:id/users/:user-id/role` | Смена роли пользователя |
+| `POST` | `/organizations/:id/update-plan` | Смена тарифного плана |
 | `GET` | `/workers` | Список работников (с поиском) |
 | `GET` | `/workers/new` | Форма создания работника |
 | `POST` | `/workers/create` | Создание работника |
@@ -484,6 +557,8 @@ tail -f logs/audit.log
 | `GET` | `/workers/:id/work-time` | Учёт рабочего времени |
 | `GET` | `/work-time/:id/edit` | Редактирование учёта времени |
 | `POST` | `/work-time/:id/update` | Обновление учёта времени |
+| `GET` | `/shops`, `/ranks`, `/payment-systems`, `/categories`, `/work-modes`, `/salaries`, `/hourly-rates` | Справочники (CRUD) |
+| `GET` | `/tariffs` | Тарифные планы (admin) |
 | `GET` | `/db` | Просмотр всех таблиц БД |
 
 ### REST API
@@ -496,7 +571,14 @@ tail -f logs/audit.log
 | `PUT` | `/api/workers/:id` | Обновление работника |
 | `DELETE` | `/api/workers/:id` | Удаление работника |
 | `GET` | `/api/workers/search` | Поиск работников |
+| `GET` | `/api/salary/:worker-id` | Зарплата работника |
+| `GET` | `/api/work-time/:worker-id` | Учёт рабочего времени |
+| `PUT` | `/api/work-time/:id` | Обновление учёта времени |
 | `GET` | `/api/dashboard` | Данные дашборда |
+| `GET` | `/api/dashboard/stats` | Статистика дашборда |
+| `GET` | `/api/analytics/workers-by-shop` | Распределение по цехам |
+| `GET` | `/api/analytics/workers-by-category` | Распределение по категориям |
+| `GET` | `/api/analytics/salary-distribution` | Распределение зарплат |
 | `GET` | `/api/export/workers.csv` | Экспорт в CSV |
 | `GET` | `/api/export/workers.xlsx` | Экспорт в Excel |
 | `GET` | `/api/export/salary.csv` | Экспорт зарплаты |
@@ -506,12 +588,39 @@ tail -f logs/audit.log
 | `GET` | `/api/metrics` | Prometheus метрики |
 | `GET` | `/api/stats` | Статистика приложения |
 | `GET` | `/api/audit` | Журнал аудита |
+| `GET` | `/api/audit/stats` | Статистика аудита |
+| `GET` | `/api/audit/:entity-type/:entity-id` | Аудит по сущности |
+| `GET` | `/api/audit/user/:username` | Аудит по пользователю |
+| `GET` | `/api/sessions` | Все сессии |
+| `GET` | `/api/sessions/active` | Активные сессии |
+| `GET` | `/api/sessions/failed` | Неудачные входы |
+| `GET` | `/api/sessions/stats` | Статистика сессий |
+| `GET` | `/api/organizations` | Список организаций |
+| `GET` | `/api/organizations/:id` | Организация по ID |
+| `POST` | `/api/organizations` | Создание организации |
+| `PUT` | `/api/organizations/:id` | Обновление организации |
+| `DELETE` | `/api/organizations/:id` | Деактивация организации |
+| `GET` | `/api/organizations/:id/users` | Пользователи организации |
+| `PUT` | `/api/organizations/:id/users/:user-id/role` | Смена роли |
+| `GET` | `/api/tariffs` | Список тарифных планов |
+| `GET` | `/api/tariffs/current` | Тариф текущей организации |
+| `GET` | `/api/tariffs/org/:id` | Тариф организации (admin) |
+| `PUT` | `/api/tariffs/org/:id` | Смена тарифа (admin) |
+| `GET` | `/api/tariffs/check-workers` | Проверка лимита работников |
 | `GET` | `/api/reports/worker/:id/pdf` | PDF отчёт по работнику |
-| `GET` | `/api/dashboard/poll` | Быстрый polling дашборда |
+| `GET` | `/api/reports/workers/pdf` | PDF список работников |
+| `GET` | `/api/reports/salary/pdf` | PDF отчёт по зарплате (`?year=&month=`) |
+| `GET` | `/api/dashboard/poll` | Быстрый polling дашборда (SSE) |
 | `GET` | `/api/migrations` | Статус миграций БД |
 | `POST` | `/api/cache/refresh` | Обновление кэша справочников |
 | `GET` | `/api-docs` | Swagger UI документация API |
-| `POST` | `/api/notifications/test` | Тест SMTP |
+| `GET` | `/api/notifications/test` | Тест SMTP |
+| `POST` | `/api/notifications/new-worker` | Уведомление о новом работнике |
+| `POST` | `/api/notifications/birthday` | Уведомление о дне рождения |
+| `POST` | `/api/notifications/anniversary` | Уведомление о юбилее |
+| `GET` | `/api/1c/docs` | Документация по API 1С |
+
+> 💡 **Совместимость:** эндпоинты также доступны с префиксом версии — `/api/v1/...` и `/api/v2/...`
 
 ### Auth API
 
@@ -528,6 +637,7 @@ tail -f logs/audit.log
 | `GET` | `/api/1c/workers` | Выгрузка работников для 1С |
 | `GET` | `/api/1c/salary` | Выгрузка зарплаты для 1С |
 | `POST` | `/api/1c/workers/import` | Импорт работников из 1С |
+| `GET` | `/api/1c/docs` | Документация по формату XML |
 
 ## 🔧 Устранение проблем
 
@@ -620,11 +730,23 @@ lein coverage
 
 Тесты находятся в `test/my_ring_app/`:
 
-- **validation_test.clj** — тесты валидации (13 тестов)
-- **model_test.clj** — тесты модели (5 тестов)
-- **core_test.clj** — интеграционные тесты (3 теста)
-- **util_test.clj** — тесты вспомогательных функций (21 тест)
-- **api/export_test.clj** — тесты экспорта (8 тестов)
+- **validation_test.clj** — тесты валидации
+- **model_test.clj** — тесты модели
+- **core_test.clj** — интеграционные тесты
+- **util_test.clj** — тесты вспомогательных функций
+- **api/export_test.clj** — тесты экспорта
+- **auth_test.clj** — тесты аутентификации
+- **controllers_test.clj** — тесты контроллеров
+- **tariff_test.clj** — тесты тарифных планов
+- **session_audit_test.clj** — тесты журнала сессий
+- **email_test.clj** — тесты email-уведомлений
+- **pdf_reports_test.clj** — тесты PDF-отчётов (включая org-фильтр)
+- **api_version_test.clj** — тесты версионирования API
+- **sse_test.clj** — тесты SSE
+- **logger_test.clj** — тесты логгера
+- **routes_test.clj**, **config_test.clj**, **i18n_test.clj**, **layout_buttons_test.clj**, **rate_limit_test.clj** — прочие тесты
+
+Тесты используют изолированную тестовую БД (миграции + инициализация) через `test_helper.clj`.
 
 Пример теста:
 
@@ -641,14 +763,29 @@ lein coverage
 
 | Файл | Тестов | Утверждений | Статус |
 |------|--------|-------------|--------|
-| validation_test.clj | 13 | 32 | ✅ |
-| model_test.clj | 5 | 8 | ✅ |
-| core_test.clj | 3 | 10 | ✅ |
-| util_test.clj | 21 | 63 | ✅ |
-| api/export_test.clj | 8 | 32 | ✅ |
+| auth_test.clj | 44 | 94 | ✅ |
+| controllers_test.clj | 29 | 50 | ✅ |
+| routes_test.clj | 20 | 26 | ✅ |
+| session_audit_test.clj | 20 | 46 | ✅ |
+| tariff_test.clj | 15 | 52 | ✅ |
+| api/workers_test.clj | 14 | 43 | ✅ |
+| i18n_test.clj | 11 | 18 | ✅ |
+| validation_test.clj | 10 | 35 | ✅ |
+| pdf_reports_test.clj | 9 | 42 | ✅ |
+| rate_limit_test.clj | 7 | 10 | ✅ |
+| logger_test.clj | 7 | 9 | ✅ |
+| util_test.clj | 6 | 54 | ✅ |
+| model_test.clj | 6 | 10 | ✅ |
 | cache_test.clj | 5 | 18 | ✅ |
-| migration_test.clj | 4 | 12 | ✅ |
-| **Итого** | **51** | **192** | **✅** |
+| email_test.clj | 5 | 10 | ✅ |
+| api/export_test.clj | 4 | 19 | ✅ |
+| layout_buttons_test.clj | 4 | 12 | ✅ |
+| migration_test.clj | 4 | 9 | ✅ |
+| config_test.clj | 2 | 3 | ✅ |
+| core_test.clj | 2 | 5 | ✅ |
+| api_version_test.clj | 2 | 6 | ✅ |
+| sse_test.clj | 2 | 11 | ✅ |
+| **Итого** | **228** | **582** | **✅** |
 
 ## 🚀 Развёртывание
 
@@ -910,7 +1047,7 @@ sudo systemctl restart my-ring-app
 
 - [x] Аутентификация и авторизация
 - [x] REST API для интеграций
-- [x] Экспорт данных в CSV/Excel
+- [x] Экспорт данных в CSV/Excel/PDF
 - [x] Печать отчётов (PDF)
 - [x] Дашборд с метриками
 - [x] Поддержка мультиязычности
@@ -919,8 +1056,11 @@ sudo systemctl restart my-ring-app
 - [x] Кэширование справочников
 - [x] CSS в отдельных файлах
 - [x] Connection pooling (HikariCP)
+- [x] Мульти-тенантность (организации, тарифы)
+- [x] Журнал сессий и аудит
+- [x] Email-уведомления
+- [x] Версионирование API (v1/v2)
 - [ ] Покрытие тестами > 70%
-- [ ] Мульти-тенантность
 - [ ] OAuth2
 - [ ] WebSocket
 
@@ -941,10 +1081,10 @@ sudo systemctl restart my-ring-app
 
 | Параметр | Значение |
 |----------|----------|
-| **Версия** | 2.0.0-SNAPSHOT |
+| **Версия** | 0.1.0-SNAPSHOT |
 | **Статус** | Production Ready |
 | **Последнее обновление** | Июль 2026 |
-| **Тесты** | 51 тестов, 192 утверждений ✅ |
+| **Тесты** | 228 тестов, 582 утверждений ✅ |
 | **Сборка** | [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]() |
 
 ## 🙏 Благодарности
@@ -956,6 +1096,12 @@ sudo systemctl restart my-ring-app
 
 ## 📚 Дополнительные ресурсы
 
+- [USER_GUIDE.md](USER_GUIDE.md) — руководство пользователя
+- [DOCUMENTATION.md](DOCUMENTATION.md) — техническая документация
+- [CHANGELOG.md](CHANGELOG.md) — журнал изменений
+- [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) — план развития
+- [DOCKER.md](DOCKER.md) — развёртывание в Docker
+- [POSTGRES_DEPLOYMENT.md](POSTGRES_DEPLOYMENT.md) — развёртывание на PostgreSQL
 - [Clojure для начинающих](https://clojure-doc.org/)
 - [Ring Tutorial](https://github.com/ring-clojure/ring/wiki/Tutorial)
 - [Compojure Wiki](https://github.com/weavejester/compojure/wiki)
