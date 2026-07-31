@@ -231,6 +231,39 @@
         (logger/log-error e "Ошибка при получении списка работников")
         []))))
 
+(defn get-worker-by-id
+  "Получение работника с деталями по ID. Если org-id не nil — проверяет принадлежность к организации."
+  ([worker-id] (get-worker-by-id worker-id nil))
+  ([worker-id org-id]
+   (try
+     (let [base-query "SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
+               ц.название_цеха as цех,
+               с.название_системы as система,
+               к.название_категории as категория,
+               рз.номер_разряда as разряд,
+               рм.название_режима as режим,
+               о.оклад_в_месяц,
+               п.ставка_в_час
+        FROM Работник r
+        LEFT JOIN Цех ц ON r.цех_id = ц.id
+        LEFT JOIN Система_оплаты с ON r.система_оплаты_id = с.id
+        LEFT JOIN Категория_работника к ON r.категория_работника_id = к.id
+        LEFT JOIN Разряд рз ON r.разряд_id = рз.id
+        LEFT JOIN Режим_работы рм ON r.режим_работы_id = рм.id
+        LEFT JOIN Оклад о ON r.оклад_id = о.id
+        LEFT JOIN Почасовые_ставки п ON r.почасовая_ставка_id = п.id"
+            org-condition (when org-id " AND r.organization_id = ?")
+            query (str base-query " WHERE r.id = ?" org-condition)
+            params (if org-id [worker-id org-id] [worker-id])
+            result (first (jdbc/query db-spec (into [query] params)))]
+       (if result
+         (logger/log-info (format "Получен работник ID=%s с деталями (org: %s)" worker-id (str org-id)))
+         (logger/log-warn (format "Работник ID=%s не найден (org: %s)" worker-id (str org-id))))
+       result)
+     (catch Exception e
+       (logger/log-error e (format "Ошибка при получении работника ID=%s" worker-id) {:worker-id worker-id})
+       nil))))
+
 (defn search-workers
   "Поиск работников. Если org-id не nil — фильтрует по организации."
   ([query] (search-workers query nil))
@@ -300,7 +333,7 @@
            where-clause " WHERE r.id = ? AND у.год = ? AND у.месяц = ?"
            params (if org-id [worker-id year month org-id] [worker-id year month])
            result (first (jdbc/query db-spec
-                                     [(str base-query where-clause org-condition) params]))]
+                                     (into [(str base-query where-clause org-condition)] params)))]
        (if result
          (logger/log-info (format "Получена информация о зарплате работника ID=%s за %d-%d" worker-id year month))
          (logger/log-warn (format "Данные о зарплате работника ID=%s за %d-%d не найдены" worker-id year month)))
@@ -328,7 +361,7 @@
            org-condition (when org-id " AND r.organization_id = ?")
            order-clause " ORDER BY у.год DESC, у.месяц DESC"
            params (if org-id [worker-id org-id] [worker-id])
-           result (jdbc/query db-spec [(str base-query org-condition order-clause) params])]
+           result (jdbc/query db-spec (into [(str base-query org-condition order-clause)] params))]
        (logger/log-info (format "Получена история зарплат работника ID=%s (%d записей)" worker-id (count result)))
        result)
      (catch Exception e
@@ -359,7 +392,7 @@
            org-condition (when org-id " AND у.organization_id = ?")
            order-clause " ORDER BY у.год DESC, у.месяц DESC"
            params (if org-id [worker-id org-id] [worker-id])
-           result (jdbc/query db-spec [(str base-query org-condition order-clause) params])]
+           result (jdbc/query db-spec (into [(str base-query org-condition order-clause)] params))]
        (logger/log-info (format "Получен учет рабочего времени работника ID=%s (%d записей)" worker-id (count result)))
        result)
      (catch Exception e
