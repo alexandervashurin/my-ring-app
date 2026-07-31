@@ -4,14 +4,10 @@
             [clojure.edn :as edn]
             [my-ring-app.api.workers :refer :all ]
             [my-ring-app.model :as model]
-            [my-ring-app.migration :as migration]
-            [my-ring-app.test-helper :refer [make-request]]))
+            [my-ring-app.test-helper :refer [make-request]
+                                     :as helper]))
 
-(defn setup-db [f]
-  (migration/run-migrations!)
-  (f))
-
-(use-fixtures :once setup-db)
+(use-fixtures :once helper/setup-db)
 
 ;; ======================================================================
 ;; Вспомогательные функции

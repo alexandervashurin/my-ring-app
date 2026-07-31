@@ -1,18 +1,11 @@
 (ns my-ring-app.tariff-test
   (:require [clojure.test :refer :all]
             [my-ring-app.tariff :as tariff]
-            [my-ring-app.migration :as migration]
-            [my-ring-app.auth :as auth]
             [clojure.java.jdbc :as jdbc]
-            [my-ring-app.config :refer [db-spec]]))
+            [my-ring-app.config :refer [db-spec]]
+            [my-ring-app.test-helper :as helper]))
 
-(defn setup-db [f]
-  (migration/run-migrations!)
-  (auth/init-db!)
-  (tariff/load-plans!)
-  (f))
-
-(use-fixtures :once setup-db)
+(use-fixtures :once helper/setup-db)
 
 (deftest test-plans-loaded
   (testing "Тарифные планы загружены из кэша"

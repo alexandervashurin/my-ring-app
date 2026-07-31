@@ -1,12 +1,15 @@
 (ns my-ring-app.cache-test
   (:require [clojure.test :refer :all]
             [my-ring-app.cache :as cache]
-            [my-ring-app.model :as model]))
+            [my-ring-app.model :as model]
+            [my-ring-app.test-helper :as helper]))
 
 (use-fixtures :once
   (fn [f]
-    (cache/load-all!)
-    (f)))
+    (helper/setup-db
+      (fn []
+        (cache/load-all!)
+        (f)))))
 
 (deftest test-load-all!
   (testing "load-all! загружает все справочники в кэш"

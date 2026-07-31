@@ -221,10 +221,10 @@
         LEFT JOIN Категория_работника к ON r.категория_работника_id = к.id
         LEFT JOIN Разряд рз ON r.разряд_id = рз.id
         LEFT JOIN Режим_работы рм ON r.режим_работы_id = рм.id"
-           [query params] (if org-id
-                            [(str base-query " WHERE r.organization_id = ? ORDER BY r.фамилия, r.имя") org-id]
-                            [(str base-query " ORDER BY r.фамилия, r.имя")])
-           result (jdbc/query db-spec query params)]
+           query (if org-id
+                   (str base-query " WHERE r.organization_id = ? ORDER BY r.фамилия, r.имя")
+                   (str base-query " ORDER BY r.фамилия, r.имя"))
+           result (jdbc/query db-spec (into [query] (when org-id [org-id])))]
        (logger/log-info (format "Получен список работников (%d записей, org: %s)" (count result) (str org-id)))
        result)
      (catch Exception e

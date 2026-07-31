@@ -2,13 +2,10 @@
   (:require [clojure.test :refer :all]
             [my-ring-app.controllers :as ctrl]
             [my-ring-app.model :as model]
-            [my-ring-app.migration :as migration]))
+            [my-ring-app.tariff :as tariff]
+            [my-ring-app.test-helper :as helper]))
 
-(defn setup-db [f]
-  (migration/run-migrations!)
-  (f))
-
-(use-fixtures :once setup-db)
+(use-fixtures :once helper/setup-db)
 
 (def valid-worker
   {:фамилия "Тестов"
@@ -116,11 +113,9 @@
 
 (deftest test-create-worker-via-controller
   (testing "Контроллер create-worker возвращает редирект"
+    (tariff/update-org-plan! 2 3 nil)
     (let [request (make-request valid-worker 2)
           response (ctrl/create-worker request)]
-      (println "RESPONSE STATUS:" (:status response))
-      (println "RESPONSE HEADERS:" (:headers response))
-      (println "RESPONSE BODY (first 200):" (when (:body response) (subs (str (:body response)) 0 (min 200 (count (str (:body response)))))))
       (assert-redirect response 302))))
 
 (deftest test-create-worker-invalid-data

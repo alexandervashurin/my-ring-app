@@ -137,19 +137,16 @@
 
 (defn render-new-worker-page
   "Рендер страницы создания нового работника"
-  [цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
-  (let [errors (:errors options)
-        worker-data (:worker-data options)]
-    (wrap-html 
-      (render-worker-form :create (or worker-data {}) цеха системы_оплаты категории разряды режимы оклады ставки {:errors errors})
-      "Новый работник"
-      "workers")))
+  [цеха системы_оплаты категории разряды режимы оклады ставки & {:keys [errors worker-data]}]
+  (wrap-html 
+    (render-worker-form :create (or worker-data {}) цеха системы_оплаты категории разряды режимы оклады ставки {:errors errors})
+    "Новый работник"
+    "workers"))
 
 (defn render-edit-worker-page
   "Рендер страницы редактирования работника"
-  [worker цеха системы_оплаты категории разряды режимы оклады ставки & [options]]
-  (let [errors (:errors options)]
-    (wrap-html 
-      (render-worker-form :edit worker цеха системы_оплаты категории разряды режимы оклады ставки {:errors errors})
-      "Редактировать работника"
-      "workers")))
+  [worker цеха системы_оплаты категории разряды режимы оклады ставки & {:keys [errors]}]
+  (wrap-html 
+    (render-worker-form :edit worker цеха системы_оплаты категории разряды режимы оклады ставки {:errors errors})
+    "Редактировать работника"
+    "workers"))

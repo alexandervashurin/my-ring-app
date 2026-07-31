@@ -74,8 +74,8 @@
 
 (defn render-edit-work-time-form
   "Рендер формы редактирования записи учета рабочего времени"
-  [work-time-record worker & [options]]
-  (let [errors (:errors options)]
+  [work-time-record worker & {:keys [errors]}]
+  (let [errors errors]
     (wrap-html
       (str "<div class='form-container'>"
            "<h2>✏️ Редактирование учета рабочего времени</h2>"

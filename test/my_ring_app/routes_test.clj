@@ -2,13 +2,9 @@
   "Тесты для routes"
   (:require [clojure.test :refer :all]
             [my-ring-app.routes :as routes]
-            [my-ring-app.migration :as migration]))
+            [my-ring-app.test-helper :as helper]))
 
-(defn setup-db [f]
-  (migration/run-migrations!)
-  (f))
-
-(use-fixtures :once setup-db)
+(use-fixtures :once helper/setup-db)
 
 (defn- make-req
   "Создание тестового запроса"

@@ -4,7 +4,7 @@
             [clojure.java.jdbc :as jdbc]
             [my-ring-app.auth :as auth]
             [my-ring-app.config :refer [db-spec]]
-            [my-ring-app.migration :as migration]))
+            [my-ring-app.test-helper :as helper]))
 
 ;; ======================================================================
 ;; Тестовые данные
@@ -18,17 +18,12 @@
 ;; Фикстура: ensure DB initialized + clean up test user
 ;; ======================================================================
 
-(defn setup-db [f]
-  (migration/run-migrations!)
-  (auth/init-db!)
-  (f))
-
 (defn cleanup-test-user [f]
   (try (jdbc/delete! db-spec :Пользователь ["username = ?" test-username]) (catch Exception _))
   (f)
   (try (jdbc/delete! db-spec :Пользователь ["username = ?" test-username]) (catch Exception _)))
 
-(use-fixtures :once setup-db)
+(use-fixtures :once helper/setup-db)
 (use-fixtures :each cleanup-test-user)
 
 ;; ======================================================================

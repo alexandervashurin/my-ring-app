@@ -1,19 +1,14 @@
 (ns my-ring-app.session-audit-test
   (:require [clojure.test :refer :all]
             [my-ring-app.session-audit :as session-audit]
-            [my-ring-app.migration :as migration]
             [my-ring-app.auth :as auth]
             [clojure.java.jdbc :as jdbc]
-            [my-ring-app.config :refer [db-spec]])
+            [my-ring-app.config :refer [db-spec]]
+            [my-ring-app.test-helper :as helper])
   (:import [java.time LocalDateTime Duration]))
 
 (def test-username (str "session_test_user_" (System/currentTimeMillis)))
 (def test-email (str test-username "@test.com"))
-
-(defn setup-db [f]
-  (migration/run-migrations!)
-  (auth/init-db!)
-  (f))
 
 (defn cleanup [f]
   (try (jdbc/delete! db-spec :Пользователь ["username = ?" test-username]) (catch Exception _))
@@ -22,7 +17,7 @@
   (try (jdbc/delete! db-spec :Пользователь ["username = ?" test-username]) (catch Exception _))
   (try (jdbc/execute! db-spec ["DELETE FROM Сессия WHERE username = ?" test-username]) (catch Exception _)))
 
-(use-fixtures :once setup-db)
+(use-fixtures :once helper/setup-db)
 (use-fixtures :each cleanup)
 
 (deftest test-log-login-success

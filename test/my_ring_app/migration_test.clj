@@ -1,6 +1,9 @@
 (ns my-ring-app.migration-test
   (:require [clojure.test :refer :all]
-            [my-ring-app.migration :as migration]))
+            [my-ring-app.migration :as migration]
+            [my-ring-app.test-helper :as helper]))
+
+(use-fixtures :once helper/setup-db)
 
 (deftest test-migration-status
   (testing "migration-status возвращает вектор с миграциями"
