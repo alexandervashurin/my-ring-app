@@ -422,19 +422,33 @@ my-ring-app/
 
 ### Работа с базой данных
 
-```bash
-# Просмотр структуры БД
-sqlite3 igra.db ".schema"
+Приложение поддерживает две СУБД:
 
-# Просмотр всех таблиц
-sqlite3 igra.db ".tables"
+- **SQLite** (по умолчанию) — встраиваемая БД, файл `igra.db`:
+  ```bash
+  # Просмотр структуры БД
+  sqlite3 igra.db ".schema"
 
-# Экспорт дампа
-sqlite3 igra.db ".dump" > backup.sql
+  # Просмотр всех таблиц
+  sqlite3 igra.db ".tables"
 
-# Импорт из дампа
-sqlite3 igra.db < backup.sql
-```
+  # Экспорт дампа
+  sqlite3 igra.db ".dump" > backup.sql
+
+  # Импорт из дампа
+  sqlite3 igra.db < backup.sql
+  ```
+
+- **PostgreSQL** — для больших объёмов данных. Запуск:
+  ```bash
+  DB_TYPE=postgresql DB_USER=my_ring_app DB_PASSWORD=secret \
+  DB_HOST=localhost DB_NAME=my_ring_app lein run
+  ```
+
+  При первом запуске миграции применяются автоматически (трансляция SQLite-специфики в PG-синтаксис). Проверка подключения:
+  ```bash
+  psql "postgresql://my_ring_app:secret@localhost:5432/my_ring_app" -c "SELECT 1"
+  ```
 
 ## 🔒 Безопасность
 
@@ -467,6 +481,7 @@ sqlite3 igra.db < backup.sql
 ### Оптимизации (реализованы)
 
 - ✅ **HikariCP** — пул соединений с настраиваемым размером
+- ✅ **PostgreSQL** — полноценная поддержка PostgreSQL (миграции, рантайм, HikariCP-пул) в дополнение к SQLite
 - ✅ **Database indexes** — 14 индексов для ускорения запросов
 - ✅ **Кэш справочников** — 7 таблиц в Atom, автообновление ~1 раз/день
 - ✅ **Type hints** — все reflection warnings устранены
@@ -475,9 +490,9 @@ sqlite3 igra.db < backup.sql
 
 ### Рекомендации для масштабирования
 
-- **Миграция на PostgreSQL** для больших объёмов данных
 - **Балансировщик нагрузки** для нескольких экземпляров
 - **CDN** для статических ресурсов
+- **Репликация PostgreSQL** (read replicas) для чтения больших объёмов
 
 Приложение использует **Logback** для логирования всех событий.
 
@@ -942,6 +957,12 @@ journalctl -u my-ring-app -f
 | `SESSION_SECRET` | `d3v-s3cr3t-k3y!1` | Секрет для сессий (обязателен в production) |
 | `ADMIN_PASSWORD` | `admin` | Пароль администратора (обязателен в production) |
 | `DB_TYPE` | `sqlite` | Тип БД (sqlite/postgresql) |
+| `DB_USER` | `-` | Пользователь PostgreSQL (обязателен при `DB_TYPE=postgresql`) |
+| `DB_PASSWORD` | `-` | Пароль PostgreSQL (обязателен при `DB_TYPE=postgresql`) |
+| `DB_HOST` | `localhost` | Хост PostgreSQL |
+| `DB_PORT` | `5432` | Порт PostgreSQL |
+| `DB_NAME` | `my_ring_app` | Имя базы данных PostgreSQL |
+| `DATABASE_URL` | `-` | Полный URL подключения PostgreSQL (`jdbc:postgresql://...`) — переопределяет DB_* |
 | `DB_POOL_MAX` | `10` | Макс. размер пула соединений (PostgreSQL) |
 | `DB_POOL_MIN` | `2` | Мин. размер пула соединений (PostgreSQL) |
 | `JVM_OPTS` | `-` | Опции JVM (например, `-Xmx1g`) |

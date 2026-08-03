@@ -15,6 +15,15 @@
       :postgresql
       :sqlite)))
 
+(defn- pg-stringtype
+  "Добавление stringtype=unspecified к URL подключения PostgreSQL.
+   Позволяет PG неявно приводить строковые параметры к целевым типам
+   (например, строковый id из HTTP-параметров в bigint колонку)."
+  [uri]
+  (if (str/includes? uri "?")
+    (str uri "&stringtype=unspecified")
+    (str uri "?stringtype=unspecified")))
+
 (defn- get-db-spec
   "Конфигурация подключения к БД (без пула — для совместимости)"
   []
@@ -26,15 +35,15 @@
           (throw (IllegalStateException. "DB_USER и DB_PASSWORD обязательны для PostgreSQL")))
         {:classname "org.postgresql.Driver"
          :subprotocol "postgresql"
-         :subname (str "//"
-                       (or (System/getenv "DB_HOST") "localhost")
-                       ":"
-                       (or (System/getenv "DB_PORT") "5432")
-                       "/"
-                       (or (System/getenv "DB_NAME") "my_ring_app"))
+         :subname (pg-stringtype (str "//"
+                                      (or (System/getenv "DB_HOST") "localhost")
+                                      ":"
+                                      (or (System/getenv "DB_PORT") "5432")
+                                      "/"
+                                      (or (System/getenv "DB_NAME") "my_ring_app")))
          :user user
          :password password
-         :connection-uri (or (System/getenv "DATABASE_URL"))})
+         :connection-uri (some-> (System/getenv "DATABASE_URL") pg-stringtype)})
       {:classname "org.sqlite.JDBC"
        :subprotocol "sqlite"
        :subname "igra.db"})))
@@ -45,7 +54,7 @@
   (try
     (let [datasource (if (= db-type :postgresql)
                        (hikari/make-datasource
-                        {:adapter "postgresql"
+                        {:driver-class-name "org.postgresql.Driver"
                          :username (:user raw-spec)
                          :password (:password raw-spec)
                          :jdbc-url (or (:connection-uri raw-spec)

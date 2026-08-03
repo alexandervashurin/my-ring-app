@@ -7,8 +7,7 @@
             [buddy.hashers :as hashers]
             [ring.util.response :as resp]
             [my-ring-app.util :as util]
-            [clojure.string :as str]
-            [java-time :as time]))
+            [clojure.string :as str]))
 
 ;; ======================================================================
 ;; Константы и роли
@@ -129,12 +128,12 @@
       (if (and org-role (not (contains? valid-roles org-role)))
         {:success false :message "Неверная роль организации"}
         (let [user-org (first (jdbc/query db-spec
-                                          ["SELECT organization_id FROM Пользователь WHERE id = ?" user-id]))]
+                                          ["SELECT organization_id FROM \"Пользователь\" WHERE id = ?" user-id]))]
           (if (not= org-id (:organization_id user-org))
             {:success false :message "Пользователь не принадлежит организации"}
             (let [result (jdbc/update! db-spec :Пользователь
                                        {:org_role org-role
-                                        :updated_at (str (time/local-date-time))}
+                                        :updated_at (util/now-timestamp)}
                                        ["id = ?" user-id])
                   affected (first result)]
               (if (pos? affected)
@@ -153,8 +152,8 @@
   (try
     (vec (jdbc/query db-spec
                      ["SELECT id, username, email, role, org_role, organization_id, is_active, created_at, last_login
-                      FROM Пользователь
-                      WHERE organization_id = ? AND is_active = 1
+                      FROM \"Пользователь\"
+                      WHERE organization_id = ? AND is_active = true
                       ORDER BY CASE WHEN role = 'admin' THEN 0 ELSE 1 END, username"
                       org-id]))
     (catch Exception e
@@ -169,7 +168,7 @@
   "Получение организации по ID"
   [org-id]
   (try
-    (first (jdbc/query db-spec ["SELECT * FROM Организация WHERE id = ? AND is_active = 1" org-id]))
+    (first (jdbc/query db-spec ["SELECT * FROM \"Организация\" WHERE id = ? AND is_active = true" org-id]))
     (catch Exception e
       (logger/log-error e "Ошибка при получении организации" {:org-id org-id})
       nil)))
@@ -178,7 +177,7 @@
   "Получение списка всех активных организаций"
   []
   (try
-    (vec (jdbc/query db-spec ["SELECT * FROM Организация WHERE is_active = 1 ORDER BY name"]))
+    (vec (jdbc/query db-spec ["SELECT * FROM \"Организация\" WHERE is_active = true ORDER BY name"]))
     (catch Exception e
       (logger/log-error e "Ошибка при получении списка организаций")
       [])))
@@ -192,9 +191,9 @@
                                 :inn inn
                                 :phone phone
                                 :email email
-                                :address address
-                                :is_active 1})
-          new-id (val (first (first result)))]
+                                 :address address
+                                 :is_active true})
+          new-id (util/extract-id result)]
       (logger/log-audit "CREATE" "Organization" new-id
                         (format "Создана организация '%s'" name))
       {:success true :id new-id :message "Организация создана"})
@@ -224,7 +223,7 @@
   [org-id]
   (try
     (let [result (jdbc/update! db-spec :Организация
-                                     {:is_active 0 :updated_at (str (java.time.LocalDateTime/now))}
+                                     {:is_active false :updated_at (util/now-timestamp)}
                                      ["id = ?" org-id])
           affected (first result)]
       (when (pos? affected)
@@ -244,9 +243,9 @@
   (try
     (let [result (jdbc/query db-spec
                              ["SELECT u.*, o.name as org_name
-                              FROM Пользователь u
-                              LEFT JOIN Организация o ON u.organization_id = o.id
-                              WHERE u.username = ? AND u.is_active = 1"
+                              FROM \"Пользователь\" u
+                              LEFT JOIN \"Организация\" o ON u.organization_id = o.id
+                              WHERE u.username = ? AND u.is_active = true"
                               username])]
       (first result))
     (catch Exception e
@@ -259,9 +258,9 @@
   (try
     (let [result (jdbc/query db-spec
                              ["SELECT u.*, o.name as org_name
-                              FROM Пользователь u
-                              LEFT JOIN Организация o ON u.organization_id = o.id
-                              WHERE u.id = ? AND u.is_active = 1"
+                              FROM \"Пользователь\" u
+                              LEFT JOIN \"Организация\" o ON u.organization_id = o.id
+                              WHERE u.id = ? AND u.is_active = true"
                               id])]
       (first result))
     (catch Exception e
@@ -279,9 +278,9 @@
                                 :password_hash password-hash
                                 :role role
                                 :org_role org-role
-                                :organization_id (or org-id default-org-id)
-                                :is_active 1})
-          new-id (val (first (first result)))]
+                                 :organization_id (or org-id default-org-id)
+                                 :is_active true})
+          new-id (util/extract-id result)]
       (logger/log-audit "CREATE" "User" new-id
                         (format "Создан пользователь %s (роль: %s, org_role: %s, org: %d)" username role (or org-role "-") (or org-id default-org-id)))
       {:success true :id new-id :message "Пользователь создан"})
@@ -317,8 +316,8 @@
   [id]
   (try
     (let [result (jdbc/update! db-spec :Пользователь
-                                     {:is_active 0
-                                      :updated_at (str (time/local-date-time))}
+                                     {:is_active false
+                                      :updated_at (util/now-timestamp)}
                                      ["id = ?" id])
           affected (first result)]
       (when (pos? affected)
@@ -336,10 +335,10 @@
       (vec
         (if org-id
           (jdbc/query db-spec ["SELECT id, username, email, role, org_role, organization_id, is_active, created_at, last_login
-                                FROM Пользователь WHERE is_active = 1 AND organization_id = ? ORDER BY username"
+                                FROM \"Пользователь\" WHERE is_active = true AND organization_id = ? ORDER BY username"
                                org-id])
           (jdbc/query db-spec ["SELECT id, username, email, role, org_role, organization_id, is_active, created_at, last_login
-                                FROM Пользователь WHERE is_active = 1 ORDER BY username"])))
+                                FROM \"Пользователь\" WHERE is_active = true ORDER BY username"])))
      (catch Exception e
        (logger/log-error e "Ошибка при получении списка пользователей")
        []))))
@@ -363,7 +362,7 @@
          (do
            ;; Обновляем last_login
            (jdbc/update! db-spec :Пользователь
-                         {:last_login (str (time/local-date-time))}
+                         {:last_login (util/now-timestamp)}
                          ["id = ?" (:id user)])
            ;; Логирование успешного входа в БД
            (let [session-id (session-audit/log-login! (:id user) username ip-address user-agent
@@ -533,7 +532,7 @@
   []
   (try
     ;; Проверяем, есть ли пользователи
-    (let [users (jdbc/query db-spec ["SELECT COUNT(*) as count FROM Пользователь"])]
+    (let [users (jdbc/query db-spec ["SELECT COUNT(*) as count FROM \"Пользователь\""])]
       (when (or (empty? users)
                 (zero? (:count (first users))))
         ;; Создаём админа по умолчанию с безопасным паролем

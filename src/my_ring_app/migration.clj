@@ -3,8 +3,24 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [my-ring-app.config :refer [db-spec]]
+            [my-ring-app.config :refer [app-config db-spec]]
             [my-ring-app.logger :as logger]))
+
+(defn- pg?
+  "Текущая БД — PostgreSQL?"
+  []
+  (= (:db-type app-config) :postgresql))
+
+(defn- pg-translate
+  "Трансляция SQLite-специфичного SQL в PostgreSQL:
+   id INTEGER PRIMARY KEY AUTOINCREMENT -> id BIGSERIAL PRIMARY KEY
+   BOOLEAN DEFAULT 1 -> BOOLEAN DEFAULT TRUE
+   INSERT OR IGNORE INTO -> INSERT INTO"
+  [sql]
+  (-> sql
+      (str/replace #"(?i)\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b" "BIGSERIAL PRIMARY KEY")
+      (str/replace #"(?i)\bBOOLEAN\s+DEFAULT\s+1\b" "BOOLEAN DEFAULT TRUE")
+      (str/replace #"(?i)\bINSERT\s+OR\s+IGNORE\s+INTO\b" "INSERT INTO")))
 
 ;; ======================================================================
 ;; Таблица schema_migrations
@@ -76,30 +92,67 @@
      :down (str/join "\n" (:down sections))}))
 
 (defn- column-exists?
-  "Проверка существования колонки в таблице (через PRAGMA table_info)"
+  "Проверка существования колонки в таблице.
+   SQLite — через PRAGMA table_info, PostgreSQL — через information_schema.columns."
   [table column]
   (try
-    (let [columns (jdbc/query db-spec [(str "PRAGMA table_info(" table ")")])
-          col-names (set (map :name columns))]
-      (contains? col-names column))
+    (if (pg?)
+      (let [table-name (str/replace table "\"" "")
+            rows (jdbc/query db-spec
+                             ["SELECT 1 FROM information_schema.columns
+                               WHERE table_schema = 'public'
+                                 AND table_name = ?
+                                 AND column_name = ?"
+                              table-name column])]
+        (seq rows))
+      (let [columns (jdbc/query db-spec [(str "PRAGMA table_info(" table ")")])
+            col-names (set (map :name columns))]
+        (contains? col-names column)))
     (catch Exception _ false)))
 
 (defn- execute-sql!
   "Выполнение SQL-строки, разбитой на отдельные операторы.
    SQLite не поддерживает несколько операторов в одном execute! call.
-   Пропускает ALTER TABLE ADD COLUMN, если колонка уже существует."
+   Пропускает ALTER TABLE ADD COLUMN, если колонка уже существует.
+   Для PostgreSQL транслирует SQLite-специфичный синтаксис."
   [sql]
-  (let [stmts (split-sql-statements sql)]
-    (doseq [stmt stmts]
-      (let [trimmed (str/trim stmt)
-            alter-match (re-find #"(?i)ALTER\s+TABLE\s+(\S+)\s+ADD\s+(COLUMN\s+)?(\S+)" trimmed)]
-        (if alter-match
-          (let [table (nth alter-match 1)
-                column (nth alter-match 3)]
-            (if (column-exists? table column)
-              (logger/log-info (format "Колонка %s.%s уже существует, пропускаю" table column))
-              (jdbc/execute! db-spec [stmt])))
-          (jdbc/execute! db-spec [stmt]))))))
+  (doseq [raw-stmt (split-sql-statements sql)]
+    (let [was-ignore? (boolean (re-find #"(?i)\bINSERT\s+OR\s+IGNORE\s+INTO\b" raw-stmt))
+          stmt (if (pg?)
+                 (let [t (pg-translate raw-stmt)]
+                   (if was-ignore?
+                     (str t " ON CONFLICT DO NOTHING")
+                     t))
+                 raw-stmt)
+          trimmed (str/trim stmt)
+          alter-match (re-find #"(?i)ALTER\s+TABLE\s+(\S+)\s+ADD\s+(COLUMN\s+)?(\S+)" trimmed)]
+      (if alter-match
+        (let [table (nth alter-match 1)
+              column (nth alter-match 3)]
+          (if (column-exists? table column)
+            (logger/log-info (format "Колонка %s.%s уже существует, пропускаю" table column))
+            (jdbc/execute! db-spec [trimmed])))
+        (jdbc/execute! db-spec [trimmed])))))
+
+(defn- reset-sequences!
+  "PostgreSQL: сброс id-последовательностей до MAX(id)
+   после вставок с явными id (сиды)."
+  []
+  (when (pg?)
+    (let [tables (map :tablename
+                      (jdbc/query db-spec
+                                  ["SELECT tablename FROM pg_tables
+                                    WHERE schemaname = 'public'
+                                      AND tablename <> 'schema_migrations'"]))]
+      (doseq [t tables]
+        (try
+          (let [tq (str "\"" (str/replace t "\"" "\"\"") "\"")
+                sql (str "SELECT setval(pg_get_serial_sequence('" tq "', 'id'), "
+                         "COALESCE((SELECT MAX(id) FROM " tq "), 1))")]
+            (jdbc/execute! db-spec [sql]))
+          (catch Exception e
+            (logger/log-warn (format "PG: не удалось сбросить последовательность для %s: %s"
+                                     t (.getMessage e)))))))))
 
 (defn- load-migration-files
   "Загрузка всех файлов миграций из resources/migrations/.
@@ -165,6 +218,7 @@
             (catch Exception e
               (logger/log-error e (format "Ошибка при применении миграции %s" version))
               (throw e))))
+        (reset-sequences!)
         (logger/log-info (format "Все миграции применены успешно"))))))
 
 (defn rollback-migration!

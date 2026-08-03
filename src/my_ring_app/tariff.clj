@@ -38,7 +38,7 @@
 (defn load-plans!
   []
   (try
-    (let [rows (jdbc/query db-spec ["SELECT * FROM Тарифный_план WHERE is_active = 1 ORDER BY sort_order"])]
+    (let [rows (jdbc/query db-spec ["SELECT * FROM \"Тарифный_план\" WHERE is_active = true ORDER BY sort_order"])]
       (reset! plan-cache
               (mapv (fn [row]
                       (assoc row
@@ -74,7 +74,7 @@
 (defn get-worker-count
   [org-id]
   (try
-    (let [result (jdbc/query db-spec ["SELECT COUNT(*) as count FROM Работник WHERE organization_id = ?" org-id])]
+    (let [result (jdbc/query db-spec ["SELECT COUNT(*) as count FROM \"Работник\" WHERE organization_id = ?" org-id])]
       (:count (first result) 0))
     (catch Exception _
       0)))
@@ -82,7 +82,7 @@
 (defn get-org-count
   []
   (try
-    (let [result (jdbc/query db-spec ["SELECT COUNT(*) as count FROM Организация WHERE is_active = 1"])]
+    (let [result (jdbc/query db-spec ["SELECT COUNT(*) as count FROM \"Организация\" WHERE is_active = true"])]
       (:count (first result) 0))
     (catch Exception _
       0)))
@@ -90,7 +90,7 @@
 (defn get-user-org-count
   [user-id]
   (try
-    (let [result (jdbc/query db-spec ["SELECT COUNT(DISTINCT organization_id) as count FROM Пользователь WHERE id = ?" user-id])]
+    (let [result (jdbc/query db-spec ["SELECT COUNT(DISTINCT organization_id) as count FROM \"Пользователь\" WHERE id = ?" user-id])]
       (:count (first result) 0))
     (catch Exception _
       0)))
@@ -169,7 +169,7 @@
         (do
           (jdbc/update! db-spec :Организация
                         {:plan_id (int plan-id)
-                         :updated_at (str (java.time.LocalDateTime/now))}
+                         :updated_at (util/now-timestamp)}
                         ["id = ?" org-id])
           (logger/log-audit "UPDATE" "Organization" org-id
                             (format "Изменён тарифный план организации на '%s' (пользователь: %s)"

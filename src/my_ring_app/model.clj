@@ -2,6 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [my-ring-app.config :refer [db-spec app-config]]
             [my-ring-app.logger :as logger]
+            [my-ring-app.util :as util]
             [clojure.data.json :as json]
             [clojure.string :as str])
   (:import [java.time LocalDate]))
@@ -75,10 +76,21 @@
       (logger/log-error e (format "Ошибка запроса: %s" sql) {:sql sql :params params})
       [])))
 
+(defn- coerce-date-values
+  "Преобразование строковых дат yyyy-MM-dd в значения, понятные текущей БД.
+   PostgreSQL — java.sql.Date, SQLite — строка (xerial хранит java.sql.Date как epoch-long)."
+  [data]
+  (into {}
+        (map (fn [[k v]]
+               [k (if (and (string? v) (re-matches #"\d{4}-\d{2}-\d{2}" v))
+                    (util/parse-date v)
+                    v)]))
+        data))
+
 (defn safe-insert [table data]
   (try
     (logger/log-sql (str "INSERT INTO " table) data)
-    (jdbc/insert! db-spec table data)
+    (jdbc/insert! db-spec table (coerce-date-values data))
     (catch Exception e
       (logger/log-error e (format "Ошибка вставки в %s" table) {:table table :data data})
       nil)))
@@ -86,7 +98,7 @@
 (defn safe-update [table data where-clause]
   (try
     (logger/log-sql (str "UPDATE " table " SET ...") where-clause)
-    (let [[affected _] (jdbc/update! db-spec table data where-clause)]
+    (let [[affected _] (jdbc/update! db-spec table (coerce-date-values data) where-clause)]
       (long affected))
     (catch Exception e
       (logger/log-error e (format "Ошибка обновления %s" table) {:table table :data data})
@@ -180,12 +192,9 @@
      (let [final-data (if (and org-id (not (:organization_id data)))
                         (assoc data :organization_id org-id)
                         data)
-           result (safe-insert table-name final-data)
-           row (first result)
-           record-id (when (map? row)
-                       (let [v (first (vals row))]
-                         (if (number? v) v (str v))))]
-       (if result
+            result (safe-insert table-name final-data)
+            record-id (util/extract-id result)]
+        (if result
          (do
            (logger/log-info (format "Создана запись в таблице %s, ID=%s (org: %s)" table-name (str record-id) (str org-id)))
            {:success true :message "Запись успешно создана" :id record-id})
@@ -239,12 +248,12 @@
        " к.название_категории as категория,"
        " рз.номер_разряда as разряд,"
        " рм.название_режима as режим"
-       " FROM Работник r"
-       " LEFT JOIN Цех ц ON r.цех_id = ц.id"
-       " LEFT JOIN Система_оплаты с ON r.система_оплаты_id = с.id"
-       " LEFT JOIN Категория_работника к ON r.категория_работника_id = к.id"
-       " LEFT JOIN Разряд рз ON r.разряд_id = рз.id"
-       " LEFT JOIN Режим_работы рм ON r.режим_работы_id = рм.id"))
+       " FROM \"Работник\" r"
+       " LEFT JOIN \"Цех\" ц ON r.цех_id = ц.id"
+       " LEFT JOIN \"Система_оплаты\" с ON r.система_оплаты_id = с.id"
+       " LEFT JOIN \"Категория_работника\" к ON r.категория_работника_id = к.id"
+       " LEFT JOIN \"Разряд\" рз ON r.разряд_id = рз.id"
+       " LEFT JOIN \"Режим_работы\" рм ON r.режим_работы_id = рм.id"))
 
 (defn- workers-page-query
   "Формирует запрос списка работников. opts: :search :org-id :limit :offset :count?
@@ -268,7 +277,7 @@
                          :else
                          [" " []])
         select (if count?
-                 "SELECT COUNT(*) AS cnt FROM Работник r LEFT JOIN Цех ц ON r.цех_id = ц.id"
+                 "SELECT COUNT(*) AS cnt FROM \"Работник\" r LEFT JOIN \"Цех\" ц ON r.цех_id = ц.id"
                  workers-list-select)
         order (if count? "" " ORDER BY r.фамилия, r.имя")
         pagination (if (and limit offset (not count?)) " LIMIT ? OFFSET ?" "")
@@ -339,14 +348,14 @@
                рм.название_режима as режим,
                о.оклад_в_месяц,
                п.ставка_в_час
-        FROM Работник r
-        LEFT JOIN Цех ц ON r.цех_id = ц.id
-        LEFT JOIN Система_оплаты с ON r.система_оплаты_id = с.id
-        LEFT JOIN Категория_работника к ON r.категория_работника_id = к.id
-        LEFT JOIN Разряд рз ON r.разряд_id = рз.id
-        LEFT JOIN Режим_работы рм ON r.режим_работы_id = рм.id
-        LEFT JOIN Оклад о ON r.оклад_id = о.id
-        LEFT JOIN Почасовые_ставки п ON r.почасовая_ставка_id = п.id"
+        FROM \"Работник\" r
+        LEFT JOIN \"Цех\" ц ON r.цех_id = ц.id
+        LEFT JOIN \"Система_оплаты\" с ON r.система_оплаты_id = с.id
+        LEFT JOIN \"Категория_работника\" к ON r.категория_работника_id = к.id
+        LEFT JOIN \"Разряд\" рз ON r.разряд_id = рз.id
+        LEFT JOIN \"Режим_работы\" рм ON r.режим_работы_id = рм.id
+        LEFT JOIN \"Оклад\" о ON r.оклад_id = о.id
+        LEFT JOIN \"Почасовые_ставки\" п ON r.почасовая_ставка_id = п.id"
             org-condition (when org-id " AND r.organization_id = ?")
             query (str base-query " WHERE r.id = ?" org-condition)
             params (if org-id [worker-id org-id] [worker-id])
@@ -394,13 +403,13 @@
                н.зарплата_за_командировочные_дни,
                о.оклад_в_месяц,
                п.ставка_в_час
-        FROM Работник r
-        LEFT JOIN Цех ц ON r.цех_id = ц.id
-        LEFT JOIN Система_оплаты с ON r.система_оплаты_id = с.id
-        LEFT JOIN Учет_рабочего_времени у ON r.id = у.работник_id
-        LEFT JOIN Начисление_заработной_платы н ON у.id = н.учет_рабочего_времени_id
-        LEFT JOIN Оклад о ON r.оклад_id = о.id
-        LEFT JOIN Почасовые_ставки п ON r.почасовая_ставка_id = п.id"
+        FROM \"Работник\" r
+        LEFT JOIN \"Цех\" ц ON r.цех_id = ц.id
+        LEFT JOIN \"Система_оплаты\" с ON r.система_оплаты_id = с.id
+        LEFT JOIN \"Учет_рабочего_времени\" у ON r.id = у.работник_id
+        LEFT JOIN \"Начисление_заработной_платы\" н ON у.id = н.учет_рабочего_времени_id
+        LEFT JOIN \"Оклад\" о ON r.оклад_id = о.id
+        LEFT JOIN \"Почасовые_ставки\" п ON r.почасовая_ставка_id = п.id"
            org-condition (when org-id " AND r.organization_id = ?")
            where-clause " WHERE r.id = ? AND у.год = ? AND у.месяц = ?"
            params (if org-id [worker-id year month org-id] [worker-id year month])
@@ -426,9 +435,9 @@
                н.зарплата_за_командировочные_дни,
                у.больничные_дни,
                у.командировочные_дни
-        FROM Работник r
-        LEFT JOIN Учет_рабочего_времени у ON r.id = у.работник_id
-        LEFT JOIN Начисление_заработной_платы н ON у.id = н.учет_рабочего_времени_id
+        FROM \"Работник\" r
+        LEFT JOIN \"Учет_рабочего_времени\" у ON r.id = у.работник_id
+        LEFT JOIN \"Начисление_заработной_платы\" н ON у.id = н.учет_рабочего_времени_id
         WHERE r.id = ?"
            org-condition (when org-id " AND r.organization_id = ?")
            order-clause " ORDER BY у.год DESC, у.месяц DESC"
@@ -459,7 +468,7 @@
                у.сколько_должны_отработать,
                у.больничные_дни,
                у.командировочные_дни
-        FROM Учет_рабочего_времени у
+        FROM \"Учет_рабочего_времени\" у
         WHERE у.работник_id = ?"
            org-condition (when org-id " AND у.organization_id = ?")
            order-clause " ORDER BY у.год DESC, у.месяц DESC"
@@ -479,8 +488,8 @@
    (try
      (let [result (first (jdbc/query db-spec
                                      (if org-id
-                                       ["SELECT у.* FROM Учет_рабочего_времени у WHERE у.id = ? AND у.organization_id = ?" id org-id]
-                                       ["SELECT * FROM Учет_рабочего_времени WHERE id = ?" id])))]
+                                       ["SELECT у.* FROM \"Учет_рабочего_времени\" у WHERE у.id = ? AND у.organization_id = ?" id org-id]
+                                       ["SELECT * FROM \"Учет_рабочего_времени\" WHERE id = ?" id])))]
        (if result
          (logger/log-info (format "Найдена запись учета времени ID=%s" id))
          (logger/log-warn (format "Запись учета времени ID=%s не найдена" id)))
@@ -501,34 +510,34 @@
      (let [org-filter (when org-id " WHERE r.organization_id = ?")
            org-params (when org-id [org-id])
            total-workers (first (jdbc/query db-spec (if org-id
-                                                      ["SELECT COUNT(*) as count FROM Работник r WHERE r.organization_id = ?" org-id]
-                                                      ["SELECT COUNT(*) as count FROM Работник"])))
-           total-shops (first (jdbc/query db-spec ["SELECT COUNT(*) as count FROM Цех"]))
+                                                      ["SELECT COUNT(*) as count FROM \"Работник\" r WHERE r.organization_id = ?" org-id]
+                                                      ["SELECT COUNT(*) as count FROM \"Работник\""])))
+           total-shops (first (jdbc/query db-spec ["SELECT COUNT(*) as count FROM \"Цех\""]))
            avg-salary (first (jdbc/query db-spec (if org-id
                                                     ["SELECT AVG(н.общая_зарплата) as avg
-                                                     FROM Начисление_заработной_платы н
-                                                     JOIN Учет_рабочего_времени у ON н.учет_рабочего_времени_id = у.id
-                                                     JOIN Работник р ON у.работник_id = р.id
+                                                     FROM \"Начисление_заработной_платы\" н
+                                                     JOIN \"Учет_рабочего_времени\" у ON н.учет_рабочего_времени_id = у.id
+                                                     JOIN \"Работник\" р ON у.работник_id = р.id
                                                      WHERE р.organization_id = ?" org-id]
-                                                    ["SELECT AVG(общая_зарплата) as avg FROM Начисление_заработной_платы"])))
+                                                    ["SELECT AVG(общая_зарплата) as avg FROM \"Начисление_заработной_платы\""])))
            total-payroll (first (jdbc/query db-spec (if org-id
                                                        ["SELECT SUM(н.общая_зарплата) as total
-                                                        FROM Начисление_заработной_платы н
-                                                        JOIN Учет_рабочего_времени у ON н.учет_рабочего_времени_id = у.id
-                                                        JOIN Работник р ON у.работник_id = р.id
+                                                        FROM \"Начисление_заработной_платы\" н
+                                                        JOIN \"Учет_рабочего_времени\" у ON н.учет_рабочего_времени_id = у.id
+                                                        JOIN \"Работник\" р ON у.работник_id = р.id
                                                         WHERE р.organization_id = ?" org-id]
-                                                       ["SELECT SUM(общая_зарплата) as total FROM Начисление_заработной_платы"])))
+                                                       ["SELECT SUM(общая_зарплата) as total FROM \"Начисление_заработной_платы\""])))
            workers-by-payment (jdbc/query db-spec
                                           (if org-id
                                             ["SELECT с.название_системы as name, COUNT(r.id) as count
-                                             FROM Работник r
-                                             LEFT JOIN Система_оплаты с ON r.система_оплаты_id = с.id
+                                             FROM \"Работник\" r
+                                             LEFT JOIN \"Система_оплаты\" с ON r.система_оплаты_id = с.id
                                              WHERE r.organization_id = ?
                                              GROUP BY с.id, с.название_системы
                                              ORDER BY count DESC" org-id]
                                             ["SELECT с.название_системы as name, COUNT(r.id) as count
-                                             FROM Работник r
-                                             LEFT JOIN Система_оплаты с ON r.система_оплаты_id = с.id
+                                             FROM \"Работник\" r
+                                             LEFT JOIN \"Система_оплаты\" с ON r.система_оплаты_id = с.id
                                              GROUP BY с.id, с.название_системы
                                              ORDER BY count DESC"]))]
        (logger/log-info (format "Получена статистика для дашборда (org: %s)" (str org-id)))
@@ -554,17 +563,17 @@
                                    SUM(CASE WHEN n.общая_зарплата BETWEEN 40000 AND 60000 THEN 1 ELSE 0 END) as medium,
                                    SUM(CASE WHEN n.общая_зарплата BETWEEN 60001 AND 90000 THEN 1 ELSE 0 END) as high,
                                    SUM(CASE WHEN n.общая_зарплата > 90000 THEN 1 ELSE 0 END) as very_high
-                                 FROM Начисление_заработной_платы n
-                                 JOIN Учет_рабочего_времени у ON n.учет_рабочего_времени_id = у.id
-                                 JOIN Работник р ON у.работник_id = р.id
+                                 FROM \"Начисление_заработной_платы\" n
+                                 JOIN \"Учет_рабочего_времени\" у ON n.учет_рабочего_времени_id = у.id
+                                 JOIN \"Работник\" р ON у.работник_id = р.id
                                  WHERE у.год = ? AND у.месяц = ? AND р.organization_id = ?" year month org-id]
                                 ["SELECT 
                                    SUM(CASE WHEN n.общая_зарплата < 40000 THEN 1 ELSE 0 END) as low,
                                    SUM(CASE WHEN n.общая_зарплата BETWEEN 40000 AND 60000 THEN 1 ELSE 0 END) as medium,
                                    SUM(CASE WHEN n.общая_зарплата BETWEEN 60001 AND 90000 THEN 1 ELSE 0 END) as high,
                                    SUM(CASE WHEN n.общая_зарплата > 90000 THEN 1 ELSE 0 END) as very_high
-                                 FROM Начисление_заработной_платы n
-                                 JOIN Учет_рабочего_времени у ON n.учет_рабочего_времени_id = у.id
+                                 FROM \"Начисление_заработной_платы\" n
+                                 JOIN \"Учет_рабочего_времени\" у ON n.учет_рабочего_времени_id = у.id
                                  WHERE у.год = ? AND у.месяц = ?" year month]))]
        (if-let [row (first result)]
          (do
@@ -590,15 +599,15 @@
                                          AVG(у.всего_отработанных_часов) as avg_hours,
                                          AVG(у.больничные_дни) as avg_sick,
                                          AVG(у.командировочные_дни) as avg_business
-                                       FROM Учет_рабочего_времени у
-                                       JOIN Работник р ON у.работник_id = р.id
+                                       FROM \"Учет_рабочего_времени\" у
+                                       JOIN \"Работник\" р ON у.работник_id = р.id
                                        WHERE у.год = ? AND у.месяц = ? AND р.organization_id = ?"
                                       year month org-id]
                                        ["SELECT 
                                          AVG(всего_отработанных_часов) as avg_hours,
                                          AVG(больничные_дни) as avg_sick,
                                          AVG(командировочные_дни) as avg_business
-                                       FROM Учет_рабочего_времени
+                                       FROM \"Учет_рабочего_времени\"
                                        WHERE год = ? AND месяц = ?"
                                       year month])))]
        (logger/log-info "Получена статистика посещаемости")
@@ -617,13 +626,13 @@
      (let [result (jdbc/query db-spec
                               (if org-id
                                 ["SELECT ц.название_цеха as name, COUNT(r.id) as count
-                                 FROM Цех ц
-                                 LEFT JOIN Работник r ON r.цех_id = ц.id AND r.organization_id = ?
+                                 FROM \"Цех\" ц
+                                 LEFT JOIN \"Работник\" r ON r.цех_id = ц.id AND r.organization_id = ?
                                  GROUP BY ц.id, ц.название_цеха
                                  ORDER BY count DESC" org-id]
                                 ["SELECT ц.название_цеха as name, COUNT(r.id) as count
-                                 FROM Цех ц
-                                 LEFT JOIN Работник r ON r.цех_id = ц.id
+                                 FROM \"Цех\" ц
+                                 LEFT JOIN \"Работник\" r ON r.цех_id = ц.id
                                  GROUP BY ц.id, ц.название_цеха
                                  ORDER BY count DESC"]))]
        (logger/log-info (format "Получено распределение по цехам (%d записей)" (count result)))
@@ -640,13 +649,13 @@
      (let [result (jdbc/query db-spec
                               (if org-id
                                 ["SELECT к.название_категории as name, COUNT(r.id) as count
-                                 FROM Категория_работника к
-                                 LEFT JOIN Работник r ON r.категория_работника_id = к.id AND r.organization_id = ?
+                                 FROM \"Категория_работника\" к
+                                 LEFT JOIN \"Работник\" r ON r.категория_работника_id = к.id AND r.organization_id = ?
                                  GROUP BY к.id, к.название_категории
                                  ORDER BY count DESC" org-id]
                                 ["SELECT к.название_категории as name, COUNT(r.id) as count
-                                 FROM Категория_работника к
-                                 LEFT JOIN Работник r ON r.категория_работника_id = к.id
+                                 FROM \"Категория_работника\" к
+                                 LEFT JOIN \"Работник\" r ON r.категория_работника_id = к.id
                                  GROUP BY к.id, к.название_категории
                                  ORDER BY count DESC"]))]
        (logger/log-info (format "Получено распределение по категориям (%d записей)" (count result)))
@@ -663,13 +672,13 @@
      (let [result (jdbc/query db-spec
                               (if org-id
                                 ["SELECT рз.номер_разряда as name, COUNT(r.id) as count
-                                 FROM Разряд рз
-                                 LEFT JOIN Работник r ON r.разряд_id = рз.id AND r.organization_id = ?
+                                 FROM \"Разряд\" рз
+                                 LEFT JOIN \"Работник\" r ON r.разряд_id = рз.id AND r.organization_id = ?
                                  GROUP BY рз.id, рз.номер_разряда
                                  ORDER BY рз.номер_разряда" org-id]
                                 ["SELECT рз.номер_разряда as name, COUNT(r.id) as count
-                                 FROM Разряд рз
-                                 LEFT JOIN Работник r ON r.разряд_id = рз.id
+                                 FROM \"Разряд\" рз
+                                 LEFT JOIN \"Работник\" r ON r.разряд_id = рз.id
                                  GROUP BY рз.id, рз.номер_разряда
                                  ORDER BY рз.номер_разряда"]))]
        (logger/log-info (format "Получено распределение по разрядам (%d записей)" (count result)))
@@ -686,16 +695,16 @@
      (let [result (jdbc/query db-spec
                               (if org-id
                                 ["SELECT н.год, н.месяц, SUM(н.общая_зарплата) as total
-                                 FROM Начисление_заработной_платы н
-                                 JOIN Учет_рабочего_времени у ON н.учет_рабочего_времени_id = у.id
-                                 JOIN Работник р ON у.работник_id = р.id
+                                 FROM \"Начисление_заработной_платы\" н
+                                 JOIN \"Учет_рабочего_времени\" у ON н.учет_рабочего_времени_id = у.id
+                                 JOIN \"Работник\" р ON у.работник_id = р.id
                                  WHERE р.organization_id = ?
                                  GROUP BY н.год, н.месяц
                                  ORDER BY н.год DESC, н.месяц DESC
                                  LIMIT 6" org-id]
                                 ["SELECT н.год, н.месяц, SUM(н.общая_зарплата) as total
-                                 FROM Начисление_заработной_платы н
-                                 JOIN Учет_рабочего_времени у ON н.учет_рабочего_времени_id = у.id
+                                 FROM \"Начисление_заработной_платы\" н
+                                 JOIN \"Учет_рабочего_времени\" у ON н.учет_рабочего_времени_id = у.id
                                  GROUP BY н.год, н.месяц
                                  ORDER BY н.год DESC, н.месяц DESC
                                  LIMIT 6"]))]
@@ -714,20 +723,20 @@
                               (if org-id
                                  ["SELECT r.фамилия, r.имя, r.отчество, ц.название_цеха,
                                           MAX(н.общая_зарплата) as max_salary
-                                 FROM Работник r
-                                 LEFT JOIN Цех ц ON r.цех_id = ц.id
-                                 LEFT JOIN Учет_рабочего_времени у ON r.id = у.работник_id
-                                 LEFT JOIN Начисление_заработной_платы н ON у.id = н.учет_рабочего_времени_id
+                                 FROM \"Работник\" r
+                                 LEFT JOIN \"Цех\" ц ON r.цех_id = ц.id
+                                 LEFT JOIN \"Учет_рабочего_времени\" у ON r.id = у.работник_id
+                                 LEFT JOIN \"Начисление_заработной_платы\" н ON у.id = н.учет_рабочего_времени_id
                                  WHERE r.organization_id = ?
                                  GROUP BY r.id, r.фамилия, r.имя, r.отчество, ц.название_цеха
                                  ORDER BY max_salary DESC
                                  LIMIT 5" org-id]
                                  ["SELECT r.фамилия, r.имя, r.отчество, ц.название_цеха,
                                           MAX(н.общая_зарплата) as max_salary
-                                 FROM Работник r
-                                 LEFT JOIN Цех ц ON r.цех_id = ц.id
-                                 LEFT JOIN Учет_рабочего_времени у ON r.id = у.работник_id
-                                 LEFT JOIN Начисление_заработной_платы н ON у.id = н.учет_рабочего_времени_id
+                                 FROM \"Работник\" r
+                                 LEFT JOIN \"Цех\" ц ON r.цех_id = ц.id
+                                 LEFT JOIN \"Учет_рабочего_времени\" у ON r.id = у.работник_id
+                                 LEFT JOIN \"Начисление_заработной_платы\" н ON у.id = н.учет_рабочего_времени_id
                                  GROUP BY r.id, r.фамилия, r.имя, r.отчество, ц.название_цеха
                                  ORDER BY max_salary DESC
                                  LIMIT 5"]))]
@@ -746,15 +755,15 @@
                               (if org-id
                                 ["SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
                                          ц.название_цеха as цех
-                                FROM Работник r
-                                LEFT JOIN Цех ц ON r.цех_id = ц.id
+                                FROM \"Работник\" r
+                                LEFT JOIN \"Цех\" ц ON r.цех_id = ц.id
                                 WHERE r.organization_id = ?
                                 ORDER BY r.дата_приема DESC
                                 LIMIT 5" org-id]
                                 ["SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
                                          ц.название_цеха as цех
-                                FROM Работник r
-                                LEFT JOIN Цех ц ON r.цех_id = ц.id
+                                FROM \"Работник\" r
+                                LEFT JOIN \"Цех\" ц ON r.цех_id = ц.id
                                 ORDER BY r.дата_приема DESC
                                 LIMIT 5"]))]
        (logger/log-info (format "Получены последние принятые работники (%d записей)" (count result)))
@@ -791,9 +800,9 @@
                  н.зарплата_за_больничные_дни,
                  н.зарплата_за_командировочные_дни,
                  р.фамилия, р.имя
-          FROM Начисление_заработной_платы н
-          JOIN Учет_рабочего_времени у ON н.учет_рабочего_времени_id = у.id
-          JOIN Работник р ON у.работник_id = р.id
+          FROM \"Начисление_заработной_платы\" н
+          JOIN \"Учет_рабочего_времени\" у ON н.учет_рабочего_времени_id = у.id
+          JOIN \"Работник\" р ON у.работник_id = р.id
           WHERE р.organization_id = ?"
                                  org-id]
                                 ["SELECT н.id, н.учет_рабочего_времени_id,
@@ -802,9 +811,9 @@
                  н.зарплата_за_больничные_дни,
                  н.зарплата_за_командировочные_дни,
                  р.фамилия, р.имя
-          FROM Начисление_заработной_платы н
-          JOIN Учет_рабочего_времени у ON н.учет_рабочего_времени_id = у.id
-          JOIN Работник р ON у.работник_id = р.id"]))]
+          FROM \"Начисление_заработной_платы\" н
+          JOIN \"Учет_рабочего_времени\" у ON н.учет_рабочего_времени_id = у.id
+          JOIN \"Работник\" р ON у.работник_id = р.id"]))]
         (logger/log-info (format "Получены начисления с деталями (%d записей)" (count result)))
         result)
       (catch Exception e
@@ -847,14 +856,14 @@
    (try
      (let [where-clause (cond
                           (and entity-type action)
-                          ["SELECT COUNT(*) as count FROM Аудит_изменений WHERE entity_type = ? AND action = ?"
+                          ["SELECT COUNT(*) as count FROM \"Аудит_изменений\" WHERE entity_type = ? AND action = ?"
                            entity-type action]
                           entity-type
-                          ["SELECT COUNT(*) as count FROM Аудит_изменений WHERE entity_type = ?" entity-type]
+                          ["SELECT COUNT(*) as count FROM \"Аудит_изменений\" WHERE entity_type = ?" entity-type]
                           action
-                          ["SELECT COUNT(*) as count FROM Аудит_изменений WHERE action = ?" action]
+                          ["SELECT COUNT(*) as count FROM \"Аудит_изменений\" WHERE action = ?" action]
                           :else
-                          ["SELECT COUNT(*) as count FROM Аудит_изменений"])]
+                          ["SELECT COUNT(*) as count FROM \"Аудит_изменений\""])]
        (:count (first (apply jdbc/query db-spec where-clause))))
      (catch Exception e
        (logger/log-error e "Ошибка при подсчёте записей аудита")
@@ -865,7 +874,7 @@
   []
   (try
     (let [result (jdbc/query db-spec ["SELECT action, COUNT(*) as count
-                                       FROM Аудит_изменений
+                                       FROM \"Аудит_изменений\"
                                        GROUP BY action"])]
       result)
     (catch Exception e
@@ -877,7 +886,7 @@
   []
   (try
     (let [result (jdbc/query db-spec ["SELECT entity_type, COUNT(*) as count
-                                       FROM Аудит_изменений
+                                       FROM \"Аудит_изменений\"
                                        GROUP BY entity_type
                                        ORDER BY count DESC"])]
       result)
@@ -890,7 +899,7 @@
   [entity-type entity-id]
   (try
     (let [result (jdbc/query db-spec
-                             ["SELECT * FROM Аудит_изменений
+                             ["SELECT * FROM \"Аудит_изменений\"
                               WHERE entity_type = ? AND entity_id = ?
                               ORDER BY created_at DESC"
                               entity-type entity-id])]
@@ -907,7 +916,7 @@
   [username limit]
   (try
     (let [result (jdbc/query db-spec
-                             ["SELECT * FROM Аудит_изменений
+                             ["SELECT * FROM \"Аудит_изменений\"
                               WHERE username = ?
                               ORDER BY created_at DESC
                               LIMIT ?"

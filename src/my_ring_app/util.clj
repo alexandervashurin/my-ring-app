@@ -1,6 +1,7 @@
 (ns my-ring-app.util
   "Общие вспомогательные функции"
   (:require [clojure.string :as str]
+            [my-ring-app.config :refer [app-config]]
             [ring.util.response :as resp]))
 
 (defn ^Integer parse-int
@@ -53,13 +54,29 @@
    (and (string? email)
         (re-matches #"^[^@\s]+@[^@\s]+\.[^@\s]+$" (str/trim email)))))
 
+(defn- pg?
+  "Текущая БД — PostgreSQL?"
+  []
+  (= (:db-type app-config) :postgresql))
+
+(defn parse-date
+  "Парсинг даты вида yyyy-MM-dd.
+   PostgreSQL — java.sql.Date (PG требует типизированное значение).
+   SQLite — строка (xerial хранит java.sql.Date как epoch-long)."
+  [s]
+  (if (and (string? s) (re-matches #"\d{4}-\d{2}-\d{2}" s))
+    (if (pg?)
+      (try (java.sql.Date/valueOf s) (catch Exception _ s))
+      s)
+    s))
+
 (defn parse-worker-params
   "Парсинг параметров работника из request params"
   [params]
   {:фамилия (:фамилия params)
    :имя (:имя params)
    :отчество (:отчество params)
-   :дата_приема (:дата_приема params)
+   :дата_приема (parse-date (:дата_приема params))
    :цех_id (parse-int (:цех_id params) nil)
    :система_оплаты_id (parse-int (:система_оплаты_id params) nil)
    :категория_работника_id (parse-int (:категория_работника_id params) nil)
@@ -157,3 +174,21 @@
     {:error "INVALID_PARAMS" :message "Месяц должен быть от 1 до 12"}
 
     :else nil))
+
+(defn now-timestamp
+  "Текущее время для записи в БД.
+   PostgreSQL — java.sql.Timestamp (PG требует типизированное значение).
+   SQLite — строка (xerial хранит java.sql.Timestamp как epoch-long)."
+  []
+  (if (pg?)
+    (java.sql.Timestamp. (System/currentTimeMillis))
+    (str (java.time.LocalDateTime/now))))
+
+(defn extract-id
+  "Извлечение сгенерированного id из результата jdbc/insert!.
+   SQLite возвращает {:id N}, PostgreSQL — полную строку с колонкой :id."
+  [result]
+  (let [row (first result)]
+    (when (map? row)
+      (or (:id row)
+          (first (vals row))))))

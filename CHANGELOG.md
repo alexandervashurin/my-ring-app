@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file. This change
 ## [Unreleased] - 2026-08-03
 
 ### 🚀 Features
+- **PostgreSQL (закрыт roadmap-пункт Q3)**: полноценная поддержка PostgreSQL 15 наравне с SQLite. Миграции транслируют SQLite-специфику (`AUTOINCREMENT` → `BIGSERIAL`, `INSERT OR IGNORE` → `ON CONFLICT DO NOTHING`, `BOOLEAN DEFAULT 1` → `TRUE`, цитирование русских идентификаторов), идемпотентность через `information_schema`; рантайм приведён к типам PG (dates → `java.sql.Date`, timestamps → `java.sql.Timestamp`, boolean → `true/false`), `reset-sequences!` синхронизирует `*_id_seq` после seed-миграций. Строковые параметры из HTTP корректно приводятся через JDBC-параметр `stringtype=unspecified` (в т.ч. через HikariCP-пул)
 - **Email уведомления (закрыт roadmap-пункт Q3)**: реальная SMTP-отправка через `com.draines/postal 2.0.5` вместо заглушки — `send-email` (HTML+text, cc), уведомления о приёме работника, дне рождения и годовщине (со склонением «год/года/лет»), `test-email-connection`. Конфигурация из env (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS`, `SMTP_SSL`); без `SMTP_HOST` приложение работает в безопасном режиме без почты
 
 ### 🔒 Security

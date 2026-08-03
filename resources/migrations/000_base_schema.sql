@@ -4,49 +4,49 @@
 -- +migrate Up
 
 -- Таблица категорий работников
-CREATE TABLE IF NOT EXISTS Категория_работника (
+CREATE TABLE IF NOT EXISTS "Категория_работника" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     название_категории TEXT NOT NULL UNIQUE
 );
 
 -- Таблица разрядов
-CREATE TABLE IF NOT EXISTS Разряд (
+CREATE TABLE IF NOT EXISTS "Разряд" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     номер_разряда INTEGER NOT NULL UNIQUE
 );
 
 -- Таблица режимов работы
-CREATE TABLE IF NOT EXISTS Режим_работы (
+CREATE TABLE IF NOT EXISTS "Режим_работы" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     название_режима TEXT NOT NULL UNIQUE
 );
 
 -- Таблица систем оплаты
-CREATE TABLE IF NOT EXISTS Система_оплаты (
+CREATE TABLE IF NOT EXISTS "Система_оплаты" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     название_системы TEXT NOT NULL UNIQUE
 );
 
 -- Таблица окладов
-CREATE TABLE IF NOT EXISTS Оклад (
+CREATE TABLE IF NOT EXISTS "Оклад" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     оклад_в_месяц DECIMAL(10,2) NOT NULL
 );
 
 -- Таблица почасовых ставок
-CREATE TABLE IF NOT EXISTS Почасовые_ставки (
+CREATE TABLE IF NOT EXISTS "Почасовые_ставки" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ставка_в_час DECIMAL(10,2) NOT NULL
 );
 
 -- Таблица цехов
-CREATE TABLE IF NOT EXISTS Цех (
+CREATE TABLE IF NOT EXISTS "Цех" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     название_цеха TEXT NOT NULL UNIQUE
 );
 
 -- Таблица работников
-CREATE TABLE IF NOT EXISTS Работник (
+CREATE TABLE IF NOT EXISTS "Работник" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     фамилия TEXT NOT NULL,
     имя TEXT NOT NULL,
@@ -59,17 +59,17 @@ CREATE TABLE IF NOT EXISTS Работник (
     режим_работы_id INTEGER NOT NULL,
     оклад_id INTEGER,
     почасовая_ставка_id INTEGER,
-    FOREIGN KEY (цех_id) REFERENCES Цех(id),
-    FOREIGN KEY (система_оплаты_id) REFERENCES Система_оплаты(id),
-    FOREIGN KEY (категория_работника_id) REFERENCES Категория_работника(id),
-    FOREIGN KEY (разряд_id) REFERENCES Разряд(id),
-    FOREIGN KEY (режим_работы_id) REFERENCES Режим_работы(id),
-    FOREIGN KEY (оклад_id) REFERENCES Оклад(id),
-    FOREIGN KEY (почасовая_ставка_id) REFERENCES Почасовые_ставки(id)
+    FOREIGN KEY (цех_id) REFERENCES "Цех"(id),
+    FOREIGN KEY (система_оплаты_id) REFERENCES "Система_оплаты"(id),
+    FOREIGN KEY (категория_работника_id) REFERENCES "Категория_работника"(id),
+    FOREIGN KEY (разряд_id) REFERENCES "Разряд"(id),
+    FOREIGN KEY (режим_работы_id) REFERENCES "Режим_работы"(id),
+    FOREIGN KEY (оклад_id) REFERENCES "Оклад"(id),
+    FOREIGN KEY (почасовая_ставка_id) REFERENCES "Почасовые_ставки"(id)
 );
 
 -- Таблица учета рабочего времени
-CREATE TABLE IF NOT EXISTS Учет_рабочего_времени (
+CREATE TABLE IF NOT EXISTS "Учет_рабочего_времени" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     работник_id INTEGER NOT NULL,
     год INTEGER NOT NULL,
@@ -82,11 +82,11 @@ CREATE TABLE IF NOT EXISTS Учет_рабочего_времени (
     сколько_должны_отработать INTEGER,
     больничные_дни INTEGER DEFAULT 0,
     командировочные_дни INTEGER DEFAULT 0,
-    FOREIGN KEY (работник_id) REFERENCES Работник(id)
+    FOREIGN KEY (работник_id) REFERENCES "Работник"(id)
 );
 
 -- Таблица начислений заработной платы
-CREATE TABLE IF NOT EXISTS Начисление_заработной_платы (
+CREATE TABLE IF NOT EXISTS "Начисление_заработной_платы" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     учет_рабочего_времени_id INTEGER NOT NULL,
     год INTEGER NOT NULL,
@@ -94,22 +94,22 @@ CREATE TABLE IF NOT EXISTS Начисление_заработной_платы 
     зарплата_за_больничные_дни DECIMAL(10,2) DEFAULT 0,
     зарплата_за_командировочные_дни DECIMAL(10,2) DEFAULT 0,
     общая_зарплата DECIMAL(10,2) NOT NULL,
-    FOREIGN KEY (учет_рабочего_времени_id) REFERENCES Учет_рабочего_времени(id)
+    FOREIGN KEY (учет_рабочего_времени_id) REFERENCES "Учет_рабочего_времени"(id)
 );
 
 -- Заполнение справочников: Категории работников
-INSERT INTO Категория_работника (id, название_категории) VALUES
+INSERT INTO "Категория_работника" (id, название_категории) VALUES
     (1, 'Рабочий'),
     (2, 'Специалист'),
     (3, 'Руководитель'),
     (4, 'Служащий');
 
 -- Заполнение справочников: Разряды
-INSERT INTO Разряд (id, номер_разряда) VALUES
+INSERT INTO "Разряд" (id, номер_разряда) VALUES
     (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6);
 
 -- Заполнение справочников: Режимы работы
-INSERT INTO Режим_работы (id, название_режима) VALUES
+INSERT INTO "Режим_работы" (id, название_режима) VALUES
     (1, 'Односменный'),
     (2, 'Двухсменный'),
     (3, 'Трехсменный'),
@@ -117,24 +117,24 @@ INSERT INTO Режим_работы (id, название_режима) VALUES
     (5, 'Вахтовый метод');
 
 -- Заполнение справочников: Системы оплаты
-INSERT INTO Система_оплаты (id, название_системы) VALUES
+INSERT INTO "Система_оплаты" (id, название_системы) VALUES
     (1, 'Оклад'),
     (2, 'Почасовая'),
     (3, 'Сдельная'),
     (4, 'Смешанная');
 
 -- Заполнение справочников: Оклады
-INSERT INTO Оклад (id, оклад_в_месяц) VALUES
+INSERT INTO "Оклад" (id, оклад_в_месяц) VALUES
     (1, 35000), (2, 42000), (3, 52000),
     (4, 68000), (5, 85000), (6, 120000);
 
 -- Заполнение справочников: Почасовые ставки
-INSERT INTO Почасовые_ставки (id, ставка_в_час) VALUES
+INSERT INTO "Почасовые_ставки" (id, ставка_в_час) VALUES
     (1, 220.5), (2, 185.75), (3, 310),
     (4, 275.25), (5, 195), (6, 350.8);
 
 -- Заполнение справочников: Цеха
-INSERT INTO Цех (id, название_цеха) VALUES
+INSERT INTO "Цех" (id, название_цеха) VALUES
     (1, 'Литейный цех'),
     (2, 'Механический цех'),
     (3, 'Сборочный цех'),
@@ -142,7 +142,7 @@ INSERT INTO Цех (id, название_цеха) VALUES
     (5, 'Ремонтный цех');
 
 -- Тестовые работники (organization_id будет добавлен миграцией 003)
-INSERT INTO Работник (id, фамилия, имя, отчество, дата_приема, цех_id, система_оплаты_id, категория_работника_id, разряд_id, режим_работы_id, оклад_id, почасовая_ставка_id) VALUES
+INSERT INTO "Работник" (id, фамилия, имя, отчество, дата_приема, цех_id, система_оплаты_id, категория_работника_id, разряд_id, режим_работы_id, оклад_id, почасовая_ставка_id) VALUES
     (1, 'Петров', 'Иван', 'Сергеевич', '2020-03-15', 1, 1, 3, 6, 1, 6, NULL),
     (2, 'Сидорова', 'Ольга', 'Владимировна', '2019-11-20', 2, 1, 3, 5, 1, 5, NULL),
     (3, 'Козлов', 'Алексей', 'Петрович', '2021-06-10', 3, 1, 2, 4, 4, 4, NULL),
@@ -153,7 +153,7 @@ INSERT INTO Работник (id, фамилия, имя, отчество, да
     (8, 'Орлова', 'Светлана', 'Борисовна', '2023-04-05', 4, 2, 1, 3, 2, NULL, 1);
 
 -- Тестовые данные учета рабочего времени
-INSERT INTO Учет_рабочего_времени (id, работник_id, год, месяц, всего_часов_за_месяц_по_плану, всего_часов_в_месяц_по_факту, количество_отработанных_дней, количество_рабочих_часов_в_день, всего_отработанных_часов, сколько_должны_отработать, больничные_дни, командировочные_дни) VALUES
+INSERT INTO "Учет_рабочего_времени" (id, работник_id, год, месяц, всего_часов_за_месяц_по_плану, всего_часов_в_месяц_по_факту, количество_отработанных_дней, количество_рабочих_часов_в_день, всего_отработанных_часов, сколько_должны_отработать, больничные_дни, командировочные_дни) VALUES
     (1, 1, 2025, 10, 160, 160, 20, 8, 160, 160, 0, 0),
     (2, 2, 2025, 10, 160, 152, 19, 8, 152, 160, 1, 0),
     (3, 3, 2025, 10, 160, 168, 21, 8, 168, 160, 0, 0),
@@ -164,7 +164,7 @@ INSERT INTO Учет_рабочего_времени (id, работник_id, �
     (8, 8, 2025, 10, 160, 160, 20, 8, 160, 160, 0, 0);
 
 -- Тестовые начисления зарплаты
-INSERT INTO Начисление_заработной_платы (id, учет_рабочего_времени_id, год, месяц, зарплата_за_больничные_дни, зарплата_за_командировочные_дни, общая_зарплата) VALUES
+INSERT INTO "Начисление_заработной_платы" (id, учет_рабочего_времени_id, год, месяц, зарплата_за_больничные_дни, зарплата_за_командировочные_дни, общая_зарплата) VALUES
     (1, 1, 2025, 10, 0, 0, 120000),
     (2, 2, 2025, 10, 8500, 0, 85000),
     (3, 3, 2025, 10, 0, 0, 52000),
@@ -176,23 +176,23 @@ INSERT INTO Начисление_заработной_платы (id, учет_�
 
 -- +migrate Down
 
-DELETE FROM Начисление_заработной_платы;
-DELETE FROM Учет_рабочего_времени;
-DELETE FROM Работник;
-DELETE FROM Почасовые_ставки;
-DELETE FROM Оклад;
-DELETE FROM Система_оплаты;
-DELETE FROM Режим_работы;
-DELETE FROM Разряд;
-DELETE FROM Категория_работника;
-DELETE FROM Цех;
-DROP TABLE IF EXISTS Начисление_заработной_платы;
-DROP TABLE IF EXISTS Учет_рабочего_времени;
-DROP TABLE IF EXISTS Работник;
-DROP TABLE IF EXISTS Почасовые_ставки;
-DROP TABLE IF EXISTS Оклад;
-DROP TABLE IF EXISTS Система_оплаты;
-DROP TABLE IF EXISTS Режим_работы;
-DROP TABLE IF EXISTS Разряд;
-DROP TABLE IF EXISTS Категория_работника;
-DROP TABLE IF EXISTS Цех;
+DELETE FROM "Начисление_заработной_платы";
+DELETE FROM "Учет_рабочего_времени";
+DELETE FROM "Работник";
+DELETE FROM "Почасовые_ставки";
+DELETE FROM "Оклад";
+DELETE FROM "Система_оплаты";
+DELETE FROM "Режим_работы";
+DELETE FROM "Разряд";
+DELETE FROM "Категория_работника";
+DELETE FROM "Цех";
+DROP TABLE IF EXISTS "Начисление_заработной_платы";
+DROP TABLE IF EXISTS "Учет_рабочего_времени";
+DROP TABLE IF EXISTS "Работник";
+DROP TABLE IF EXISTS "Почасовые_ставки";
+DROP TABLE IF EXISTS "Оклад";
+DROP TABLE IF EXISTS "Система_оплаты";
+DROP TABLE IF EXISTS "Режим_работы";
+DROP TABLE IF EXISTS "Разряд";
+DROP TABLE IF EXISTS "Категория_работника";
+DROP TABLE IF EXISTS "Цех";

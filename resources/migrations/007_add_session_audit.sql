@@ -2,9 +2,9 @@
 
 -- +migrate Up
 
-CREATE TABLE IF NOT EXISTS Сессия (
+CREATE TABLE IF NOT EXISTS "Сессия" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES Пользователь(id),
+    user_id INTEGER NOT NULL REFERENCES "Пользователь"(id),
     username TEXT NOT NULL,
     login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     logout_time TIMESTAMP,
@@ -12,14 +12,14 @@ CREATE TABLE IF NOT EXISTS Сессия (
     user_agent TEXT,
     success BOOLEAN DEFAULT 1,
     fail_reason TEXT,
-    organization_id INTEGER REFERENCES Организация(id)
+    organization_id INTEGER REFERENCES "Организация"(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_session_user ON Сессия(user_id);
-CREATE INDEX IF NOT EXISTS idx_session_username ON Сессия(username);
-CREATE INDEX IF NOT EXISTS idx_session_login_time ON Сессия(login_time DESC);
-CREATE INDEX IF NOT EXISTS idx_session_org ON Сессия(organization_id);
-CREATE INDEX IF NOT EXISTS idx_session_success ON Сессия(success);
+CREATE INDEX IF NOT EXISTS idx_session_user ON "Сессия"(user_id);
+CREATE INDEX IF NOT EXISTS idx_session_username ON "Сессия"(username);
+CREATE INDEX IF NOT EXISTS idx_session_login_time ON "Сессия"(login_time DESC);
+CREATE INDEX IF NOT EXISTS idx_session_org ON "Сессия"(organization_id);
+CREATE INDEX IF NOT EXISTS idx_session_success ON "Сессия"(success);
 
 -- +migrate Down
 
@@ -28,4 +28,4 @@ DROP INDEX IF EXISTS idx_session_org;
 DROP INDEX IF EXISTS idx_session_login_time;
 DROP INDEX IF EXISTS idx_session_username;
 DROP INDEX IF EXISTS idx_session_user;
-DROP TABLE IF EXISTS Сессия;
+DROP TABLE IF EXISTS "Сессия";
