@@ -327,7 +327,7 @@
   (testing "Обновление org_role пользователя"
     (auth/create-user test-username test-email test-password "viewer" 1 "org_viewer")
     (let [user (auth/get-user-by-username test-username)
-          result (auth/update-user-org-role! (:id user) "org_admin")]
+          result (auth/update-user-org-role! (:id user) 1 "org_admin")]
       (is (true? (:success result)))
       (let [updated (auth/get-user-by-username test-username)]
         (is (= "org_admin" (:org_role updated)))))))
@@ -336,14 +336,24 @@
   (testing "Сброс org_role в nil"
     (auth/create-user test-username test-email test-password "viewer" 1 "org_viewer")
     (let [user (auth/get-user-by-username test-username)
-          result (auth/update-user-org-role! (:id user) nil)]
+          result (auth/update-user-org-role! (:id user) 1 nil)]
       (is (true? (:success result)))
       (let [updated (auth/get-user-by-username test-username)]
         (is (nil? (:org_role updated)))))))
 
 (deftest test-update-user-org-role-invalid
   (testing "Неверная org-роль отклоняется"
-    (let [result (auth/update-user-org-role! 1 "invalid_role")]
+    (let [result (auth/update-user-org-role! 1 1 "invalid_role")]
+      (is (false? (:success result))))))
+
+(deftest test-update-user-org-role-cross-org
+  (testing "Нельзя менять роль пользователя чужой организации (IDOR)"
+    (auth/create-user test-username test-email test-password "viewer" 2 "org_viewer")
+    (let [user (auth/get-user-by-username test-username)
+          result (auth/update-user-org-role! (:id user) 1 "org_admin")]
+      (is (false? (:success result)))
+      (is (= "org_viewer" (:org_role (auth/get-user-by-username test-username)))))
+    (let [result (auth/update-user-org-role! 99999 1 "org_admin")]
       (is (false? (:success result))))))
 
 (deftest test-get-org-users

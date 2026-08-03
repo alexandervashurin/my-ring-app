@@ -2,6 +2,7 @@
   "Тесты для routes"
   (:require [clojure.test :refer :all]
             [my-ring-app.routes :as routes]
+            [my-ring-app.auth :as auth]
             [my-ring-app.test-helper :as helper]))
 
 (use-fixtures :once helper/setup-db)
@@ -226,6 +227,32 @@
                     (make-req :get "/organizations/2"
                               {:identity {:username "adm" :role "admin" :organization_id 1}}))]
       (is (= 200 (:status response))))))
+
+(deftest test-org-admin-cannot-change-role-of-other-org-user
+  (testing "org_admin не может сменить роль пользователя другой организации даже через свой org-id"
+    (let [other-user (auth/create-user "user_other_org" "user_other_org@test.com"
+                                       "secret123" "viewer" 2 "org_viewer")
+          user-id (:id other-user)
+          response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :post (str "/organizations/1/users/" user-id "/role")
+                              {:identity (org-admin-org1)}))
+          updated (auth/get-user-by-id user-id)]
+      (is (has-status? response 302))
+      (is (re-find #"error=role_failed" (get-in response [:headers "Location"])))
+      (is (= "org_viewer" (:org_role updated))))))
+
+(deftest test-org-admin-cannot-change-role-of-other-org-user-api
+  (testing "API: org_admin не может сменить роль пользователя чужой организации"
+    (let [other-user (auth/create-user "user_other_org_api" "user_other_org_api@test.com"
+                                       "secret123" "viewer" 2 "org_manager")
+          user-id (:id other-user)
+          response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :put (str "/api/organizations/1/users/" user-id "/role")
+                              {:identity (org-admin-org1)
+                               :params {:org_role "org_admin"}}))
+          updated (auth/get-user-by-id user-id)]
+      (is (has-status? response 400))
+      (is (= "org_manager" (:org_role updated))))))
 
 (deftest test-workers-db-admin-only
   (testing "Страница /db доступна только админу"

@@ -121,23 +121,28 @@
 
 (defn update-user-org-role!
   "Обновление org_role пользователя.
-   Только администратор организации может менять роль."
-  [user-id org-role]
+   Только администратор организации может менять роль.
+   user-id должен принадлежать org-id — защита от IDOR."
+  [user-id org-id org-role]
   (try
     (let [valid-roles #{nil "org_admin" "org_manager" "org_hr" "org_viewer"}]
       (if (and org-role (not (contains? valid-roles org-role)))
         {:success false :message "Неверная роль организации"}
-        (let [result (jdbc/update! db-spec :Пользователь
-                                   {:org_role org-role
-                                    :updated_at (str (time/local-date-time))}
-                                   ["id = ?" user-id])
-              affected (first result)]
-          (if (pos? affected)
-            (do
-              (logger/log-audit "UPDATE" "User" user-id
-                                (format "Роль организации изменена на %s" (or org-role "по умолчанию")))
-              {:success true :message "Роль организации обновлена"})
-            {:success false :message "Пользователь не найден"}))))
+        (let [user-org (first (jdbc/query db-spec
+                                          ["SELECT organization_id FROM Пользователь WHERE id = ?" user-id]))]
+          (if (not= org-id (:organization_id user-org))
+            {:success false :message "Пользователь не принадлежит организации"}
+            (let [result (jdbc/update! db-spec :Пользователь
+                                       {:org_role org-role
+                                        :updated_at (str (time/local-date-time))}
+                                       ["id = ?" user-id])
+                  affected (first result)]
+              (if (pos? affected)
+                (do
+                  (logger/log-audit "UPDATE" "User" user-id
+                                    (format "Роль организации изменена на %s" (or org-role "по умолчанию")))
+                  {:success true :message "Роль организации обновлена"})
+                {:success false :message "Пользователь не найден"}))))))
     (catch Exception e
       (logger/log-error e "Ошибка при обновлении роли организации" {:user-id user-id})
       {:success false :message "Внутренняя ошибка при обновлении роли"})))

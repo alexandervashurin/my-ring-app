@@ -135,7 +135,7 @@
           org-role (get-in request [:params :org_role])]
       (if (or (nil? id) (nil? user-id))
         (util/json-error 400 "INVALID_ID" "Некорректный идентификатор")
-        (let [result (auth/update-user-org-role! user-id org-role)]
+        (let [result (auth/update-user-org-role! user-id id org-role)]
           (if (:success result)
             (do
               (logger/log-info (format "API: PUT /api/organizations/%d/users/%d/role -> %s" id user-id (or org-role "default")))

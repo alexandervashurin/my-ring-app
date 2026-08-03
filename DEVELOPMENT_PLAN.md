@@ -32,7 +32,7 @@
 | Метрика | Значение |
 |---------|----------|
 | Версия | 0.1.0-SNAPSHOT |
-| Тесты | **284 теста, 697 утверждений** |
+| Тесты | **287 тестов, 705 утверждений** |
 | Reflection warnings | **0** |
 | API endpoints | **50+** (REST + HTML + v1/v2) |
 | Модули | **30+ namespace'ов** |
@@ -121,14 +121,15 @@
 - `auth.clj` — новый middleware `require-own-org-scope`: доступ к организации из route-параметра `:id` только для своей организации, глобальный admin обходит ограничение
 - HTML `/organizations/:id`, `/:id/edit`, `/:id/update`, `/:id/users/:user-id/role` — `org_admin` больше не управляет чужими организациями (403)
 - API `GET/PUT /api/organizations/:id`, `GET /api/organizations/:id/users`, `PUT /api/organizations/:id/users/:user-id/role` — то же самое
+- `update-user-org-role!` проверяет принадлежность пользователя организации — нельзя сменить роль пользователя чужой организации через свой org-id
 - `GET /api/organizations/:id` теперь org-scoped: менеджер видит только свою организацию (контакты, ИНН, адрес), раньше — любую
 
 **Real-time:**
 - `sse.clj` — `dashboard-poll` считает статистику в рамках организации; diff-кэш `last-stats` изолирован по организациям (Atom-карта `{org-id → stats}`)
 
 **Тесты:**
-- **284 теста, 697 утверждений** (+13 тестов, +15 утверждений)
-- Новые: `routes_test.clj` — 12 IDOR-тестов организаций; `sse_test.clj` — изоляция diff-кэша дашборда
+- **287 тестов, 705 утверждений** (+16 тестов, +23 утверждения)
+- Новые: `routes_test.clj` — 14 IDOR-тестов организаций; `auth_test.clj` — IDOR `update-user-org-role!`; `sse_test.clj` — изоляция diff-кэша дашборда
 
 ### Последние улучшения (август 2026 — вторая партия)
 

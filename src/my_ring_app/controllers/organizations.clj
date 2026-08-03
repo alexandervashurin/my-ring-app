@@ -132,7 +132,7 @@
     (if (or (nil? org-id) (nil? user-id))
       (-> (resp/redirect (url (str "/organizations/" org-id "?error=invalid")))
           (resp/status 302))
-      (let [result (auth/update-user-org-role! user-id org-role)]
+      (let [result (auth/update-user-org-role! user-id org-id org-role)]
         (if (:success result)
           (do
             (logger/log-info (format "Роль пользователя %d в организации %d изменена на %s" user-id org-id (or org-role "default")))
