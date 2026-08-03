@@ -257,6 +257,27 @@
     (let [response (ctrl/worker-salary-page {:org-id 1 :params {:id 3}})]
       (is (= 302 (:status response))))))
 
+(deftest test-worker-salary-page-period-params
+  (testing "Выбор периода: запрошенные год/месяц отображаются в деталях"
+    (let [response (ctrl/worker-salary-page {:org-id 1 :params {:id 1 :year 2025 :month 10}})
+          body (:body response)]
+      (is (= 200 (:status response)))
+      (is (.contains body "salary-period-form"))
+      (is (.contains body "октябрь"))
+      (is (.contains body ">2025<")))))
+
+(deftest test-worker-salary-page-invalid-period-falls-back
+  (testing "Некорректный период не приводит к ошибке — fallback на текущий месяц"
+    (let [response (ctrl/worker-salary-page {:org-id 1 :params {:id 1 :year 1800 :month 13}})]
+      (is (= 200 (:status response)))
+      (is (.contains (:body response) "salary-period-form")))))
+
+(deftest test-worker-salary-page-default-current-period
+  (testing "Без параметров периода используется текущий месяц"
+    (let [response (ctrl/worker-salary-page {:org-id 1 :params {:id 1}})]
+      (is (= 200 (:status response)))
+      (is (.contains (:body response) "salary-period-form")))))
+
 (deftest test-worker-work-time-page-org-scoped
   (testing "Учёт времени работника другой организации недоступен (IDOR)"
     (let [response (ctrl/worker-work-time-page {:org-id 1 :params {:id 3}})]

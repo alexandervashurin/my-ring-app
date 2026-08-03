@@ -83,29 +83,64 @@
          "</table>"
          "</div>")))
 
+(defn- render-period-selector
+  "Селектор периода (год/месяц) для детального расчёта зарплаты"
+  [worker-id history selected-year selected-month]
+  (let [years (->> (conj (map :год history) selected-year)
+                   (filter some?)
+                   set
+                   sort
+                   reverse)]
+    (str "<form method='get' class='salary-period-form' action='" (url (str "/workers/" worker-id "/salary")) "'>"
+         "<label for='period-year'>Год:</label> "
+         "<select id='period-year' name='year'>"
+         (apply str (map (fn [y]
+                           (str "<option value='" y "'"
+                                (when (= y selected-year) " selected='selected'")
+                                ">" y "</option>"))
+                         years))
+         "</select> "
+         "<label for='period-month'>Месяц:</label> "
+         "<select id='period-month' name='month'>"
+         (apply str (map (fn [[m n]]
+                           (str "<option value='" m "'"
+                                (when (= m selected-month) " selected='selected'")
+                                ">" n "</option>"))
+                         month-names))
+         "</select> "
+         "<button type='submit'>Показать</button>"
+         "</form>")))
+
 (defn render-salary-page
-  "Рендер страницы зарплаты работника"
-  [worker salary-info salary-history]
-  (wrap-html
-    (str "<div class='form-container'>"
-         "<h2>💰 Расчет зарплаты</h2>"
-         
-         ;; Хлебные крошки
-          (helpers/breadcrumbs
-            (str "<a href='" (url "/workers") "' class='back-link'>&larr; Назад к списку работников</a>"))
-         
-         ;; Информация о работнике
-         "<div class='info-box'>"
-         "<p ><strong>ФИО:</strong> " (helpers/render-full-name worker) "</p>"
-         "<p ><strong>Дата приема:</strong> " (html-escape (:дата_приема worker)) "</p>"
-         "</div>"
-         
-         ;; Детали зарплаты
-         (render-salary-details salary-info)
-         
-         ;; История зарплат
-         (render-salary-history salary-history)
-         
-         "</div>")
-    (str "Зарплата: " (helpers/render-short-name worker))
-    "workers"))
+  "Рендер страницы зарплаты работника. Период по умолчанию — текущий месяц."
+  ([worker salary-info salary-history]
+   (render-salary-page worker salary-info salary-history nil nil))
+  ([worker salary-info salary-history selected-year selected-month]
+   (let [[year month] [(or selected-year (:год salary-info))
+                       (or selected-month (:месяц salary-info))]]
+     (wrap-html
+       (str "<div class='form-container'>"
+            "<h2>💰 Расчет зарплаты</h2>"
+
+            ;; Хлебные крошки
+            (helpers/breadcrumbs
+              (str "<a href='" (url "/workers") "' class='back-link'>&larr; Назад к списку работников</a>"))
+
+            ;; Информация о работнике
+            "<div class='info-box'>"
+            "<p ><strong>ФИО:</strong> " (helpers/render-full-name worker) "</p>"
+            "<p ><strong>Дата приема:</strong> " (html-escape (:дата_приема worker)) "</p>"
+            "</div>"
+
+            ;; Выбор периода
+            (render-period-selector (:id worker) salary-history year month)
+
+            ;; Детали зарплаты
+            (render-salary-details salary-info)
+
+            ;; История зарплат
+            (render-salary-history salary-history)
+
+            "</div>")
+       (str "Зарплата: " (helpers/render-short-name worker))
+       "workers"))))

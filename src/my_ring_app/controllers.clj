@@ -266,14 +266,23 @@
        (if (nil? worker-id)
          (bad-request "Некорректный идентификатор работника")
          (do
-           (logger/log-info (format "Открыта страница зарплаты работника ID=%s (org: %s)" worker-id (str org-id)))
-            (let [worker (model/get-record-by-id "Работник" (str worker-id) org-id)
-                  [current-year current-month] (model/current-year-month)
-                  salary-info (model/get-worker-salary worker-id current-year current-month org-id)
-                  salary-history (model/get-worker-salary-history worker-id org-id)]
-              (if worker
-                (util/html-response (salary/render-salary-page worker salary-info salary-history))
-                 (resp/redirect (url "/workers"))))))))))
+            (logger/log-info (format "Открыта страница зарплаты работника ID=%s (org: %s)" worker-id (str org-id)))
+             (let [worker (model/get-record-by-id "Работник" (str worker-id) org-id)
+                   [current-year current-month] (model/current-year-month)
+                   requested-year (parse-int (get-in id-or-request [:params :year]) nil)
+                   requested-month (parse-int (get-in id-or-request [:params :month]) nil)
+                   period-error (when (and requested-year requested-month)
+                                  (util/validate-year-month requested-year requested-month))
+                   [selected-year selected-month] (if period-error
+                                                    [current-year current-month]
+                                                    [(or requested-year current-year)
+                                                     (or requested-month current-month)])
+                   salary-info (model/get-worker-salary worker-id selected-year selected-month org-id)
+                   salary-history (model/get-worker-salary-history worker-id org-id)]
+               (if worker
+                 (util/html-response (salary/render-salary-page worker salary-info salary-history
+                                                                selected-year selected-month))
+                  (resp/redirect (url "/workers"))))))))))
 
 ;; ======================================================================
 ;; Контроллеры учета времени
