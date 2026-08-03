@@ -36,6 +36,19 @@
   [handler]
   (-> handler auth/require-authentication (auth/require-org-role "org_admin")))
 
+(defn- org-admin-scoped
+  "Обёртка для org_admin, ограниченная своей организацией (защита от IDOR)"
+  [handler]
+  (-> handler
+      auth/require-authentication
+      (auth/require-org-role "org_admin")
+      auth/require-own-org-scope))
+
+(defn- own-org-or-admin
+  "Обёртка для авторизованных пользователей: своя организация или глобальный админ"
+  [handler]
+  (-> handler auth/require-authentication auth/require-own-org-scope))
+
 (defn- manager-or-admin
   "Обёртка для маршрутов, доступных менеджерам и администраторам"
   [handler]
@@ -86,12 +99,12 @@
   ;; REST API - Организации (мульти-тенантность)
   ;; ======================================================================
   (GET "/api/organizations" request ((auth-required api-organizations/get-organizations) request))
-  (GET "/api/organizations/:id" request ((auth-required api-organizations/get-organization-by-id) request))
+  (GET "/api/organizations/:id" request ((own-org-or-admin api-organizations/get-organization-by-id) request))
   (POST "/api/organizations" request ((admin-only api-organizations/create-organization) request))
-  (PUT "/api/organizations/:id" request ((org-admin-only api-organizations/update-organization) request))
+  (PUT "/api/organizations/:id" request ((org-admin-scoped api-organizations/update-organization) request))
   (DELETE "/api/organizations/:id" request ((admin-only api-organizations/deactivate-organization) request))
-  (GET "/api/organizations/:id/users" request ((org-admin-only api-organizations/get-org-users-api) request))
-  (PUT "/api/organizations/:id/users/:user-id/role" request ((org-admin-only api-organizations/update-user-org-role-api) request))
+  (GET "/api/organizations/:id/users" request ((org-admin-scoped api-organizations/get-org-users-api) request))
+  (PUT "/api/organizations/:id/users/:user-id/role" request ((org-admin-scoped api-organizations/update-user-org-role-api) request))
 
   ;; ======================================================================
   ;; REST API - Тарифные планы
@@ -214,11 +227,11 @@
   (GET "/organizations" request ((admin-only org-controllers/organizations-page) request))
   (GET "/organizations/new" request ((admin-only org-controllers/new-organization-form) request))
   (POST "/organizations/create" request ((admin-only org-controllers/create-organization) request))
-  (GET "/organizations/:id" request ((org-admin-only org-controllers/organization-detail) request))
-  (GET "/organizations/:id/edit" request ((org-admin-only org-controllers/edit-organization-form) request))
-  (POST "/organizations/:id/update" request ((org-admin-only org-controllers/update-organization) request))
+  (GET "/organizations/:id" request ((org-admin-scoped org-controllers/organization-detail) request))
+  (GET "/organizations/:id/edit" request ((org-admin-scoped org-controllers/edit-organization-form) request))
+  (POST "/organizations/:id/update" request ((org-admin-scoped org-controllers/update-organization) request))
   (POST "/organizations/:id/delete" request ((admin-only org-controllers/delete-organization) request))
-  (POST "/organizations/:id/users/:user-id/role" request ((org-admin-only org-controllers/update-user-org-role) request))
+  (POST "/organizations/:id/users/:user-id/role" request ((org-admin-scoped org-controllers/update-user-org-role) request))
   (POST "/organizations/:id/update-plan" request ((admin-only org-controllers/update-org-plan) request))
 
   ;; Список работников с поиском

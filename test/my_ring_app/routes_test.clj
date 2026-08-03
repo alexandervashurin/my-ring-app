@@ -134,6 +134,99 @@
                               {:identity {:username "adm" :role "admin" :organization_id 1}}))]
       (is (= 200 (:status response))))))
 
+;; ======================================================================
+;; Org-scoping: org_admin ограничен своей организацией (IDOR)
+;; ======================================================================
+
+(defn- org-admin-org1
+  "Идентичность администратора организации №1"
+  []
+  {:username "org1admin" :role "manager" :org_role "org_admin" :organization_id 1})
+
+(deftest test-org-admin-can-view-own-org
+  (testing "org_admin видит свою организацию"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :get "/organizations/1"
+                              {:identity (org-admin-org1)}))]
+      (is (= 200 (:status response))))))
+
+(deftest test-org-admin-forbidden-view-other-org
+  (testing "org_admin не может просматривать чужую организацию"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :get "/organizations/2"
+                              {:identity (org-admin-org1)}))]
+      (is (has-status? response 403)))))
+
+(deftest test-org-admin-forbidden-edit-other-org
+  (testing "org_admin не может открыть форму редактирования чужой организации"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :get "/organizations/2/edit"
+                              {:identity (org-admin-org1)}))]
+      (is (has-status? response 403)))))
+
+(deftest test-org-admin-forbidden-update-other-org
+  (testing "org_admin не может обновить чужую организацию"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :post "/organizations/2/update"
+                              {:identity (org-admin-org1)}))]
+      (is (has-status? response 403)))))
+
+(deftest test-org-admin-forbidden-change-role-other-org
+  (testing "org_admin не может менять роли пользователей чужой организации"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :post "/organizations/2/users/5/role"
+                              {:identity (org-admin-org1)}))]
+      (is (has-status? response 403)))))
+
+(deftest test-org-admin-forbidden-api-get-other-org
+  (testing "API: org_admin не может получить чужую организацию"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :get "/api/organizations/2"
+                              {:identity (org-admin-org1)}))]
+      (is (has-status? response 403)))))
+
+(deftest test-org-admin-forbidden-api-users-other-org
+  (testing "API: org_admin не может получить пользователей чужой организации"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :get "/api/organizations/2/users"
+                              {:identity (org-admin-org1)}))]
+      (is (has-status? response 403)))))
+
+(deftest test-org-admin-forbidden-api-update-other-org
+  (testing "API: org_admin не может обновить чужую организацию"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :put "/api/organizations/2"
+                              {:identity (org-admin-org1)}))]
+      (is (has-status? response 403)))))
+
+(deftest test-org-admin-forbidden-api-role-other-org
+  (testing "API: org_admin не может сменить роль в чужой организации"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :put "/api/organizations/2/users/5/role"
+                              {:identity (org-admin-org1)}))]
+      (is (has-status? response 403)))))
+
+(deftest test-manager-can-view-own-org-api
+  (testing "API: менеджер видит свою организацию"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :get "/api/organizations/1"
+                              {:identity {:username "mgr" :role "manager" :organization_id 1}}))]
+      (is (= 200 (:status response))))))
+
+(deftest test-manager-forbidden-view-other-org-api
+  (testing "API: менеджер не может получить чужую организацию"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :get "/api/organizations/2"
+                              {:identity {:username "mgr" :role "manager" :organization_id 1}}))]
+      (is (has-status? response 403)))))
+
+(deftest test-global-admin-can-access-any-org
+  (testing "Глобальный admin имеет доступ к любой организации"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :get "/organizations/2"
+                              {:identity {:username "adm" :role "admin" :organization_id 1}}))]
+      (is (= 200 (:status response))))))
+
 (deftest test-workers-db-admin-only
   (testing "Страница /db доступна только админу"
     (let [anon-resp ((resolve 'my-ring-app.routes/app-routes)

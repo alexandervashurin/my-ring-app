@@ -462,6 +462,22 @@
           (handler request)
           (util/html-response "Доступ запрещён: недостаточно прав" 403))))))
 
+(defn require-own-org-scope
+  "Middleware: ограничивает доступ к организации из route-параметра :id
+   только своей организацией. Глобальный admin может работать с любой
+   организацией. Защищает от IDOR между организациями."
+  [handler]
+  (fn [request]
+    (let [user (:identity request)
+          target-org-id (some-> (or (get-in request [:params :id])
+                                    (get-in request [:route-params :id]))
+                                (util/parse-int nil))
+          user-org-id (get-in user [:organization_id])]
+      (if (or (= "admin" (:role user))
+              (and user target-org-id (= target-org-id user-org-id)))
+        (handler request)
+        (util/html-response "Доступ запрещён: чужая организация" 403)))))
+
 ;; ======================================================================
 ;; Вспомогательные функции
 ;; ======================================================================
