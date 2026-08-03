@@ -45,6 +45,47 @@
       (is (coll? (:data body)))
       (is (pos? (count (:data body)))))))
 
+(deftest test-get-workers-pagination
+  (testing "Пагинация через SQL (LIMIT/OFFSET)"
+    (let [request (-> (make-request :get "/api/workers" {:page "1" :per_page "2"})
+                      (assoc :org-id 1))
+          response (get-workers request)
+          body (get-body response)
+          data (:data body)
+          pag (:pagination data)]
+      (is (= 200 (:status response)))
+      (is (= 2 (count (:workers data))))
+      (is (= 4 (:total pag)))
+      (is (= 2 (:total_pages pag)))
+      (is (= 1 (:page pag)))
+      (is (= 2 (:per_page pag)))
+      (is (true? (:has_next pag)))
+      (is (false? (:has_prev pag))))))
+
+(deftest test-get-workers-pagination-last-page
+  (testing "Последняя страница пагинации"
+    (let [request (-> (make-request :get "/api/workers" {:page "2" :per_page "3"})
+                      (assoc :org-id 1))
+          response (get-workers request)
+          body (get-body response)
+          pag (:pagination (:data body))]
+      (is (= 200 (:status response)))
+      (is (= 1 (count (:workers (:data body)))))
+      (is (= 2 (:total_pages pag)))
+      (is (false? (:has_next pag)))
+      (is (true? (:has_prev pag))))))
+
+(deftest test-get-workers-org-scoped
+  (testing "Список работников ограничен своей организацией"
+    (let [request (-> (make-request :get "/api/workers" {})
+                      (assoc :org-id 2))
+          response (get-workers request)
+          body (get-body response)
+          pag (:pagination (:data body))]
+      (is (= 200 (:status response)))
+      (is (= 2 (:total pag)))
+      (is (= 2 (count (:workers (:data body))))))))
+
 ;; ======================================================================
 ;; Тесты для GET /api/workers/search
 ;; ======================================================================

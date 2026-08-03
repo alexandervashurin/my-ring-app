@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. This change
 ## [Unreleased] - 2026-08-03
 
 ### 🔒 Security
+- **Org-scoping `GET /api/organizations`**: список организаций больше не отдаёт контакты (ИНН, телефон, email, адрес) всех организаций любому аутентифицированному пользователю — глобальный admin видит все, обычный пользователь — только свою организацию
+
+### ⚡ Performance
+- **SQL-пагинация в `GET /api/workers`**: `api/workers/get-workers` использует `model/get-workers-page` (LIMIT/OFFSET на уровне SQL) вместо загрузки всех работников в память — как на HTML-странице; поиск и org-scoping работают корректно
+
+### 🧪 Tests
+- **304 теста, 757 утверждений** (+14 тестов, +44 утверждения)
+- Новые: `api/dashboard_test.clj` (org-scoping аналитики), `api/organizations_test.clj` (admin видит все организации, менеджер — только свою), пагинация и org-scoping `GET /api/workers`, route-тест списка организаций
+
+## [Unreleased] - 2026-08-03
+
+### 🔒 Security
 - **IDOR-фикс в организациях**: новый middleware `require-own-org-scope` ограничивает управление организацией из route-параметра `:id` только своей организацией — `org_admin` больше не может просматривать/редактировать/обновлять/менять роли пользователей других организаций (HTML `/organizations/:id*` и API `/api/organizations/:id*`). Глобальный admin по-прежнему управляет любой организацией
 - **IDOR-фикс в `update-user-org-role!`**: функция принимает `org-id` и проверяет, что пользователь принадлежит организации — `org_admin` больше не может сменить роль пользователя чужой организации, передав его `user-id` через свой org-id
 - **Org-scoping `GET /api/organizations/:id`**: любой аутентифицированный пользователь видел контакты (ИНН, телефон, email, адрес) любой организации; теперь — только своя организация (или глобальный админ)

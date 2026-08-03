@@ -27,33 +27,28 @@
                :режим (:режим worker)))))
 
 (defn get-workers
-  "GET /api/workers — получение списка работников с пагинацией"
+  "GET /api/workers — получение списка работников с пагинацией
+   (LIMIT/OFFSET на уровне SQL, org-scoped)"
   [request]
   (try
-    (let [user (:identity request)
-          org-id (:org-id request)
+    (let [org-id (:org-id request)
           query-params (:params request)
           search (:search query-params)
           page (max 1 (parse-int (:page query-params) 1))
           per-page (max 1 (min 100 (parse-int (:per_page query-params) 20)))
-          offset (* (- page 1) per-page)
-          workers (if (and search (not (str/blank? search)))
-                    (model/search-workers search org-id)
-                    (model/get-workers-with-details org-id))
-          total (count workers)
-          total-pages (int (Math/ceil (/ total (double per-page))))
-          paginated-workers (take per-page (drop offset workers))]
-      (logger/log-info (format "API: GET /api/workers (поиск: %s, страница: %d, размер: %d, найдено: %d, org: %s)"
-                               (or search "-") page per-page (count paginated-workers) (str org-id)))
+          {:keys [items total]} (model/get-workers-page org-id page per-page search)
+          total-pages (int (Math/ceil (/ total (double per-page))))]
+      (logger/log-info (format "API: GET /api/workers (поиск: %s, страница: %d, размер: %d, найдено: %d, всего: %d, org: %s)"
+                               (or search "-") page per-page (count items) total (str org-id)))
       (util/json-ok
-       {:workers (map format-worker paginated-workers)
+       {:workers (map format-worker items)
         :pagination {:page page
                      :per_page per-page
                      :total total
                      :total_pages total-pages
                      :has_next (< page total-pages)
                      :has_prev (> page 1)}}
-       (str "Получено " (count paginated-workers) " из " total " работников")))
+       (str "Получено " (count items) " из " total " работников")))
     (catch Exception e
       (logger/log-error e "API: Ошибка при получении списка работников")
       (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))

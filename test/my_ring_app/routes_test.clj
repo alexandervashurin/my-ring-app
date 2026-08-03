@@ -221,6 +221,17 @@
                               {:identity {:username "mgr" :role "manager" :organization_id 1}}))]
       (is (has-status? response 403)))))
 
+(deftest test-manager-sees-only-own-org-in-list
+  (testing "API: в списке организаций менеджер видит только свою"
+    (let [response ((resolve 'my-ring-app.routes/app-routes)
+                    (make-req :get "/api/organizations"
+                              {:identity {:username "mgr" :role "manager" :organization_id 2}
+                               :org-id 2}))
+          orgs (:data (:body response))]
+      (is (= 200 (:status response)))
+      (is (= 1 (count orgs)))
+      (is (= 2 (:id (first orgs)))))))
+
 (deftest test-global-admin-can-access-any-org
   (testing "Глобальный admin имеет доступ к любой организации"
     (let [response ((resolve 'my-ring-app.routes/app-routes)

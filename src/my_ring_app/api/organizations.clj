@@ -30,11 +30,18 @@
                        :features (:features plan)}})))))
 
 (defn get-organizations
-  "GET /api/organizations — список всех активных организаций"
+  "GET /api/organizations — список организаций.
+   Глобальный admin видит все организации, обычный пользователь — только свою
+   (защита от утечки контактов организаций между тенантами)."
   [request]
   (try
-    (let [orgs (auth/get-all-organizations)]
-      (logger/log-info (format "API: GET /api/organizations (найдено: %d)" (count orgs)))
+    (let [user (:identity request)
+          is-admin (= "admin" (:role user))
+          orgs (if is-admin
+                 (auth/get-all-organizations)
+                 (let [own (auth/get-organization-by-id (:org-id request))]
+                   (when own [own])))]
+      (logger/log-info (format "API: GET /api/organizations (найдено: %d, admin: %s)" (count orgs) is-admin))
       (util/json-ok (map format-organization orgs)
                     (str "Получено " (count orgs) " организаций")))
     (catch Exception e
