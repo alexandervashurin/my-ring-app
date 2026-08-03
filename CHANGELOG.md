@@ -10,8 +10,8 @@ All notable changes to this project will be documented in this file. This change
 - **SQL-пагинация в `GET /api/workers`**: `api/workers/get-workers` использует `model/get-workers-page` (LIMIT/OFFSET на уровне SQL) вместо загрузки всех работников в память — как на HTML-странице; поиск и org-scoping работают корректно
 
 ### 🧪 Tests
-- **304 теста, 757 утверждений** (+14 тестов, +44 утверждения)
-- Новые: `api/dashboard_test.clj` (org-scoping аналитики), `api/organizations_test.clj` (admin видит все организации, менеджер — только свою), пагинация и org-scoping `GET /api/workers`, route-тест списка организаций
+- **309 тестов, 770 утверждений** (+13 тестов, +57 утверждений)
+- Новые: `api/session_audit_test.clj` (org-scoping журнала сессий, неудачных попыток, активных сессий, статистики); `api/dashboard_test.clj` (org-scoping аналитики); `api/organizations_test.clj` (admin видит все организации, менеджер — только свою); пагинация и org-scoping `GET /api/workers`, route-тест списка организаций
 
 ## [Unreleased] - 2026-08-03
 

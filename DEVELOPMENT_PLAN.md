@@ -32,7 +32,7 @@
 | Метрика | Значение |
 |---------|----------|
 | Версия | 0.1.0-SNAPSHOT |
-| Тесты | **304 теста, 757 утверждений** |
+| Тесты | **309 тестов, 770 утверждений** |
 | Reflection warnings | **0** |
 | API endpoints | **50+** (REST + HTML + v1/v2) |
 | Модули | **30+ namespace'ов** |
@@ -143,8 +143,8 @@
 - `GET /api/workers` — SQL-пагинация через `model/get-workers-page` (LIMIT/OFFSET) вместо загрузки всех работников в память
 
 **Тесты:**
-- **304 теста, 757 утверждений** (+14 тестов, +44 утверждения)
-- Новые: `api/dashboard_test.clj` (org-scoping аналитики), `api/organizations_test.clj` (список организаций), пагинация и org-scoping `GET /api/workers`, route-тест списка организаций
+- **309 тестов, 770 утверждений** (+13 тестов, +57 утверждений)
+- Новые: `api/session_audit_test.clj` (org-scoping журнала сессий/неудачных попыток/активных сессий/статистики); `api/dashboard_test.clj` (org-scoping аналитики); `api/organizations_test.clj` (список организаций); пагинация и org-scoping `GET /api/workers`, route-тест списка организаций
 
 ### Последние улучшения (август 2026 — вторая партия)
 
