@@ -65,6 +65,15 @@
     (let [response (ctrl/dashboard-page {:org-id 1})]
       (is (= 200 (:status response))))))
 
+(deftest test-dashboard-real-trends
+  (testing "Дашборд не содержит фейковых трендов, а показывает реальные"
+    (let [response (ctrl/dashboard-page {:org-id 1})]
+      (is (= 200 (:status response)))
+      (is (not (re-find #"\+2\.5%" (:body response))))
+      (is (not (re-find #"Стабильно" (:body response))))
+      (is (not (re-find #"Все активны" (:body response))))
+      (is (re-find #"нет данных за прошлый месяц" (:body response))))))
+
 ;; ======================================================================
 ;; Работники — страницы
 ;; ======================================================================

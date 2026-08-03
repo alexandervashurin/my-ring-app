@@ -18,23 +18,44 @@
     "0"
     (format "%,d" (int num))))
 
+(defn- render-trend
+  "Рендеринг строки тренда. pct — процент изменения (nil, если данных недостаточно)"
+  [pct suffix]
+  (if (nil? pct)
+    "<div class='stat-card__trend'>нет данных за прошлый месяц</div>"
+    (let [up? (>= pct 0)
+          cls (if up? "stat-card__trend--up" "stat-card__trend--down")
+          sign (if up? "+" "")
+          abs-pct (* 100 (Math/abs (double pct)))]
+      (str "<div class='stat-card__trend " cls "'>"
+           (if up? "📈 " "📉 ") sign (format "%.1f" abs-pct) "% " suffix "</div>"))))
+
+(defn- compute-trend
+  "Изменение фонда оплаты текущего месяца относительно предыдущего (в долях)"
+  [payroll-by-month]
+  (let [ordered (sort-by (fn [p] [(:год p) (:месяц p)]) payroll-by-month)
+        current (last ordered)
+        previous (last (butlast ordered))]
+    (when (and current previous (pos? (:total previous)))
+      (/ (- (:total current) (:total previous)) (:total previous)))))
+
 (defn- render-stats-cards
   "Рендеринг карточек со статистикой"
-  [stats attendance]
+  [stats attendance payroll-trend]
   (let [total-workers (:total-workers stats 0)
         total-shops (:total-shops stats 0)
         avg-salary (:avg-salary stats 0)
         total-payroll (:total-payroll stats 0)
         avg-hours (int (:avg-hours attendance 0))
         avg-sick-days (:avg-sick-days attendance 0)
-        avg-business-days (:avg-business-days attendance 0)]
+        avg-business-days (:avg-business-days attendance 0)
+        payroll-trend-label (render-trend payroll-trend "к прошлому месяцу")]
     (str "<div class='dashboard-stats'>"
          "<div class='stat-card stat-card--primary'>"
          "<div class='stat-card__icon'>👥</div>"
          "<div class='stat-card__content'>"
          "<div class='stat-card__value'>" total-workers "</div>"
          "<div class='stat-card__label'>Всего работников</div>"
-         "<div class='stat-card__trend stat-card__trend--up'>📈 Стабильно</div>"
          "</div>"
          "</div>"
          "<div class='stat-card stat-card--success'>"
@@ -42,7 +63,6 @@
          "<div class='stat-card__content'>"
          "<div class='stat-card__value'>" total-shops "</div>"
          "<div class='stat-card__label'>Цехов</div>"
-         "<div class='stat-card__trend'>📊 Все активны</div>"
          "</div>"
          "</div>"
          "<div class='stat-card stat-card--info'>"
@@ -50,7 +70,6 @@
          "<div class='stat-card__content'>"
          "<div class='stat-card__value'>" (format-currency avg-salary) "</div>"
          "<div class='stat-card__label'>Средняя зарплата</div>"
-         "<div class='stat-card__trend stat-card__trend--up'>📈 +2.5%</div>"
          "</div>"
          "</div>"
          "<div class='stat-card stat-card--warning'>"
@@ -58,7 +77,7 @@
          "<div class='stat-card__content'>"
          "<div class='stat-card__value'>" (format-currency total-payroll) "</div>"
          "<div class='stat-card__label'>Фонд оплаты труда</div>"
-         "<div class='stat-card__trend stat-card__trend--down'>📉 -1.2%</div>"
+         payroll-trend-label
          "</div>"
          "</div>"
          "<div class='stat-card stat-card--purple'>"
@@ -161,18 +180,6 @@
        "</div>"
        "</div>"))
 
-(defn- render-payroll-chart
-  "Рендеринг графика фонда оплаты труда"
-  [payroll-by-month]
-  (let [labels (vec (map #(str (:год %) "-" (format "%02d" (:месяц %))) payroll-by-month))
-        data (vec (map :total payroll-by-month))]
-    (render-chart-container "Фонд оплаты труда по месяцам"
-                            "payrollChart"
-                            "line"
-                            labels
-                            data
-                            ["rgba(76, 175, 80, 0.8)"])))
-
 (defn- render-top-workers
   "Рендеринг таблицы топ работников"
   [top-workers]
@@ -234,6 +241,7 @@
         recent-hires (:recent-hires dashboard-data)
         salary-distribution (:salary-distribution dashboard-data)
         attendance (:attendance dashboard-data)
+        payroll-trend (compute-trend (:payroll-by-month dashboard-data))
         ;; Данные для JavaScript графиков
         chart-data (str "window.DashboardData = {"
                         "byShop: [" (apply str (interpose "," (for [item by-shop]
@@ -252,7 +260,7 @@
       ;; Данные для графиков
       "<script>" chart-data "</script>"
       ;; Карточки статистики
-      (render-stats-cards stats attendance)
+      (render-stats-cards stats attendance payroll-trend)
       ;; Контейнеры для графиков
       (render-chart-containers)
       ;; Таблицы

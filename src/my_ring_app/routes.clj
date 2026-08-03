@@ -1,5 +1,5 @@
 (ns my-ring-app.routes
-  (:require [compojure.core :refer [defroutes GET POST PUT DELETE]]
+  (:require [compojure.core :refer [defroutes GET POST PUT DELETE routes]]
             [compojure.route :as route]
             [ring.util.response :as resp]
             [my-ring-app.controllers :as controllers]
@@ -45,6 +45,18 @@
   "Обёртка для маршрутов, доступных менеджерам организации и выше"
   [handler]
   (-> handler auth/require-authentication (auth/require-org-role "org_admin" "org_manager")))
+
+(defmacro reference-routes
+  "Маршруты CRUD для справочника (list/new/create/edit/update/delete).
+   Доступны менеджерам и администраторам."
+  [page list-h new-h create-h edit-h update-h delete-h]
+  `(routes
+     (GET ~(str "/" page) request# ((manager-or-admin ~list-h) request#))
+     (GET ~(str "/" page "/new") request# ((manager-or-admin ~new-h) request#))
+     (POST ~(str "/" page "/create") request# ((manager-or-admin ~create-h) request#))
+     (GET ~(str "/" page "/:id/edit") request# ((manager-or-admin ~edit-h) request#))
+     (POST ~(str "/" page "/:id/update") request# ((manager-or-admin ~update-h) request#))
+     (POST ~(str "/" page "/:id/delete") request# ((manager-or-admin ~delete-h) request#))))
 
 (defroutes app-routes
   ;; ======================================================================
@@ -146,6 +158,7 @@
   (GET "/api/export/workers.csv" request ((auth-required api-export/export-workers-csv) request))
   (GET "/api/export/salary.csv" request ((auth-required api-export/export-salary-csv) request))
   (GET "/api/export/workers.xlsx" request ((auth-required api-export/export-workers-excel) request))
+  (GET "/api/export/salary.xlsx" request ((auth-required api-export/export-salary-excel) request))
 
   ;; ======================================================================
   ;; REST API - Дашборд и аналитика
@@ -244,61 +257,37 @@
   ;; ======================================================================
   ;; Справочники (manager-or-admin)
   ;; ======================================================================
-  (GET "/shops" request ((manager-or-admin ref-controllers/list-shops) request))
-  (GET "/shops/new" request ((manager-or-admin ref-controllers/new-shop-form) request))
-  (POST "/shops/create" request ((manager-or-admin ref-controllers/create-shop) request))
-  (GET "/shops/:id/edit" request ((manager-or-admin ref-controllers/edit-shop-form) request))
-  (POST "/shops/:id/update" request ((manager-or-admin ref-controllers/update-shop) request))
-  (POST "/shops/:id/delete" request ((manager-or-admin ref-controllers/delete-shop) request))
+  (reference-routes "shops" ref-controllers/list-shops ref-controllers/new-shop-form
+                    ref-controllers/create-shop ref-controllers/edit-shop-form
+                    ref-controllers/update-shop ref-controllers/delete-shop)
 
-  (GET "/ranks" request ((manager-or-admin ref-controllers/list-ranks) request))
-  (GET "/ranks/new" request ((manager-or-admin ref-controllers/new-rank-form) request))
-  (POST "/ranks/create" request ((manager-or-admin ref-controllers/create-rank) request))
-  (GET "/ranks/:id/edit" request ((manager-or-admin ref-controllers/edit-rank-form) request))
-  (POST "/ranks/:id/update" request ((manager-or-admin ref-controllers/update-rank) request))
-  (POST "/ranks/:id/delete" request ((manager-or-admin ref-controllers/delete-rank) request))
+  (reference-routes "ranks" ref-controllers/list-ranks ref-controllers/new-rank-form
+                    ref-controllers/create-rank ref-controllers/edit-rank-form
+                    ref-controllers/update-rank ref-controllers/delete-rank)
 
-  (GET "/salary-systems" request ((manager-or-admin ref-controllers/list-systems) request))
-  (GET "/salary-systems/new" request ((manager-or-admin ref-controllers/new-system-form) request))
-  (POST "/salary-systems/create" request ((manager-or-admin ref-controllers/create-system) request))
-  (GET "/salary-systems/:id/edit" request ((manager-or-admin ref-controllers/edit-system-form) request))
-  (POST "/salary-systems/:id/update" request ((manager-or-admin ref-controllers/update-system) request))
-  (POST "/salary-systems/:id/delete" request ((manager-or-admin ref-controllers/delete-system) request))
+  (reference-routes "salary-systems" ref-controllers/list-systems ref-controllers/new-system-form
+                    ref-controllers/create-system ref-controllers/edit-system-form
+                    ref-controllers/update-system ref-controllers/delete-system)
 
-  (GET "/categories" request ((manager-or-admin ref-controllers/list-categories) request))
-  (GET "/categories/new" request ((manager-or-admin ref-controllers/new-category-form) request))
-  (POST "/categories/create" request ((manager-or-admin ref-controllers/create-category) request))
-  (GET "/categories/:id/edit" request ((manager-or-admin ref-controllers/edit-category-form) request))
-  (POST "/categories/:id/update" request ((manager-or-admin ref-controllers/update-category) request))
-  (POST "/categories/:id/delete" request ((manager-or-admin ref-controllers/delete-category) request))
+  (reference-routes "categories" ref-controllers/list-categories ref-controllers/new-category-form
+                    ref-controllers/create-category ref-controllers/edit-category-form
+                    ref-controllers/update-category ref-controllers/delete-category)
 
-  (GET "/work-modes" request ((manager-or-admin ref-controllers/list-modes) request))
-  (GET "/work-modes/new" request ((manager-or-admin ref-controllers/new-mode-form) request))
-  (POST "/work-modes/create" request ((manager-or-admin ref-controllers/create-mode) request))
-  (GET "/work-modes/:id/edit" request ((manager-or-admin ref-controllers/edit-mode-form) request))
-  (POST "/work-modes/:id/update" request ((manager-or-admin ref-controllers/update-mode) request))
-  (POST "/work-modes/:id/delete" request ((manager-or-admin ref-controllers/delete-mode) request))
+  (reference-routes "work-modes" ref-controllers/list-modes ref-controllers/new-mode-form
+                    ref-controllers/create-mode ref-controllers/edit-mode-form
+                    ref-controllers/update-mode ref-controllers/delete-mode)
 
-  (GET "/salary-grades" request ((manager-or-admin ref-controllers/list-salary-grades) request))
-  (GET "/salary-grades/new" request ((manager-or-admin ref-controllers/new-salary-grade-form) request))
-  (POST "/salary-grades/create" request ((manager-or-admin ref-controllers/create-salary-grade) request))
-  (GET "/salary-grades/:id/edit" request ((manager-or-admin ref-controllers/edit-salary-grade-form) request))
-  (POST "/salary-grades/:id/update" request ((manager-or-admin ref-controllers/update-salary-grade) request))
-  (POST "/salary-grades/:id/delete" request ((manager-or-admin ref-controllers/delete-salary-grade) request))
+  (reference-routes "salary-grades" ref-controllers/list-salary-grades ref-controllers/new-salary-grade-form
+                    ref-controllers/create-salary-grade ref-controllers/edit-salary-grade-form
+                    ref-controllers/update-salary-grade ref-controllers/delete-salary-grade)
 
-  (GET "/hourly-rates" request ((manager-or-admin ref-controllers/list-hourly-rates) request))
-  (GET "/hourly-rates/new" request ((manager-or-admin ref-controllers/new-hourly-rate-form) request))
-  (POST "/hourly-rates/create" request ((manager-or-admin ref-controllers/create-hourly-rate) request))
-  (GET "/hourly-rates/:id/edit" request ((manager-or-admin ref-controllers/edit-hourly-rate-form) request))
-  (POST "/hourly-rates/:id/update" request ((manager-or-admin ref-controllers/update-hourly-rate) request))
-  (POST "/hourly-rates/:id/delete" request ((manager-or-admin ref-controllers/delete-hourly-rate) request))
+  (reference-routes "hourly-rates" ref-controllers/list-hourly-rates ref-controllers/new-hourly-rate-form
+                    ref-controllers/create-hourly-rate ref-controllers/edit-hourly-rate-form
+                    ref-controllers/update-hourly-rate ref-controllers/delete-hourly-rate)
 
-  (GET "/tariffs" request ((manager-or-admin ref-controllers/list-tariffs) request))
-  (GET "/tariffs/new" request ((manager-or-admin ref-controllers/new-tariff-form) request))
-  (POST "/tariffs/create" request ((manager-or-admin ref-controllers/create-tariff) request))
-  (GET "/tariffs/:id/edit" request ((manager-or-admin ref-controllers/edit-tariff-form) request))
-  (POST "/tariffs/:id/update" request ((manager-or-admin ref-controllers/update-tariff) request))
-  (POST "/tariffs/:id/delete" request ((manager-or-admin ref-controllers/delete-tariff) request))
+  (reference-routes "tariffs" ref-controllers/list-tariffs ref-controllers/new-tariff-form
+                    ref-controllers/create-tariff ref-controllers/edit-tariff-form
+                    ref-controllers/update-tariff ref-controllers/delete-tariff)
 
   ;; Страница не найдена
   (route/not-found (fn [request] (controllers/not-found-page request))))

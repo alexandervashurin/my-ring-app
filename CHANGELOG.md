@@ -19,6 +19,25 @@ All notable changes to this project will be documented in this file. This change
 - **236 тестов, 612 утверждений** (+8 тестов, +30 утверждений)
 - Новые: пагинация страницы работников (`controllers_test`), `get-workers-page`/`count-workers`/`get-table-data` limit/`count-table-rows`, security headers (`core_test`)
 
+## [Unreleased] - 2026-08-03 (вторая партия)
+
+### 🔒 Security
+- **Org-scoping экспорта**: `api/export.clj` передаёт `(:org-id request)` в `get-workers-with-details`/`get-salary-with-details` — пользователь видит только свою организацию (раньше любой аутентифицированный пользователь мог выгрузить CSV/XLSX всех организаций). Админ может указать организацию через `?org_id=` (без параметра — все организации)
+- **Экспорт-тесты изолированы** от dev-БД: добавлен fixture `setup-db` в `export_test.clj`
+
+### ✨ New Features
+- **`/api/export/salary.xlsx`** — экспорт зарплаты в Excel (паритет с работниками). Общие хелперы `records-to-csv`/`records-to-excel` в `api/export.clj` (убрана дупликация конвертеров)
+
+### 🎨 UI/UX
+- **Дашборд без фейковых трендов**: удалены хардкод «📈 +2.5%» / «📉 -1.2%» / «Стабильно» и неиспользуемый `render-payroll-chart`; фонд оплаты труда показывает реальную динамику «к прошлому месяцу» (или «нет данных за прошлый месяц»)
+
+### 🔧 Refactoring
+- **Маршруты справочников**: 48 строк → макрос `reference-routes` в `routes.clj` (8 справочников по одной строке)
+
+### 🧪 Tests
+- **242 теста, 634 утверждения** (+6 тестов, +22 утверждения)
+- Новые: org-scoping экспорта CSV/Excel (пользователь, админ с `?org_id=`, админ без параметра), `salary.xlsx`, отсутствие фейковых трендов на дашборде
+
 ## [Unreleased] - 2026-07-31
 
 ### ✨ New Features
