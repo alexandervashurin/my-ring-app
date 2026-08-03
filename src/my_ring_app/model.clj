@@ -119,16 +119,35 @@
       (logger/log-error e "Ошибка при получении таблиц")
       [])))
 
-(defn get-table-data [table-name]
+(defn get-table-data
+  "Получение всех записей из таблицы. Если limit передан — возвращает первые limit строк."
+  ([table-name] (get-table-data table-name nil))
+  ([table-name limit]
+   (try
+     (validate-table-name table-name)
+     (let [safe-name (sanitize-table-name table-name)
+           query (if limit
+                   (str "SELECT * FROM \"" safe-name "\" LIMIT ?")
+                   (str "SELECT * FROM \"" safe-name "\""))
+           params (if limit [limit] [])
+           result (jdbc/query db-spec (into [query] params))]
+       (logger/log-info (format "Получено %d записей из таблицы %s" (count result) table-name))
+       result)
+     (catch Exception e
+       (logger/log-error e (format "Ошибка при запросе к таблице %s" table-name) {:table table-name})
+       []))))
+
+(defn count-table-rows
+  "Количество записей в таблице (через COUNT, без загрузки всех строк)"
+  [table-name]
   (try
     (validate-table-name table-name)
     (let [safe-name (sanitize-table-name table-name)
-          result (jdbc/query db-spec [(str "SELECT * FROM \"" safe-name "\"")])]
-      (logger/log-info (format "Получено %d записей из таблицы %s" (count result) table-name))
-      result)
+          row (first (jdbc/query db-spec [(str "SELECT COUNT(*) AS cnt FROM \"" safe-name "\"")]))]
+      (or (:cnt row) 0))
     (catch Exception e
-      (logger/log-error e (format "Ошибка при запросе к таблице %s" table-name) {:table table-name})
-      [])))
+      (logger/log-error e (format "Ошибка при подсчёте записей в таблице %s" table-name) {:table table-name})
+      0)))
 
 (defn get-record-by-id [table-name id]
   (try
@@ -204,32 +223,100 @@
 ;; Модель работников
 ;; ======================================================================
 
+(def ^:private workers-list-select
+  "Общий SELECT с JOIN'ами для списка работников"
+  (str "SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,"
+       " ц.название_цеха as цех,"
+       " с.название_системы as система,"
+       " к.название_категории as категория,"
+       " рз.номер_разряда as разряд,"
+       " рм.название_режима as режим"
+       " FROM Работник r"
+       " LEFT JOIN Цех ц ON r.цех_id = ц.id"
+       " LEFT JOIN Система_оплаты с ON r.система_оплаты_id = с.id"
+       " LEFT JOIN Категория_работника к ON r.категория_работника_id = к.id"
+       " LEFT JOIN Разряд рз ON r.разряд_id = рз.id"
+       " LEFT JOIN Режим_работы рм ON r.режим_работы_id = рм.id"))
+
+(defn- workers-page-query
+  "Формирует запрос списка работников. opts: :search :org-id :limit :offset :count?
+   Возвращает [query params]."
+  [{:keys [search org-id limit offset count?]}]
+  (let [search? (and search (not (str/blank? search)))
+        [where params] (cond
+                         search?
+                         (let [st (str "%" search "%")
+                               where (str " WHERE (LOWER(r.фамилия) LIKE LOWER(?)"
+                                          " OR LOWER(r.имя) LIKE LOWER(?)"
+                                          " OR LOWER(r.отчество) LIKE LOWER(?)"
+                                          " OR LOWER(ц.название_цеха) LIKE LOWER(?))"
+                                          (when org-id " AND r.organization_id = ?"))
+                               params (if org-id [st st st st org-id] [st st st st])]
+                           [where params])
+
+                         org-id
+                         [" WHERE r.organization_id = ?" [org-id]]
+
+                         :else
+                         [" " []])
+        select (if count?
+                 "SELECT COUNT(*) AS cnt FROM Работник r LEFT JOIN Цех ц ON r.цех_id = ц.id"
+                 workers-list-select)
+        order (if count? "" " ORDER BY r.фамилия, r.имя")
+        pagination (if (and limit offset (not count?)) " LIMIT ? OFFSET ?" "")
+        query (str select where order pagination)
+        params (cond-> (vec params)
+                 (and limit offset (not count?)) (conj limit offset))]
+    [query params]))
+
 (defn get-workers-with-details
   "Получение списка работников с деталями. Если org-id не nil — фильтрует по организации."
   ([] (get-workers-with-details nil))
   ([org-id]
    (try
-     (let [base-query "SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
-               ц.название_цеха as цех,
-               с.название_системы as система,
-               к.название_категории as категория,
-               рз.номер_разряда as разряд,
-               рм.название_режима as режим
-        FROM Работник r
-        LEFT JOIN Цех ц ON r.цех_id = ц.id
-        LEFT JOIN Система_оплаты с ON r.система_оплаты_id = с.id
-        LEFT JOIN Категория_работника к ON r.категория_работника_id = к.id
-        LEFT JOIN Разряд рз ON r.разряд_id = рз.id
-        LEFT JOIN Режим_работы рм ON r.режим_работы_id = рм.id"
-           query (if org-id
-                   (str base-query " WHERE r.organization_id = ? ORDER BY r.фамилия, r.имя")
-                   (str base-query " ORDER BY r.фамилия, r.имя"))
+     (let [query (if org-id
+                   (str workers-list-select " WHERE r.organization_id = ? ORDER BY r.фамилия, r.имя")
+                   (str workers-list-select " ORDER BY r.фамилия, r.имя"))
            result (jdbc/query db-spec (into [query] (when org-id [org-id])))]
        (logger/log-info (format "Получен список работников (%d записей, org: %s)" (count result) (str org-id)))
        result)
      (catch Exception e
         (logger/log-error e "Ошибка при получении списка работников")
         []))))
+
+(defn count-workers
+  "Количество работников. Если org-id не nil — только по организации.
+   search — необязательный поисковый запрос."
+  ([org-id] (count-workers org-id nil))
+  ([org-id search]
+   (try
+     (let [[q p] (workers-page-query {:search search :org-id org-id :count? true})
+           row (first (jdbc/query db-spec (into [q] p)))]
+       (or (:cnt row) 0))
+     (catch Exception e
+       (logger/log-error e "Ошибка при подсчёте работников")
+       0))))
+
+(defn get-workers-page
+  "Получение страницы работников с пагинацией (LIMIT/OFFSET на уровне SQL).
+   Возвращает {:items [...] :total N}. search ищет по ФИО и цеху."
+  ([org-id page per-page] (get-workers-page org-id page per-page nil))
+  ([org-id page per-page search]
+   (try
+     (let [page (max 1 (int (or page 1)))
+           per-page (max 1 (int (or per-page 20)))
+           offset (* (- page 1) per-page)
+           [items-query items-params] (workers-page-query {:search search :org-id org-id
+                                                           :limit per-page :offset offset})
+           [count-query count-params] (workers-page-query {:search search :org-id org-id :count? true})
+           items (jdbc/query db-spec (into [items-query] items-params))
+           total (or (:cnt (first (jdbc/query db-spec (into [count-query] count-params)))) 0)]
+       (logger/log-info (format "Получена страница работников (%d из %d, стр. %d, org: %s, поиск: %s)"
+                                (count items) total page (str org-id) (str search)))
+       {:items (vec items) :total total})
+     (catch Exception e
+       (logger/log-error e "Ошибка при получении страницы работников")
+       {:items [] :total 0}))))
 
 (defn get-worker-by-id
   "Получение работника с деталями по ID. Если org-id не nil — проверяет принадлежность к организации."
@@ -272,31 +359,8 @@
      (when (and query (> (count (str query)) 100))
        (logger/log-warn (format "Поисковый запрос слишком длинный (%d символов)" (count (str query))))
        (throw (IllegalArgumentException. "Поисковый запрос слишком длинный")))
-     (let [search-term (str "%" (str query) "%")
-           base-query "SELECT r.id, r.фамилия, r.имя, r.отчество, r.дата_приема,
-                      ц.название_цеха as цех,
-                      с.название_системы as система,
-                      к.название_категории as категория,
-                      рз.номер_разряда as разряд,
-                      рм.название_режима as режим
-               FROM Работник r
-               LEFT JOIN Цех ц ON r.цех_id = ц.id
-               LEFT JOIN Система_оплаты с ON r.система_оплаты_id = с.id
-               LEFT JOIN Категория_работника к ON r.категория_работника_id = к.id
-               LEFT JOIN Разряд рз ON r.разряд_id = рз.id
-               LEFT JOIN Режим_работы рм ON r.режим_работы_id = рм.id"
-           where-clause " WHERE (LOWER(r.фамилия) LIKE LOWER(?) 
-                  OR LOWER(r.имя) LIKE LOWER(?) 
-                  OR LOWER(r.отчество) LIKE LOWER(?)
-                  OR LOWER(ц.название_цеха) LIKE LOWER(?))"
-           org-clause (when org-id " AND r.organization_id = ?")
-           order-clause " ORDER BY r.фамилия, r.имя"
-           [full-query params] (if org-id
-                                  [(str base-query where-clause org-clause order-clause)
-                                   [search-term search-term search-term search-term org-id]]
-                                  [(str base-query where-clause order-clause)
-                                   [search-term search-term search-term search-term]])
-           result (jdbc/query db-spec (into [full-query] params))]
+     (let [[q p] (workers-page-query {:search query :org-id org-id})
+           result (jdbc/query db-spec (into [q] p))]
        (logger/log-info (format "Поиск работников по запросу '%s': найдено %d записей (org: %s)"
                                 query (count result) (str org-id)))
        result)

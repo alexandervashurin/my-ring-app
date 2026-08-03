@@ -102,6 +102,32 @@
          "</ul>"
          "</div>")))
 
+(defn render-pagination
+  "Рендер постраничной навигации. base-path — путь, extra-params — доп. query-параметры
+   (например, search). Возвращает HTML или пустую строку, если страниц меньше двух."
+  [page total-pages base-path extra-params]
+  (if (<= total-pages 1)
+    ""
+    (let [params-str (apply str (for [[k v] extra-params
+                                      :when v]
+                                  (str "&" (name k) "=" (html-escape (str v)))))
+          page-link (fn [p label active?]
+                      (str "<a class='page-link" (when active? " active") "'"
+                           " href='" (html-escape (str base-path "?page=" p params-str)) "'>"
+                           (html-escape label) "</a>"))
+          pages (filter #(or (= % 1)
+                             (= % total-pages)
+                             (<= (Math/abs (long (- % page))) 2))
+                        (range 1 (inc total-pages)))]
+      (str "<nav class='pagination'>"
+           (when (> page 1)
+             (page-link (dec page) "← Назад" false))
+           (apply str (for [p pages]
+                        (page-link p (str p) (= p page))))
+           (when (< page total-pages)
+             (page-link (inc page) "Вперёд →" false))
+           "</nav>"))))
+
 (defn breadcrumbs
   "Генерация хлебных крошек"
   [& links]

@@ -5,7 +5,7 @@
 
 (defn render-workers-table
   "Рендер таблицы работников"
-  [workers search-query]
+  [workers search-query page total-pages total]
   (let [table-content (if (empty? workers)
                         "<div class='empty-state'>Нет работников в базе данных</div>"
                         (str "<table class='data-table'>"
@@ -62,21 +62,23 @@
          " >"
          "</div>"
          "<button type='submit' class='btn btn-primary' >🔍 Найти</button>"
-         (when search-query
-            (str "<a href='" (url "/workers") "' class='btn btn-secondary' >Сбросить фильтр</a>"
-                "<div class='search-results-info'>"
-                 "<strong>Результаты поиска:</strong> найдено " (count workers) " работников по запросу: <em>\"" (html-escape search-query) "\"</em>"
-                "</div>"))
+          (when search-query
+             (str "<a href='" (url "/workers") "' class='btn btn-secondary' >Сбросить фильтр</a>"
+                 "<div class='search-results-info'>"
+                  "<strong>Результаты поиска:</strong> найдено " total " работников по запросу: <em>\"" (html-escape search-query) "\"</em>"
+                 "</div>"))
          "</form>"
          "</div>"
-         
+          
          table-content
+         (helpers/render-pagination page total-pages (url "/workers") (when search-query {:search search-query}))
          "</div>")))
 
 (defn render-workers-page
   "Рендер страницы списка работников"
-  [workers search-query]
-  (wrap-html (render-workers-table workers search-query) "Работники" "workers"))
+  ([workers search-query] (render-workers-page workers search-query 1 1 (count workers)))
+  ([workers search-query page total-pages total]
+   (wrap-html (render-workers-table workers search-query page total-pages total) "Работники" "workers")))
 
 (defn render-worker-form
   "Рендер формы создания/редактирования работника"

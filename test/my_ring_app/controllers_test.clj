@@ -1,5 +1,6 @@
 (ns my-ring-app.controllers-test
   (:require [clojure.test :refer :all]
+            [clojure.set :as set]
             [my-ring-app.controllers :as ctrl]
             [my-ring-app.model :as model]
             [my-ring-app.tariff :as tariff]
@@ -256,3 +257,85 @@
   (testing "Список работников с org-id из identity"
     (let [response (ctrl/workers-page {:identity {:organization_id 1}})]
       (is (= 200 (:status response))))))
+
+;; ======================================================================
+;; Пагинация
+;; ======================================================================
+
+(deftest test-workers-page-pagination
+  (testing "HTML-страница работников принимает page и per_page"
+    (let [response (ctrl/workers-page {:page "2" :per_page "2"})]
+      (is (= 200 (:status response)))
+      (is (string? (:body response)))))
+  (testing "Некорректные параметры пагинации не приводят к ошибке"
+    (let [response (ctrl/workers-page {:page "abc" :per_page "-1"})]
+      (is (= 200 (:status response)))))
+  (testing "На странице рендерятся ссылки пагинации"
+    (let [body (:body (ctrl/workers-page {:per_page "2"}))]
+      (is (.contains ^String body "pagination"))
+      (is (.contains ^String body "page-link"))))
+  (testing "Поиск сохраняется между страницами"
+    (doseq [i (range 3)]
+      (model/create-record "Работник" (assoc valid-worker :фамилия (str "Пагин" i)) 1))
+    (let [body (:body (ctrl/workers-page {:per_page "2" :search "Пагин"}))]
+      (is (.contains ^String body "search=Пагин")))))
+
+(deftest test-model-get-workers-page
+  (testing "get-workers-page возвращает items и total"
+    (let [result (model/get-workers-page nil 1 5)
+          items (:items result)
+          total (:total result)]
+      (is (vector? items))
+      (is (integer? total))
+      (is (= total (count (model/get-workers-with-details))))
+      (is (<= (count items) 5))))
+  (testing "get-workers-page с поиском"
+    (let [result (model/get-workers-page nil 1 5 "Иванов")]
+      (is (vector? (:items result)))
+      (is (integer? (:total result)))))
+  (testing "get-workers-page по организации"
+    (let [result (model/get-workers-page 1 1 5)]
+      (is (vector? (:items result)))
+      (is (integer? (:total result)))))
+  (testing "Пустая БД — 0 работников"
+    (let [result (model/get-workers-page 999 1 5)]
+      (is (empty? (:items result)))
+      (is (= 0 (:total result))))))
+
+(deftest test-model-count-workers
+  (testing "Подсчёт работников"
+    (is (nat-int? (model/count-workers nil)))
+    (is (nat-int? (model/count-workers 1)))
+    (is (nat-int? (model/count-workers nil "Иванов")))))
+
+(deftest test-model-pagination-pages-distinct
+  (testing "Разные страницы не пересекаются"
+    (let [total (model/count-workers nil)
+          per-page 2]
+      (when (> total 2)
+        (let [p1 (model/get-workers-page nil 1 per-page)
+              p2 (model/get-workers-page nil 2 per-page)
+              ids1 (set (map :id (:items p1)))
+              ids2 (set (map :id (:items p2)))]
+          (is (empty? (set/intersection ids1 ids2))))))))
+
+;; ======================================================================
+;; Ограничение строк в get-table-data
+;; ======================================================================
+
+(deftest test-get-table-data-limit
+  (testing "Лимит строк в get-table-data"
+    (let [rows (model/get-table-data "Работник" 1)]
+      (is (<= (count rows) 1)))))
+
+(deftest test-count-table-rows
+  (testing "Подсчёт записей в таблице"
+    (is (nat-int? (model/count-table-rows "Работник")))
+    (is (nat-int? (model/count-table-rows "Цех")))))
+
+(deftest test-all-tables-page-with-count
+  (testing "Страница всех таблиц показывает счётчик"
+    (let [response (ctrl/all-tables-page)]
+      (is (= 200 (:status response)))
+      (is (string? (:body response)))
+      (is (.contains ^String (:body response) "записей")))))

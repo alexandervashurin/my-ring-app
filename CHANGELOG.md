@@ -1,6 +1,24 @@
 # Change Log
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
+## [Unreleased] - 2026-08-03
+
+### ⚡ Performance
+- **Пагинация HTML-списка работников**: `model/get-workers-page` выполняет `LIMIT/OFFSET` на уровне SQL (вместо загрузки всех записей), `model/count-workers` — через `COUNT(*)`
+- **Общий SELECT для списков**: из `get-workers-with-details`/`search-workers` вынесен общий `workers-list-select`, поиск переиспользует общий билдер запросов `workers-page-query`
+- **Страница `/db`**: `get-table-data` получил необязательный `limit` (первые 200 строк), добавлен `count-table-rows` через `COUNT(*)` — страница больше не загружает все строки всех таблиц
+
+### 🎨 UI/UX
+- **Постраничная навигация** на странице работников: хелпер `views/helpers/render-pagination` (назад/вперёд + номера страниц), поиск сохраняется между страницами через query-параметр `search`
+- **Счётчик записей** на странице `/db`: `<small class='table-count'>` показывает общее число записей и «показаны первые N»
+
+### 🔒 Security
+- Заголовки `Cache-Control: no-store, no-cache, must-revalidate` и `Pragma: no-cache` добавлены в `wrap-security-headers` — конфиденциальные данные (зарплаты, ФИО) не кэшируются
+
+### 🧪 Tests
+- **236 тестов, 612 утверждений** (+8 тестов, +30 утверждений)
+- Новые: пагинация страницы работников (`controllers_test`), `get-workers-page`/`count-workers`/`get-table-data` limit/`count-table-rows`, security headers (`core_test`)
+
 ## [Unreleased] - 2026-07-31
 
 ### ✨ New Features

@@ -1,7 +1,18 @@
 (ns my-ring-app.core-test
   (:require [clojure.test :refer :all]
+            [my-ring-app.core :as core]
             [my-ring-app.validation :refer :all]
             [my-ring-app.model :as model]))
+
+(deftest test-security-headers
+  (testing "Security middleware добавляет заголовки безопасности"
+    (let [handler (core/wrap-security-headers (fn [_] {:status 200 :headers {}}))
+          response (handler {})
+          headers (:headers response)]
+      (is (= "DENY" (get headers "X-Frame-Options")))
+      (is (= "nosniff" (get headers "X-Content-Type-Options")))
+      (is (= "no-store, no-cache, must-revalidate" (get headers "Cache-Control")))
+      (is (= "no-cache" (get headers "Pragma"))))))
 
 (deftest test-worker-validation-comprehensive
   (testing "Комплексная проверка валидации работника"

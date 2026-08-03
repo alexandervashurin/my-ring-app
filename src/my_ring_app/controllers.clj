@@ -111,12 +111,17 @@
    (let [params (extract-params request-or-params)
          org-id (extract-org-id request-or-params)
          query (:search params)
-         workers (if (and query (not (str/blank? query)))
-                   (model/search-workers query org-id)
-                   (model/get-workers-with-details org-id))]
-     (logger/log-info (format "Открыт список работников (поиск: %s, найдено: %d, org: %s)"
-                               (or query "-") (count workers) (str org-id)))
-      (util/html-response (workers/render-workers-page workers query)))))
+         page (max 1 (util/parse-int (:page params) 1))
+         per-page (max 1 (util/parse-int (:per_page params) 10))
+         result (if (and query (not (str/blank? query)))
+                  (model/get-workers-page org-id page per-page query)
+                  (model/get-workers-page org-id page per-page))
+         workers (:items result)
+         total (:total result)
+         total-pages (int (Math/ceil (/ (double total) (double per-page))))]
+     (logger/log-info (format "Открыт список работников (поиск: %s, найдено: %d, стр: %d/%d, org: %s)"
+                               (or query "-") total page total-pages (str org-id)))
+      (util/html-response (workers/render-workers-page workers query page total-pages total)))))
 
 (defn new-worker-form
   ([] (new-worker-form nil))
@@ -349,7 +354,8 @@
     (let [tables (model/get-tables)
           tables-data (mapv (fn [table-name]
                               {:table table-name
-                               :rows (model/get-table-data table-name)})
+                               :rows (model/get-table-data table-name 200)
+                               :total (model/count-table-rows table-name)})
                             tables)]
       (util/html-response (tables/render-all-tables-page tables-data)))))
 

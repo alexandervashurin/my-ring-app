@@ -57,6 +57,8 @@
           (assoc-in [:headers "Strict-Transport-Security"] "max-age=31536000; includeSubDomains")
           (assoc-in [:headers "Referrer-Policy"] "strict-origin-when-cross-origin")
           (assoc-in [:headers "Permissions-Policy"] "camera=(), microphone=(), geolocation=()")
+          (assoc-in [:headers "Cache-Control"] "no-store, no-cache, must-revalidate")
+          (assoc-in [:headers "Pragma"] "no-cache")
           (assoc-in [:headers "Content-Security-Policy"]
                     "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data:; font-src 'self'; connect-src 'self' https://cdn.jsdelivr.net")))))
 
