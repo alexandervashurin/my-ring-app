@@ -44,7 +44,8 @@
         (util/json-error 400 "INVALID_RECIPIENTS" "Укажите хотя бы один валидный email-адрес")
 
         :else
-        (let [worker (model/get-record-by-id "Работник" (str worker-id))]
+        (let [org-id (:org-id request)
+              worker (model/get-record-by-id "Работник" (str worker-id) org-id)]
           (if worker
             (let [result (email/notify-new-worker worker recipients)]
               (logger/log-info (format "API: POST /api/notifications/new-worker — отправлено %d писем" (:sent result)))
@@ -70,7 +71,8 @@
         (util/json-error 400 "INVALID_RECIPIENTS" "Укажите хотя бы один валидный email-адрес")
 
         :else
-        (let [worker (model/get-record-by-id "Работник" (str worker-id))]
+        (let [org-id (:org-id request)
+              worker (model/get-record-by-id "Работник" (str worker-id) org-id)]
           (if worker
             (let [result (email/notify-birthday worker age recipients)]
               (logger/log-info (format "API: POST /api/notifications/birthday — отправлено %d писем" (:sent result)))
@@ -96,7 +98,8 @@
         (util/json-error 400 "INVALID_RECIPIENTS" "Укажите хотя бы один валидный email-адрес")
 
         :else
-        (let [worker (model/get-record-by-id "Работник" (str worker-id))]
+        (let [org-id (:org-id request)
+              worker (model/get-record-by-id "Работник" (str worker-id) org-id)]
           (if worker
             (let [result (email/notify-work-anniversary worker years recipients)]
               (logger/log-info (format "API: POST /api/notifications/anniversary — отправлено %d писем" (:sent result)))

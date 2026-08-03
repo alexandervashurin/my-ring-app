@@ -8,6 +8,19 @@
 
 (def ^:private parse-int util/parse-int)
 
+(defn- resolve-export-org-id
+  "Определяет organization_id для экспорта в 1С:
+   - админ может передать ?org_id= (без параметра — все организации),
+   - остальные пользователи всегда видят только свою организацию."
+  [request]
+  (let [identity (:identity request)
+        is-admin? (= "admin" (:role identity))
+        org-id-param (util/parse-int (get-in request [:params :org_id]) nil)]
+    (cond
+      (and is-admin? org-id-param) org-id-param
+      (not is-admin?) (or (:org-id request) (get-in identity [:organization_id]))
+      :else nil)))
+
 (defn- format-date
   "Форматирование даты для 1С (YYYY-MM-DD)"
   [date-str]
@@ -43,7 +56,7 @@
   [salary]
   [:Начисление
    [:ID (:id salary)]
-   [:РаботникID (:работник_id salary)]
+   [:РаботникID (:id salary)]
    [:Год (:год salary)]
    [:Месяц (:месяц salary)]
    [:ОбщаяЗарплата (or (:общая_зарплата salary) 0)]
@@ -78,7 +91,7 @@
   "Форматирование зарплаты для JSON экспорта"
   [salary]
   {:id (:id salary)
-   :workerId (:работник_id salary)
+   :workerId (:id salary)
    :year (:год salary)
    :month (:месяц salary)
    :totalSalary (:общая_зарплата salary)
@@ -90,11 +103,12 @@
   [request]
   (try
     (let [query-params (:params request)
-          format (:format query-params "json")
-          workers (model/get-workers-with-details)
+          export-format (:format query-params "json")
+          org-id (resolve-export-org-id request)
+          workers (model/get-workers-with-details org-id)
           formatted (map format-worker-json workers)]
-      (logger/log-info (format "API: GET /api/1c/workers (формат: %s, записей: %d)" format (count workers)))
-      (if (= format "xml")
+      (logger/log-info (format "API: GET /api/1c/workers (формат: %s, org: %s, записей: %d)" export-format (str org-id) (count workers)))
+      (if (= export-format "xml")
         (util/file-download (workers-to-xml workers) "application/xml; charset=utf-8" "workers_export.xml")
         (util/json-ok {:workers formatted :count (count workers)})))
     (catch Exception e
@@ -106,15 +120,16 @@
   [request]
   (try
     (let [query-params (:params request)
-          format (:format query-params "json")
+          export-format (:format query-params "json")
+          org-id (resolve-export-org-id request)
           [current-year current-month] (model/current-year-month)
           year (parse-int (:year query-params) current-year)
           month (parse-int (:month query-params) current-month)
-          workers (model/get-workers-with-details)
-          salary-data (map #(merge % (model/get-worker-salary (:id %) year month)) workers)
+          workers (model/get-workers-with-details org-id)
+          salary-data (map #(merge % (model/get-worker-salary (:id %) year month org-id)) workers)
           formatted (map format-salary-json salary-data)]
-      (logger/log-info (format "API: GET /api/1c/salary (формат: %s, период: %d-%d)" format year month))
-      (if (= format "xml")
+      (logger/log-info (format "API: GET /api/1c/salary (формат: %s, период: %d-%d, org: %s)" export-format year month (str org-id)))
+      (if (= export-format "xml")
         (util/file-download (salary-to-xml-doc salary-data) "application/xml; charset=utf-8" "salary_export.xml")
         (util/json-ok {:salary formatted :period (str year "-" month) :count (count salary-data)})))
     (catch Exception e
@@ -149,14 +164,16 @@
        :endpoints
        [{:method "GET"
          :path "/api/1c/workers"
-         :description "Экспорт списка работников"
-         :params {:format "json|xml (по умолчанию json)"}}
+         :description "Экспорт списка работников (организация из ?org_id=, по умолчанию — все для админа)"
+         :params {:format "json|xml (по умолчанию json)"
+                  :org_id "id организации (только для админа)"}}
         {:method "GET"
          :path "/api/1c/salary"
-         :description "Экспорт данных по зарплате"
+         :description "Экспорт данных по зарплате (организация из ?org_id=, по умолчанию — все для админа)"
          :params {:format "json|xml"
-                  :year "год (по умолчанию 2025)"
-                  :month "месяц (по умолчанию 10)"}}
+                  :year "год (по умолчанию текущий)"
+                  :month "месяц (по умолчанию текущий)"
+                  :org_id "id организации (только для админа)"}}
         {:method "POST"
          :path "/api/1c/workers/import"
          :description "Импорт работников из 1С"
@@ -172,9 +189,9 @@
                            :workMode "string"}]}}]
        :examples
        {:workers-export
-        "GET /api/1c/workers?format=json"
+        "GET /api/1c/workers?format=json&org_id=1"
         :salary-export
-        "GET /api/1c/salary?format=xml&year=2025&month=10"}}})
+        "GET /api/1c/salary?format=xml&year=2025&month=10&org_id=1"}}})
     (catch Exception e
       (logger/log-error e "API: Ошибка при получении документации 1С")
       (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))

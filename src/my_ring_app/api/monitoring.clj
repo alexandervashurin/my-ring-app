@@ -127,7 +127,8 @@
   (try
     (let [memory (get-memory-info)
           uptime (/ (- (System/currentTimeMillis) app-start-time) 1000)
-          db-stats (get-db-stats)
+          org-id (:org-id request)
+          db-stats (get-db-stats org-id)
           app-stats (get-app-stats)
           metrics (str
                    "# HELP app_uptime_seconds Время работы приложения (секунды)\n"
@@ -183,20 +184,21 @@
    :environment (or (System/getenv "ENV") "development")})
 
 (defn app-statistics
-  "GET /api/stats — расширенная статистика приложения"
+  "GET /api/stats — расширенная статистика приложения (в рамках организации)"
   [request]
   (try
     (let [memory (get-memory-info)
-          db-stats (get-db-stats)
+          org-id (:org-id request)
+          db-stats (get-db-stats org-id)
           app-stats (get-app-stats)
           [current-year current-month] (model/current-year-month)
-          salary-data (->> (model/get-salary-with-details)
+          salary-data (->> (model/get-salary-with-details org-id)
                            (filter #(and (= (:год %) current-year)
                                          (= (:месяц %) current-month))))
           total-payroll (reduce + (map #(or (:общая_зарплата %) 0) salary-data))
           worker-count (:workers db-stats)
           avg-salary (if (pos? worker-count) (/ total-payroll worker-count) 0)]
-      (logger/log-info "API: GET /api/stats")
+      (logger/log-info (format "API: GET /api/stats (org: %s)" (str org-id)))
       (-> (resp/response
            {:application app-stats
             :database db-stats

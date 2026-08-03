@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file. This change
 ## [Unreleased] - 2026-08-03
 
 ### 🔒 Security
+- **IDOR-фикс в уведомлениях**: `api/notifications.clj` передаёт `(:org-id request)` в `get-record-by-id` — менеджер больше не может отправлять email-уведомления о работниках другой организации (404)
+- **Org-scoping 1С-экспорта**: `api/onec.clj` использует `resolve-export-org-id` (как в `export.clj`) — менеджер видит только свою организацию, админ может указать `?org_id=`
+- **Org-scoping метрик**: `/api/stats` и `/api/metrics` считают статистику в рамках организации пользователя (раньше любой аутентифицированный пользователь видел ФОТ и число работников всех организаций)
+
+### 🐛 Bug Fixes
+- **`api/onec.clj`**: эндпоинты `/api/1c/*` всегда падали с 500 — локальная переменная `format` затеняла `clojure.core/format`
+- **`api/onec.clj`**: `:workerId` в JSON и `<РаботникID>` в XML были всегда `nil` — форматтеры читали несуществующий ключ `:работник_id`; исправлено на `:id`
+
+### 🧪 Tests
+- **271 тест, 682 утверждения** (+14 тестов, +29 утверждений)
+- Новые: `notifications_test.clj` (IDOR по трём уведомлениям), `onec_test.clj` (org-scoping экспорта), `monitoring_test.clj` (org-scoping `/api/stats`)
+
+## [Unreleased] - 2026-08-03
+
+### 🔒 Security
 - **IDOR-фикс в model**: `get-record-by-id` и `get-work-time-by-id` получили arity с `org-id` — записи чужих организаций больше не возвращаются (ранее любой пользователь мог читать/менять данные работников и учёта времени другой организации по ID)
 - **IDOR-фикс в API**: `GET /api/workers/:id`, `PUT /api/workers/:id`, `PUT /api/work-time/:id` возвращают 404 для записей другой организации
 - **IDOR-фикс в HTML-контроллерах**: формы редактирования/просмотра работника и учёта времени проверяют принадлежность к организации и редиректят на `/workers` при чужой записи
