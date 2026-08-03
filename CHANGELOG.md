@@ -13,9 +13,12 @@ All notable changes to this project will be documented in this file. This change
 ### ⚡ Performance
 - **SQL-пагинация в `GET /api/workers`**: `api/workers/get-workers` использует `model/get-workers-page` (LIMIT/OFFSET на уровне SQL) вместо загрузки всех работников в память — как на HTML-странице; поиск и org-scoping работают корректно
 
+### 🐛 Fixes
+- **Даты в JSON API (PostgreSQL)**: `java.sql.Date`/`java.sql.Timestamp` сериализовались Cheshire как ISO-8601 в UTC — даты сдвигались на день назад (`"дата_приема":"2023-02-26T19:00:00Z"` вместо `"2023-02-27"`). Кастомный `wrap-json-response` в `core.clj` рекурсивно приводит даты к строкам (`YYYY-MM-DD`, timestamps — в локальном времени) во всех JSON-ответах
+
 ### 🧪 Tests
-- **316 тестов, 788 утверждений** (+12 тестов, +31 утверждение)
-- Новые: `email_test.clj` — 7 тестов SMTP (disabled/enabled пути, mock `postal/send-message`, корректность сообщения); `api/session_audit_test.clj` (org-scoping журнала сессий); `api/dashboard_test.clj` (org-scoping аналитики); `api/organizations_test.clj`; пагинация и org-scoping `GET /api/workers`, route-тест списка организаций
+- **320 тестов, 796 утверждений** (+4 теста, +8 утверждений)
+- Новые: `json_serialization_test.clj` — сериализация `java.sql.Date`/`Timestamp` через `wrap-json-response` (плоские и вложенные структуры, Content-Type); `email_test.clj` — 7 тестов SMTP (disabled/enabled пути, mock `postal/send-message`, корректность сообщения); `api/session_audit_test.clj` (org-scoping журнала сессий); `api/dashboard_test.clj` (org-scoping аналитики); `api/organizations_test.clj`; пагинация и org-scoping `GET /api/workers`, route-тест списка организаций
 
 ## [Unreleased] - 2026-08-03
 

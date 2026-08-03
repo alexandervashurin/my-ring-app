@@ -3,12 +3,13 @@
   (:require [ring.adapter.jetty :as jetty]
             [ring.middleware.params :refer [wrap-params]]
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
-            [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
+            [ring.middleware.json :refer [wrap-json-body]]
             [ring.middleware.content-type :refer [wrap-content-type]]
             [ring.middleware.resource :refer [wrap-resource]]
             [ring.middleware.session :refer [wrap-session]]
             [ring.middleware.session.cookie :as cookie]
             [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
+            [cheshire.core :as json]
             [clojure.string :as str]
             [my-ring-app.routes :refer [app-routes]]
             [my-ring-app.logger :as logger]
@@ -100,6 +101,33 @@
       (logger/log-response status uri)
       (logger/log-info (format "Запрос %s %s выполнен за %d мс" (str/upper-case (name method)) uri duration))
       response)))
+
+(defn- json-safe-value
+  "Рекурсивная нормализация значений для JSON-ответов:
+   java.sql.Date -> 'yyyy-MM-dd', java.sql.Timestamp -> локальное время.
+   Иначе Cheshire сериализует их как ISO-8601 в UTC, и дата сдвигается на день
+   (например, 2023-02-27 -> '2023-02-26T19:00:00Z')."
+  [v]
+  (cond
+    (instance? java.sql.Timestamp v) (str (.toLocalDateTime v))
+    (instance? java.sql.Date v) (str v)
+    (map? v) (into {} (map (fn [[k x]] [k (json-safe-value x)])) v)
+    (coll? v) (mapv json-safe-value v)
+    :else v))
+
+(defn wrap-json-response
+  "Преобразует ответы с телом-коллекцией в JSON.
+   Отличие от ring.middleware.json/wrap-json-response: даты приводятся
+   к строкам до сериализации (см. json-safe-value)."
+  [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (if (coll? (:body response))
+        (let [json-resp (assoc response :body (json/generate-string (json-safe-value (:body response))))]
+          (if (contains? (:headers response) "Content-Type")
+            json-resp
+            (assoc-in json-resp [:headers "Content-Type"] "application/json; charset=utf-8")))
+        response))))
 
 ;; ======================================================================
 ;; Основное приложение
