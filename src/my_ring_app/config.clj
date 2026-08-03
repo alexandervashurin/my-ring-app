@@ -89,6 +89,27 @@
    :db-type (get-db-type)
    :base-url (or (System/getenv "BASE_URL") "")})
 
+(defn smtp-config
+  "Конфигурация SMTP из переменных окружения.
+   SMTP включён только если задан SMTP_HOST.
+   SMTP_FROM по умолчанию = SMTP_USER (или 'noreply@localhost')."
+  []
+  (let [host (System/getenv "SMTP_HOST")
+        user (System/getenv "SMTP_USER")
+        password (System/getenv "SMTP_PASSWORD")
+        from (System/getenv "SMTP_FROM")]
+    {:enabled (and (not (str/blank? host)))
+     :host host
+     :port (Integer/parseInt (or (System/getenv "SMTP_PORT") "587"))
+     :user user
+     :password password
+     :from (or (when-not (str/blank? from) from)
+               (when-not (str/blank? user) user)
+               "noreply@localhost")
+     :tls (not= "false" (or (System/getenv "SMTP_TLS") "true"))
+     :ssl (= "true" (or (System/getenv "SMTP_SSL") "false"))
+     :debug (= "true" (or (System/getenv "SMTP_DEBUG") "false"))}))
+
 (defn url
   "Формирование URL с учётом base-url.
   (url \"/workers\") => \"/workers\" или \"/my-app/workers\""

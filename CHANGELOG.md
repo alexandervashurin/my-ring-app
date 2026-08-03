@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file. This change
 
 ## [Unreleased] - 2026-08-03
 
+### 🚀 Features
+- **Email уведомления (закрыт roadmap-пункт Q3)**: реальная SMTP-отправка через `com.draines/postal 2.0.5` вместо заглушки — `send-email` (HTML+text, cc), уведомления о приёме работника, дне рождения и годовщине (со склонением «год/года/лет»), `test-email-connection`. Конфигурация из env (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS`, `SMTP_SSL`); без `SMTP_HOST` приложение работает в безопасном режиме без почты
+
 ### 🔒 Security
 - **Org-scoping `GET /api/organizations`**: список организаций больше не отдаёт контакты (ИНН, телефон, email, адрес) всех организаций любому аутентифицированному пользователю — глобальный admin видит все, обычный пользователь — только свою организацию
 
@@ -10,8 +13,8 @@ All notable changes to this project will be documented in this file. This change
 - **SQL-пагинация в `GET /api/workers`**: `api/workers/get-workers` использует `model/get-workers-page` (LIMIT/OFFSET на уровне SQL) вместо загрузки всех работников в память — как на HTML-странице; поиск и org-scoping работают корректно
 
 ### 🧪 Tests
-- **309 тестов, 770 утверждений** (+13 тестов, +57 утверждений)
-- Новые: `api/session_audit_test.clj` (org-scoping журнала сессий, неудачных попыток, активных сессий, статистики); `api/dashboard_test.clj` (org-scoping аналитики); `api/organizations_test.clj` (admin видит все организации, менеджер — только свою); пагинация и org-scoping `GET /api/workers`, route-тест списка организаций
+- **316 тестов, 788 утверждений** (+12 тестов, +31 утверждение)
+- Новые: `email_test.clj` — 7 тестов SMTP (disabled/enabled пути, mock `postal/send-message`, корректность сообщения); `api/session_audit_test.clj` (org-scoping журнала сессий); `api/dashboard_test.clj` (org-scoping аналитики); `api/organizations_test.clj`; пагинация и org-scoping `GET /api/workers`, route-тест списка организаций
 
 ## [Unreleased] - 2026-08-03
 

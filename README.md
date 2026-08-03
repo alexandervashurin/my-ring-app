@@ -945,6 +945,14 @@ journalctl -u my-ring-app -f
 | `DB_POOL_MAX` | `10` | Макс. размер пула соединений (PostgreSQL) |
 | `DB_POOL_MIN` | `2` | Мин. размер пула соединений (PostgreSQL) |
 | `JVM_OPTS` | `-` | Опции JVM (например, `-Xmx1g`) |
+| `SMTP_HOST` | `-` | SMTP-сервер (если задан — email-уведомления включены) |
+| `SMTP_PORT` | `587` | Порт SMTP |
+| `SMTP_USER` | `-` | Пользователь SMTP (если требуется авторизация) |
+| `SMTP_PASSWORD` | `-` | Пароль SMTP |
+| `SMTP_FROM` | `SMTP_USER` | Адрес отправителя (по умолчанию `noreply@localhost`) |
+| `SMTP_TLS` | `true` | Использовать STARTTLS |
+| `SMTP_SSL` | `false` | Использовать SSL |
+| `SMTP_DEBUG` | `false` | Отладочный вывод SMTP |
 
 ### Конфигурация логгера
 

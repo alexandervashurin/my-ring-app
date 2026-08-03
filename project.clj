@@ -30,7 +30,8 @@
                  [org.clojure/data.xml "0.2.0-alpha6"]  ; XML для 1С
                  [org.apache.poi/poi "5.2.3"]  ; Excel
                  [org.apache.poi/poi-ooxml "5.2.3"]  ; Excel XSSF
-                 [clj-pdf "2.6.1"]]  ; PDF отчёты
+                 [clj-pdf "2.6.1"]  ; PDF отчёты
+                 [com.draines/postal "2.0.5"]]  ; Email уведомления (SMTP)
   :main ^:skip-aot my-ring-app.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all
