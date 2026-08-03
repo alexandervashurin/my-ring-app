@@ -142,23 +142,24 @@
   ([id-or-request request-or-params]
    (let [id (if (number? id-or-request) id-or-request
               (extract-id-from-request id-or-request))
-         params (extract-params (or request-or-params id-or-request))]
-     (let [worker-id (validate-id id)]
-       (if (nil? worker-id)
-         (bad-request "Некорректный идентификатор работника")
-         (do
-           (logger/log-info (format "Открыта форма редактирования работника ID=%s" worker-id))
-           (let [worker (model/get-record-by-id "Работник" (str worker-id))
-                 form-data (load-worker-form-data)
-          errors (when-let [err-str (:errors params)]
-                           (str/split err-str #","))]
-             (if worker
-                (util/html-response
-                  (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
-                                                    (:категории form-data) (:разряды form-data)
-                                                    (:режимы form-data) (:оклады form-data) (:ставки form-data)
-                                                    :errors errors))
-                (util/html-response "Работник не найден" 404)))))))))
+         params (extract-params (or request-or-params id-or-request))
+         org-id (extract-org-id id-or-request)]
+      (let [worker-id (validate-id id)]
+        (if (nil? worker-id)
+          (bad-request "Некорректный идентификатор работника")
+          (do
+            (logger/log-info (format "Открыта форма редактирования работника ID=%s (org: %s)" worker-id (str org-id)))
+            (let [worker (model/get-record-by-id "Работник" (str worker-id) org-id)
+                  form-data (load-worker-form-data)
+           errors (when-let [err-str (:errors params)]
+                            (str/split err-str #","))]
+              (if worker
+                 (util/html-response
+                   (workers/render-edit-worker-page worker (:цеха form-data) (:системы_оплаты form-data)
+                                                     (:категории form-data) (:разряды form-data)
+                                                     (:режимы form-data) (:оклады form-data) (:ставки form-data)
+                                                     :errors errors))
+                 (util/html-response "Работник не найден" 404)))))))))
 
 (defn- handle-create-exception [params e]
   (logger/log-error ^Throwable e "Критическая ошибка при создании работника")
@@ -203,30 +204,33 @@
   ([id-or-request request-or-params]
    (let [id (if (number? id-or-request) id-or-request
               (extract-id-from-request id-or-request))
-         params (extract-params (or request-or-params id-or-request))]
+         params (extract-params (or request-or-params id-or-request))
+         org-id (extract-org-id id-or-request)]
      (let [worker-id (validate-id id)]
        (if (nil? worker-id)
          (bad-request "Некорректный идентификатор работника")
-         (do
-           (logger/log-info (format "Попытка обновления работника ID=%s" worker-id))
+         (if-not (model/get-record-by-id "Работник" (str worker-id) org-id)
+           (resp/redirect (url "/workers"))
+           (do
+             (logger/log-info (format "Попытка обновления работника ID=%s (org: %s)" worker-id (str org-id)))
              (let [validation-result (validation/validate-worker params)]
-              (if (:valid? validation-result)
-                (let [data (parse-worker-params params)
-                      result (model/update-record "Работник" worker-id data)]
-                 (if (:success result)
-                   (do
-                     (logger/log-audit "UPDATE" "Worker" worker-id
-                                       (format "Обновлен работник %s %s" (:фамилия params) (:имя params)))
-                     (logger/log-info (format "Работник успешно обновлен, ID=%s" worker-id))
-                      (resp/redirect (url "/workers")))
-                    (do
-                      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении работника")
-                     (render-edit-worker-error-response (model/get-record-by-id "Работник" (str worker-id))
-                                                        (load-worker-form-data) [(:message result)]))))
-                (do
+               (if (:valid? validation-result)
+                 (let [data (parse-worker-params params)
+                       result (model/update-record "Работник" worker-id data)]
+                   (if (:success result)
+                     (do
+                       (logger/log-audit "UPDATE" "Worker" worker-id
+                                         (format "Обновлен работник %s %s" (:фамилия params) (:имя params)))
+                       (logger/log-info (format "Работник успешно обновлен, ID=%s" worker-id))
+                       (resp/redirect (url "/workers")))
+                     (do
+                       (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении работника")
+                       (render-edit-worker-error-response (model/get-record-by-id "Работник" (str worker-id) org-id)
+                                                          (load-worker-form-data) [(:message result)]))))
+                 (do
                    (logger/log-warn (format "Валидация не пройдена: %s" (str/join ", " (:errors validation-result))))
-                   (render-edit-worker-error-response (merge (model/get-record-by-id "Работник" (str worker-id)) params)
-                                                     (load-worker-form-data) (:errors validation-result)))))))))))
+                   (render-edit-worker-error-response (merge (model/get-record-by-id "Работник" (str worker-id) org-id) params)
+                                                      (load-worker-form-data) (:errors validation-result))))))))))))
 
 (defn delete-worker
   ([] (delete-worker nil))
@@ -263,10 +267,10 @@
          (bad-request "Некорректный идентификатор работника")
          (do
            (logger/log-info (format "Открыта страница зарплаты работника ID=%s (org: %s)" worker-id (str org-id)))
-           (let [worker (model/get-record-by-id "Работник" (str worker-id))
-                 [current-year current-month] (model/current-year-month)
-                 salary-info (model/get-worker-salary worker-id current-year current-month org-id)
-                 salary-history (model/get-worker-salary-history worker-id org-id)]
+            (let [worker (model/get-record-by-id "Работник" (str worker-id) org-id)
+                  [current-year current-month] (model/current-year-month)
+                  salary-info (model/get-worker-salary worker-id current-year current-month org-id)
+                  salary-history (model/get-worker-salary-history worker-id org-id)]
               (if worker
                 (util/html-response (salary/render-salary-page worker salary-info salary-history))
                  (resp/redirect (url "/workers"))))))))))
@@ -286,8 +290,8 @@
          (bad-request "Некорректный идентификатор работника")
          (do
            (logger/log-info (format "Открыта страница учета времени работника ID=%s (org: %s)" worker-id (str org-id)))
-           (let [worker (model/get-record-by-id "Работник" (str worker-id))
-                 work-time-records (model/get-worker-work-time worker-id org-id)]
+            (let [worker (model/get-record-by-id "Работник" (str worker-id) org-id)
+                  work-time-records (model/get-worker-work-time worker-id org-id)]
               (if worker
                 (util/html-response (work-time/render-work-time-page worker work-time-records))
                  (resp/redirect (url "/workers"))))))))))
@@ -296,52 +300,56 @@
   ([] (edit-work-time-form nil))
   ([id-or-request]
    (let [id (if (number? id-or-request) id-or-request
-              (extract-id-from-request id-or-request))]
-     (let [work-time-id (validate-id id)]
-       (if (nil? work-time-id)
-         (bad-request "Некорректный идентификатор записи")
-         (do
-           (logger/log-info (format "Открыта форма редактирования учета времени ID=%s" work-time-id))
-           (let [work-time-record (model/get-work-time-by-id (str work-time-id))
-                 worker (when work-time-record
-                          (model/get-record-by-id "Работник" (:работник_id work-time-record)))]
-              (if (and work-time-record worker)
-                (util/html-response (work-time/render-edit-work-time-form work-time-record worker))
-                 (resp/redirect (url "/workers"))))))))))
+              (extract-id-from-request id-or-request))
+         org-id (extract-org-id id-or-request)]
+      (let [work-time-id (validate-id id)]
+        (if (nil? work-time-id)
+          (bad-request "Некорректный идентификатор записи")
+          (do
+            (logger/log-info (format "Открыта форма редактирования учета времени ID=%s (org: %s)" work-time-id (str org-id)))
+            (let [work-time-record (model/get-work-time-by-id (str work-time-id) org-id)
+                  worker (when work-time-record
+                           (model/get-record-by-id "Работник" (:работник_id work-time-record) org-id))]
+               (if (and work-time-record worker)
+                 (util/html-response (work-time/render-edit-work-time-form work-time-record worker))
+                  (resp/redirect (url "/workers"))))))))))
 
 (defn update-work-time
   ([] (update-work-time nil nil))
   ([id-or-request request-or-params]
    (let [id (if (number? id-or-request) id-or-request
               (extract-id-from-request id-or-request))
-         params (extract-params (or request-or-params id-or-request))]
+         params (extract-params (or request-or-params id-or-request))
+         org-id (extract-org-id id-or-request)]
      (let [work-time-id (validate-id id)]
        (if (nil? work-time-id)
          (bad-request "Некорректный идентификатор записи")
-         (do
-           (logger/log-info (format "Попытка обновления учета времени ID=%s" work-time-id))
-           (let [validation-result (validation/validate-work-time params)]
-              (if (:valid? validation-result)
-                (let [data (parse-work-time-params params)
-                  result (model/update-record "Учет_рабочего_времени" work-time-id data)]
+         (if-not (model/get-work-time-by-id (str work-time-id) org-id)
+           (resp/redirect (url "/workers"))
+           (do
+             (logger/log-info (format "Попытка обновления учета времени ID=%s (org: %s)" work-time-id (str org-id)))
+             (let [validation-result (validation/validate-work-time params)]
+               (if (:valid? validation-result)
+                 (let [data (parse-work-time-params params)
+                       result (model/update-record "Учет_рабочего_времени" work-time-id data)]
                    (if (:success result)
-                    (do
-                      (let [work-time-record (model/get-work-time-by-id (str work-time-id))
-                            worker-id (:работник_id work-time-record)]
-                        (logger/log-audit "UPDATE" "WorkTime" work-time-id
-                                          (format "Обновлен учет времени для работника ID=%s" (str worker-id)))
-                        (logger/log-info (format "Учет времени успешно обновлен, ID=%s" work-time-id))
-                        (resp/redirect (url (str "/workers/" (or worker-id "?error=unknown") "/work-time")))))
-                   (do
-                      (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении учета времени")
-                      (let [work-time-record (model/get-work-time-by-id (str work-time-id))
-                            worker (model/get-record-by-id "Работник" (:работник_id work-time-record))]
-                        (util/html-response (work-time/render-edit-work-time-form work-time-record worker :errors [(:message result)]))))))
-               (do
+                     (do
+                       (let [work-time-record (model/get-work-time-by-id (str work-time-id) org-id)
+                             worker-id (:работник_id work-time-record)]
+                         (logger/log-audit "UPDATE" "WorkTime" work-time-id
+                                           (format "Обновлен учет времени для работника ID=%s" (str worker-id)))
+                         (logger/log-info (format "Учет времени успешно обновлен, ID=%s" work-time-id))
+                         (resp/redirect (url (str "/workers/" (or worker-id "?error=unknown") "/work-time")))))
+                     (do
+                       (logger/log-error ^Throwable (Exception. (:message result)) "Ошибка при обновлении учета времени")
+                       (let [work-time-record (model/get-work-time-by-id (str work-time-id) org-id)
+                             worker (model/get-record-by-id "Работник" (:работник_id work-time-record) org-id)]
+                         (util/html-response (work-time/render-edit-work-time-form work-time-record worker :errors [(:message result)]))))))
+                 (do
                    (logger/log-warn (format "Валидация учета времени не пройдена: %s" (str/join ", " (:errors validation-result))))
-                  (let [work-time-record (merge (model/get-work-time-by-id (str work-time-id)) params)
-                        worker (model/get-record-by-id "Работник" (:работник_id work-time-record))]
-                    (util/html-response (work-time/render-edit-work-time-form work-time-record worker :errors (:errors validation-result)))))))))))))
+                   (let [work-time-record (merge (model/get-work-time-by-id (str work-time-id) org-id) params)
+                         worker (model/get-record-by-id "Работник" (:работник_id work-time-record) org-id)]
+                      (util/html-response (work-time/render-edit-work-time-form work-time-record worker :errors (:errors validation-result))))))))))))))
 
 ;; ======================================================================
 ;; Контроллеры БД

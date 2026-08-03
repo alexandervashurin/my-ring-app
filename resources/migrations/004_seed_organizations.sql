@@ -18,7 +18,21 @@ UPDATE Работник SET organization_id = 1 WHERE id IN (1, 2, 5, 6);
 UPDATE Работник SET organization_id = 2 WHERE id IN (3, 7);
 UPDATE Работник SET organization_id = 3 WHERE id IN (4, 8);
 
+-- Синхронизируем организацию учёта времени и начислений с работниками
+UPDATE Учет_рабочего_времени
+SET organization_id = (SELECT organization_id FROM Работник WHERE id = работник_id)
+WHERE работник_id IN (SELECT id FROM Работник WHERE organization_id IN (2, 3));
+
+UPDATE Начисление_заработной_платы
+SET organization_id = (SELECT organization_id FROM Учет_рабочего_времени WHERE id = учет_рабочего_времени_id)
+WHERE учет_рабочего_времени_id IN (SELECT id FROM Учет_рабочего_времени WHERE organization_id IN (2, 3));
+
 -- +migrate Down
 
 UPDATE Работник SET organization_id = 1 WHERE organization_id IN (2, 3);
+UPDATE Учет_рабочего_времени SET organization_id = 1
+WHERE работник_id IN (SELECT id FROM Работник WHERE organization_id IN (2, 3));
+UPDATE Начисление_заработной_платы SET organization_id = 1
+WHERE учет_рабочего_времени_id IN (SELECT id FROM Учет_рабочего_времени
+                                    WHERE работник_id IN (SELECT id FROM Работник WHERE organization_id IN (2, 3)));
 DELETE FROM Организация WHERE id > 1;

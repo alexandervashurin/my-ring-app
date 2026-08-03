@@ -149,19 +149,27 @@
       (logger/log-error e (format "Ошибка при подсчёте записей в таблице %s" table-name) {:table table-name})
       0)))
 
-(defn get-record-by-id [table-name id]
-  (try
-    (validate-table-name table-name)
-    (let [safe-name (sanitize-table-name table-name)
-          result (first (jdbc/query db-spec [(str "SELECT * FROM \"" safe-name "\" WHERE id = ?") id]))]
-      (if result
-        (logger/log-info (format "Найдена запись ID=%s в таблице %s" id table-name))
-        (logger/log-warn (format "Запись ID=%s не найдена в таблице %s" id table-name)))
-      result)
-    (catch Exception e
-      (logger/log-error e (format "Ошибка при получении записи ID=%s из таблицы %s" id table-name)
-                        {:table table-name :id id})
-      nil)))
+(defn get-record-by-id
+  "Получение записи по ID. Если org-id передан — дополнительно проверяет принадлежность
+   записи к организации (только для таблиц с колонкой organization_id)."
+  ([table-name id] (get-record-by-id table-name id nil))
+  ([table-name id org-id]
+   (try
+     (validate-table-name table-name)
+     (let [safe-name (sanitize-table-name table-name)
+           query (if org-id
+                   (str "SELECT * FROM \"" safe-name "\" WHERE id = ? AND organization_id = ?")
+                   (str "SELECT * FROM \"" safe-name "\" WHERE id = ?"))
+           params (if org-id [id org-id] [id])
+           result (first (jdbc/query db-spec (into [query] params)))]
+       (if result
+         (logger/log-info (format "Найдена запись ID=%s в таблице %s" id table-name))
+         (logger/log-warn (format "Запись ID=%s не найдена в таблице %s" id table-name)))
+       result)
+     (catch Exception e
+       (logger/log-error e (format "Ошибка при получении записи ID=%s из таблицы %s" id table-name)
+                         {:table table-name :id id})
+       nil))))
 
 (defn create-record
   "Создание записи в таблице. Если org-id передан — автоматически добавляет organization_id."
@@ -464,17 +472,22 @@
                          {:worker-id worker-id})
        []))))
 
-(defn get-work-time-by-id [id]
-  (try
-    (let [result (first (jdbc/query db-spec
-                                    ["SELECT * FROM Учет_рабочего_времени WHERE id = ?" id]))]
-      (if result
-        (logger/log-info (format "Найдена запись учета времени ID=%s" id))
-        (logger/log-warn (format "Запись учета времени ID=%s не найдена" id)))
-      result)
-    (catch Exception e
-      (logger/log-error e (format "Ошибка при получении записи учета времени ID=%s" id) {:id id})
-      nil)))
+(defn get-work-time-by-id
+  "Получение записи учета времени. Если org-id не nil — проверяет принадлежность к организации."
+  ([id] (get-work-time-by-id id nil))
+  ([id org-id]
+   (try
+     (let [result (first (jdbc/query db-spec
+                                     (if org-id
+                                       ["SELECT у.* FROM Учет_рабочего_времени у WHERE у.id = ? AND у.organization_id = ?" id org-id]
+                                       ["SELECT * FROM Учет_рабочего_времени WHERE id = ?" id])))]
+       (if result
+         (logger/log-info (format "Найдена запись учета времени ID=%s" id))
+         (logger/log-warn (format "Запись учета времени ID=%s не найдена" id)))
+       result)
+     (catch Exception e
+       (logger/log-error e (format "Ошибка при получении записи учета времени ID=%s" id) {:id id})
+       nil))))
 
 ;; ======================================================================
 ;; Dashboard Analytics

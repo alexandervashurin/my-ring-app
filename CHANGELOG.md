@@ -3,6 +3,21 @@ All notable changes to this project will be documented in this file. This change
 
 ## [Unreleased] - 2026-08-03
 
+### 🔒 Security
+- **IDOR-фикс в model**: `get-record-by-id` и `get-work-time-by-id` получили arity с `org-id` — записи чужих организаций больше не возвращаются (ранее любой пользователь мог читать/менять данные работников и учёта времени другой организации по ID)
+- **IDOR-фикс в API**: `GET /api/workers/:id`, `PUT /api/workers/:id`, `PUT /api/work-time/:id` возвращают 404 для записей другой организации
+- **IDOR-фикс в HTML-контроллерах**: формы редактирования/просмотра работника и учёта времени проверяют принадлежность к организации и редиректят на `/workers` при чужой записи
+
+### 🐛 Bug Fixes
+- **`validation/validate-work-time`**: падал с `IllegalArgumentException` (500) при числовых JSON-значениях из API (`empty?`/`re-matches` не работают с Long); значения нормализуются в строки через `str-value`
+- **Миграция 004**: при переносе работников в организации 2/3 не обновлялись `organization_id` записей учёта времени и начислений — нарушен инвариант мульти-тенантности; добавлены `UPDATE`-синхронизации (Up и Down)
+
+### 🧪 Tests
+- **257 тестов, 653 утверждения** (+15 тестов, +19 утверждений)
+- Новые: IDOR-тесты API работников (`workers_test`), новый файл `salary_test` (зарплата/учёт времени, org-scoping), org-scoping HTML-контроллеров, `validate-work-time` с числовыми значениями, реальные тренды дашборда
+
+## [Unreleased] - 2026-08-03
+
 ### ⚡ Performance
 - **Пагинация HTML-списка работников**: `model/get-workers-page` выполняет `LIMIT/OFFSET` на уровне SQL (вместо загрузки всех записей), `model/count-workers` — через `COUNT(*)`
 - **Общий SELECT для списков**: из `get-workers-with-details`/`search-workers` вынесен общий `workers-list-select`, поиск переиспользует общий билдер запросов `workers-page-query`

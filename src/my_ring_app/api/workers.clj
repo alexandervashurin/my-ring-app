@@ -59,16 +59,17 @@
       (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
 
 (defn get-worker-by-id
-  "GET /api/workers/:id — получение работника по ID"
+  "GET /api/workers/:id — получение работника по ID (только своей организации)"
   [request]
   (try
-    (let [id (-> request :route-params :id validate-id)]
+    (let [id (-> request :route-params :id validate-id)
+          org-id (:org-id request)]
       (if (nil? id)
         (util/json-error 400 "INVALID_ID" "Некорректный идентификатор")
-        (let [worker (model/get-record-by-id "Работник" (str id))]
+        (let [worker (model/get-record-by-id "Работник" (str id) org-id)]
           (if worker
             (do
-              (logger/log-info (format "API: GET /api/workers/%d" id))
+              (logger/log-info (format "API: GET /api/workers/%d (org: %s)" id (str org-id)))
               (util/json-ok (format-worker worker)))
             (util/json-error 404 "NOT_FOUND" "Работник не найден")))))
     (catch Exception e
@@ -106,27 +107,30 @@
       (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
 
 (defn update-worker
-  "PUT /api/workers/:id — обновление работника"
+  "PUT /api/workers/:id — обновление работника (только своей организации)"
   [request]
   (try
     (let [id (-> request :route-params :id validate-id)
+          org-id (:org-id request)
           worker-data (:params request)]
       (if (nil? id)
         (util/json-error 400 "INVALID_ID" "Некорректный идентификатор")
-        (let [validation-result (validation/validate-worker worker-data)]
-          (if (:valid? validation-result)
-            (let [data (parse-worker-params worker-data)
-                  result (model/update-record "Работник" id data)]
-              (if (:success result)
-                (do
-                  (logger/log-audit "UPDATE" "Worker" id
-                                    (format "Обновлен работник %s %s (API)" (:фамилия data) (:имя data)))
-                  (logger/log-info (format "API: PUT /api/workers/%d — обновлён работник" id))
-                  (util/json-ok
-                   (format-worker (model/get-record-by-id "Работник" (str id)))
-                   "Работник успешно обновлён"))
-                (util/json-error 500 "UPDATE_ERROR" (:message result))))
-            (util/json-error-details 400 "VALIDATION_ERROR" "Ошибка валидации данных" (:errors validation-result))))))
+        (if-not (model/get-record-by-id "Работник" (str id) org-id)
+          (util/json-error 404 "NOT_FOUND" "Работник не найден")
+          (let [validation-result (validation/validate-worker worker-data)]
+            (if (:valid? validation-result)
+              (let [data (parse-worker-params worker-data)
+                    result (model/update-record "Работник" id data)]
+                (if (:success result)
+                  (do
+                    (logger/log-audit "UPDATE" "Worker" id
+                                      (format "Обновлен работник %s %s (API)" (:фамилия data) (:имя data)))
+                    (logger/log-info (format "API: PUT /api/workers/%d — обновлён работник" id))
+                    (util/json-ok
+                     (format-worker (model/get-record-by-id "Работник" (str id) org-id))
+                     "Работник успешно обновлён"))
+                  (util/json-error 500 "UPDATE_ERROR" (:message result))))
+              (util/json-error-details 400 "VALIDATION_ERROR" "Ошибка валидации данных" (:errors validation-result)))))))
     (catch Exception e
       (logger/log-error e "API: Ошибка при обновлении работника")
       (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))

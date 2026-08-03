@@ -111,6 +111,21 @@
     (let [response (ctrl/edit-worker-form "abc")]
       (is (= 400 (:status response))))))
 
+(deftest test-edit-worker-form-own-org
+  (testing "Редактирование работника своей организации доступно"
+    (let [response (ctrl/edit-worker-form {:org-id 1 :params {:id 1}})]
+      (is (= 200 (:status response))))))
+
+(deftest test-edit-worker-form-org-scoped
+  (testing "Редактирование работника другой организации недоступно (IDOR)"
+    (let [response (ctrl/edit-worker-form {:org-id 1 :params {:id 3}})]
+      (is (= 404 (:status response))))))
+
+(deftest test-update-worker-org-scoped
+  (testing "Обновление работника другой организации запрещено (IDOR)"
+    (let [response (ctrl/update-worker 3 (make-request valid-worker 1))]
+      (assert-redirect response 302))))
+
 ;; ======================================================================
 ;; CREATE worker
 ;; ======================================================================
@@ -231,6 +246,21 @@
   (testing "Форма редактирования учета времени с некорректным ID"
     (let [response (ctrl/edit-work-time-form "abc")]
       (is (= 400 (:status response))))))
+
+(deftest test-edit-work-time-form-org-scoped
+  (testing "Редактирование учета времени чужой организации недоступно (IDOR)"
+    (let [response (ctrl/edit-work-time-form {:org-id 1 :params {:id 3}})]
+      (is (= 302 (:status response))))))
+
+(deftest test-worker-salary-page-org-scoped
+  (testing "Зарплата работника другой организации недоступна (IDOR)"
+    (let [response (ctrl/worker-salary-page {:org-id 1 :params {:id 3}})]
+      (is (= 302 (:status response))))))
+
+(deftest test-worker-work-time-page-org-scoped
+  (testing "Учёт времени работника другой организации недоступен (IDOR)"
+    (let [response (ctrl/worker-work-time-page {:org-id 1 :params {:id 3}})]
+      (is (= 302 (:status response))))))
 
 ;; ======================================================================
 ;; UPDATE work-time

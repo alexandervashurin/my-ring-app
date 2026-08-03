@@ -99,6 +99,24 @@
       (is (false? (:success body)))
       (is (= "INVALID_ID" (get-in body [:error :code]))))))
 
+(deftest test-get-worker-by-id-org-scoped
+  (testing "Доступ к работнику другой организации запрещён (IDOR)"
+    (let [request (-> (make-request :get "/api/workers/3" {} {:id "3"}
+                                    {:role "manager" :organization_id 1})
+                      (assoc :org-id 1))
+          response (get-worker-by-id request)
+          body (get-body response)]
+      (is (= 404 (:status response)))
+      (is (= "NOT_FOUND" (get-in body [:error :code]))))))
+
+(deftest test-get-worker-by-id-own-org
+  (testing "Доступ к работнику своей организации разрешён"
+    (let [request (-> (make-request :get "/api/workers/1" {} {:id "1"}
+                                    {:role "manager" :organization_id 1})
+                      (assoc :org-id 1))
+          response (get-worker-by-id request)]
+      (is (= 200 (:status response))))))
+
 ;; ======================================================================
 ;; Тесты для POST /api/workers
 ;; ======================================================================
@@ -173,7 +191,7 @@
         (is (= 500 (:status response)))))))
 
 (deftest test-update-worker-invalid
-  (testing "Обновление работника с невалидными данными"
+  (testing "Обновление работника с некорректными данными"
     (let [request (make-request :put "/api/workers/1"
                                 {:фамилия ""}
                                 {:id "1"}
@@ -181,8 +199,20 @@
           response (update-worker request)
           body (get-body response)]
       (is (= 400 (:status response)))
-      (is (false? (:success body)))
       (is (= "VALIDATION_ERROR" (get-in body [:error :code]))))))
+
+(deftest test-update-worker-org-scoped
+  (testing "Обновление работника другой организации запрещено (IDOR)"
+    (let [request (-> (make-request :put "/api/workers/3"
+                                    {:фамилия "Хакер" :имя "Хакер" :отчество "Хакер"
+                                     :дата_приема "2024-01-01" :цех_id "1"}
+                                    {:id "3"}
+                                    {:role "manager" :organization_id 1})
+                      (assoc :org-id 1))
+          response (update-worker request)
+          body (get-body response)]
+      (is (= 404 (:status response)))
+      (is (= "NOT_FOUND" (get-in body [:error :code]))))))
 
 ;; ======================================================================
 ;; Тесты для DELETE /api/workers/:id

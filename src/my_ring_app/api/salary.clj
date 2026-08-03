@@ -56,24 +56,27 @@
       (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
 
 (defn update-work-time
-  "PUT /api/work-time/:id — обновление учёта времени"
+  "PUT /api/work-time/:id — обновление учёта времени (только своей организации)"
   [request]
   (try
     (let [work-time-id (-> request :route-params :id validate-id)
+          org-id (:org-id request)
           data (:params request)]
       (if (nil? work-time-id)
         (util/json-error 400 "INVALID_ID" "Некорректный идентификатор")
-        (let [validation-result (validation/validate-work-time data)]
-          (if (:valid? validation-result)
-            (let [update-data (util/parse-work-time-params data)
-                  result (model/update-record "Учет_рабочего_времени" work-time-id update-data)]
-              (if (:success result)
-                (do
-                  (logger/log-audit "UPDATE" "WorkTime" work-time-id "Обновлен учёт времени (API)")
-                  (logger/log-info (format "API: PUT /api/work-time/%d — обновлено" work-time-id))
-                  (util/json-ok nil "Учёт времени обновлён"))
-                (util/json-error 500 "UPDATE_ERROR" (:message result))))
-            (util/json-error-details 400 "VALIDATION_ERROR" "Ошибка валидации данных" (:errors validation-result))))))
+        (if-not (model/get-work-time-by-id (str work-time-id) org-id)
+          (util/json-error 404 "NOT_FOUND" "Запись учёта времени не найдена")
+          (let [validation-result (validation/validate-work-time data)]
+            (if (:valid? validation-result)
+              (let [update-data (util/parse-work-time-params data)
+                    result (model/update-record "Учет_рабочего_времени" work-time-id update-data)]
+                (if (:success result)
+                  (do
+                    (logger/log-audit "UPDATE" "WorkTime" work-time-id "Обновлен учёт времени (API)")
+                    (logger/log-info (format "API: PUT /api/work-time/%d — обновлено" work-time-id))
+                    (util/json-ok nil "Учёт времени обновлён"))
+                  (util/json-error 500 "UPDATE_ERROR" (:message result))))
+              (util/json-error-details 400 "VALIDATION_ERROR" "Ошибка валидации данных" (:errors validation-result)))))))
     (catch Exception e
       (logger/log-error e "API: Ошибка при обновлении учёта времени")
       (util/json-error 500 "INTERNAL_ERROR" "Внутренняя ошибка сервера"))))
