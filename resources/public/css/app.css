@@ -437,6 +437,30 @@ nav a.active {
 
 .chart-container {
   min-height: 350px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-body {
+  position: relative;
+  flex: 1;
+  min-height: 260px;
+  width: 100%;
+}
+
+.chart-body canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 14px;
 }
 
 .chart-title,
@@ -1046,6 +1070,18 @@ nav a.active {
   .charts-row,
   .tables-row {
     grid-template-columns: 1fr;
+  }
+
+  .chart-container {
+    min-height: 300px;
+  }
+
+  .chart-body {
+    min-height: 220px;
+  }
+
+  .chart-title {
+    font-size: 15px;
   }
 
   .form-row {

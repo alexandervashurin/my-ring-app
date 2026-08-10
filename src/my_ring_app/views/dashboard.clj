@@ -97,53 +97,6 @@
          "</div>"
          "</div>")))
 
-(defn- render-chart-container
-  "Рендеринг контейнера для диаграммы"
-  [title chart-id chart-type labels data colors]
-  (let [labels-json (str "[" (str/join "," (map #(str "\"" (helpers/escape-js-string %) "\"") labels)) "]")
-        data-json (str "[" (str/join "," (map str data)) "]")
-        colors-json (str "[" (str/join "," (map #(str "\"" % "\"") colors)) "]")]
-    (str "<div class='chart-container'>"
-         "<h3 class='chart-title'>" title "</h3>"
-         "<canvas id='" chart-id "'></canvas>"
-         "<script>"
-         "new Chart(document.getElementById('" chart-id "'), {"
-         "type: '" chart-type "',"
-         "data: {"
-         "labels: " labels-json ","
-         "datasets: [{"
-         "data: " data-json ","
-         "backgroundColor: " colors-json ","
-         "borderWidth: 2,"
-         "borderColor: '#fff'"
-         "}]"
-         "},"
-         "options: {"
-         "responsive: true,"
-         "maintainAspectRatio: true,"
-         "plugins: {"
-         "legend: {"
-         "position: 'bottom',"
-         "labels: { padding: 15, font: { size: 12 } }"
-         "}"
-         "}"
-         "}"
-         "});"
-         "</script>"
-         "</div>")))
-
-(defn- render-bar-chart
-  "Рендеринг столбчатой диаграммы"
-  [title chart-id labels data]
-  (let [colors (vec (repeat (count labels) "rgba(102, 126, 234, 0.8)"))]
-    (render-chart-container title chart-id "bar" labels data colors)))
-
-(defn- render-pie-chart
-  "Рендеринг круговой диаграммы"
-  [title chart-id labels data]
-  (let [colors ["#667eea" "#764ba2" "#f093fb" "#f5576c" "#4facfe" "#00f2fe" "#43e97b" "#38f9d7"]]
-    (render-chart-container title chart-id "pie" labels data (vec (take (count labels) colors)))))
-
 (defn- render-chart-containers
   "Рендеринг контейнеров для графиков Chart.js"
   []
@@ -156,27 +109,27 @@
        "<div class='charts-row'>"
        "<div class='chart-container'>"
        "<h3 class='chart-title'>🏭 Распределение по цехам</h3>"
-       "<canvas id='chart-workers-by-shop'></canvas>"
+       "<div class='chart-body'><canvas id='chart-workers-by-shop'></canvas></div>"
        "</div>"
        "<div class='chart-container'>"
        "<h3 class='chart-title'>👥 Распределение по категориям</h3>"
-       "<canvas id='chart-workers-by-category'></canvas>"
+       "<div class='chart-body'><canvas id='chart-workers-by-category'></canvas></div>"
        "</div>"
        "</div>"
        "<div class='charts-row'>"
        "<div class='chart-container'>"
        "<h3 class='chart-title'>💰 Распределение по зарплате</h3>"
-       "<canvas id='chart-salary-distribution'></canvas>"
+       "<div class='chart-body'><canvas id='chart-salary-distribution'></canvas></div>"
        "</div>"
        "<div class='chart-container'>"
        "<h3 class='chart-title'>📈 Фонд оплаты по месяцам</h3>"
-       "<canvas id='chart-payroll-by-month'></canvas>"
+       "<div class='chart-body'><canvas id='chart-payroll-by-month'></canvas></div>"
        "</div>"
        "</div>"
        "<div class='charts-row'>"
        "<div class='chart-container'>"
        "<h3 class='chart-title'>🎯 Распределение по разрядам</h3>"
-       "<canvas id='chart-workers-by-rank'></canvas>"
+       "<div class='chart-body'><canvas id='chart-workers-by-rank'></canvas></div>"
        "</div>"
        "</div>"))
 

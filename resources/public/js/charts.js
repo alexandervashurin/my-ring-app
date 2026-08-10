@@ -1,5 +1,7 @@
 /* ==========================================================================
    Система управления персоналом - Графики и диаграммы (Chart.js)
+   Отзывчивые графики: maintainAspectRatio=false, адаптивные подписи,
+   поддержка high-DPI, обработка пустых данных.
    ========================================================================== */
 
 (function() {
@@ -8,85 +10,217 @@
   // Глобальное хранилище для экземпляров графиков
   var charts = {};
 
-  // --------------------------------------------------------------------------
-  // Инициализация графиков
-  // --------------------------------------------------------------------------
+  var EMPTY_MESSAGE = 'Нет данных';
 
-  /**
-   * Инициализация всех графиков на странице
-   */
-  function initCharts() {
-    // График распределения по цехам
-    initWorkersByShopChart();
-    
-    // График распределения по категориям
-    initWorkersByCategoryChart();
-    
-    // График распределения по зарплате
-    initSalaryDistributionChart();
-    
-    // График фонда оплаты по месяцам
-    initPayrollByMonthChart();
-    
-    // График разрядов
-    initWorkersByRankChart();
+  function isMobile() {
+    return window.innerWidth < 768;
+  }
+
+  function dashboardData(key) {
+    var data = window.DashboardData ? window.DashboardData[key] : null;
+    return data || [];
+  }
+
+  function chartFontSize(mobileSize, desktopSize) {
+    return isMobile() ? mobileSize : desktopSize;
   }
 
   /**
-   * График: Распределение работников по цехам
+   * Базовые опции для всех графиков: заполняют контейнер,
+   * адаптируются к любому размеру экрана.
    */
-  function initWorkersByShopChart() {
-    var canvas = document.getElementById('chart-workers-by-shop');
+  function baseOptions() {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      resizeDelay: 100,
+      layout: {
+        padding: {
+          top: 10,
+          right: 10,
+          bottom: 10,
+          left: 10
+        }
+      },
+      animation: {
+        duration: 400
+      },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: 12,
+            padding: 8,
+            font: {
+              size: chartFontSize(10, 11)
+            }
+          }
+        },
+        title: {
+          display: true,
+          font: {
+            size: chartFontSize(14, 16),
+            weight: 'bold'
+          }
+        }
+      }
+    };
+  }
+
+  /**
+   * Глубокое слияние объектов опций Chart.js (вложенные plugins/scales)
+   */
+  function mergeOptions(target, source) {
+    if (!source) return target;
+    Object.keys(source).forEach(function(key) {
+      var sv = source[key];
+      var tv = target[key];
+      if (sv && typeof sv === 'object' && !Array.isArray(sv) &&
+          tv && typeof tv === 'object' && !Array.isArray(tv)) {
+        mergeOptions(tv, sv);
+      } else {
+        target[key] = sv;
+      }
+    });
+    return target;
+  }
+
+  /**
+   * Рендеринг placeholder'а для пустых данных
+   */
+  function showEmptyState(canvas) {
+    var container = canvas.closest('.chart-body') || canvas.parentNode;
+    if (!container) return;
+
+    var empty = document.createElement('div');
+    empty.className = 'chart-empty';
+    empty.textContent = EMPTY_MESSAGE;
+    empty.setAttribute('data-chart-empty', 'true');
+    container.appendChild(empty);
+  }
+
+  function clearEmptyState(canvas) {
+    var container = canvas.closest('.chart-body') || canvas.parentNode;
+    if (!container) return;
+    var empty = container.querySelector('[data-chart-empty="true"]');
+    if (empty) empty.remove();
+  }
+
+  /**
+   * Создание графика. Если данных нет — показывает placeholder.
+   */
+  function createChart(id, config) {
+    var canvas = document.getElementById(id);
     if (!canvas) return;
 
-    var ctx = canvas.getContext('2d');
-    var data = window.DashboardData ? window.DashboardData.byShop : [];
+    clearEmptyState(canvas);
 
-    charts.byShop = new Chart(ctx, {
+    var items = config.getItems();
+    if (!items || items.length === 0) {
+      showEmptyState(canvas);
+      return;
+    }
+
+    var ctx = canvas.getContext('2d');
+    var options = baseOptions();
+    options.plugins.title.text = config.title;
+
+    if (config.options) {
+      options = mergeOptions(options, config.options);
+    }
+
+    charts[id] = new Chart(ctx, {
+      type: config.type,
+      data: config.getData(items),
+      options: options
+    });
+  }
+
+  /**
+   * Обновление данных существующего графика.
+   */
+  function refreshChart(id, config) {
+    var chart = charts[id];
+    var canvas = document.getElementById(id);
+
+    if (!canvas) return;
+
+    var items = config.getItems();
+
+    if (!items || items.length === 0) {
+      if (chart) {
+        chart.destroy();
+        charts[id] = null;
+      }
+      showEmptyState(canvas);
+      return;
+    }
+
+    if (!chart) {
+      clearEmptyState(canvas);
+      createChart(id, config);
+      return;
+    }
+
+    var data = config.getData(items);
+    chart.data.labels = data.labels;
+    chart.data.datasets = data.datasets;
+    chart.update();
+  }
+
+  function byNameCount(items) {
+    return {
+      labels: items.map(function(item) { return item.name; }),
+      datasets: [{
+        data: items.map(function(item) { return item.count; })
+      }]
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // Конфигурация графиков
+  // --------------------------------------------------------------------------
+
+  var CHART_CONFIG = {
+    'chart-workers-by-shop': {
       type: 'bar',
-      data: {
-        labels: data.map(function(item) { return item.name; }),
-        datasets: [{
-          label: 'Количество работников',
-          data: data.map(function(item) { return item.count; }),
-          backgroundColor: [
-            'rgba(102, 126, 234, 0.8)',
-            'rgba(118, 75, 162, 0.8)',
-            'rgba(67, 233, 123, 0.8)',
-            'rgba(79, 172, 254, 0.8)',
-            'rgba(250, 112, 154, 0.8)',
-            'rgba(161, 140, 209, 0.8)',
-            'rgba(254, 164, 175, 0.8)',
-            'rgba(94, 231, 223, 0.8)'
-          ],
-          borderColor: [
-            'rgba(102, 126, 234, 1)',
-            'rgba(118, 75, 162, 1)',
-            'rgba(67, 233, 123, 1)',
-            'rgba(79, 172, 254, 1)',
-            'rgba(250, 112, 154, 1)',
-            'rgba(161, 140, 209, 1)',
-            'rgba(254, 164, 175, 1)',
-            'rgba(94, 231, 223, 1)'
-          ],
-          borderWidth: 1
-        }]
+      title: 'Распределение по цехам',
+      getItems: function() { return dashboardData('byShop'); },
+      getData: function(items) {
+        return {
+          labels: items.map(function(item) { return item.name; }),
+          datasets: [{
+            label: 'Количество работников',
+            data: items.map(function(item) { return item.count; }),
+            backgroundColor: [
+              'rgba(102, 126, 234, 0.8)',
+              'rgba(118, 75, 162, 0.8)',
+              'rgba(67, 233, 123, 0.8)',
+              'rgba(79, 172, 254, 0.8)',
+              'rgba(250, 112, 154, 0.8)',
+              'rgba(161, 140, 209, 0.8)',
+              'rgba(254, 164, 175, 0.8)',
+              'rgba(94, 231, 223, 0.8)'
+            ],
+            borderColor: [
+              'rgba(102, 126, 234, 1)',
+              'rgba(118, 75, 162, 1)',
+              'rgba(67, 233, 123, 1)',
+              'rgba(79, 172, 254, 1)',
+              'rgba(250, 112, 154, 1)',
+              'rgba(161, 140, 209, 1)',
+              'rgba(254, 164, 175, 1)',
+              'rgba(94, 231, 223, 1)'
+            ],
+            borderWidth: 1,
+            maxBarThickness: 42
+          }]
+        };
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
         plugins: {
-          legend: {
-            display: false
-          },
-          title: {
-            display: true,
-            text: 'Распределение по цехам',
-            font: {
-              size: 16,
-              weight: 'bold'
-            }
-          },
+          legend: { display: false },
           tooltip: {
             callbacks: {
               label: function(context) {
@@ -104,69 +238,39 @@
           },
           x: {
             ticks: {
-              maxRotation: 45,
-              minRotation: 45,
-              autoSkip: false,
+              autoSkip: true,
+              maxRotation: isMobile() ? 45 : 30,
+              minRotation: 0,
+              maxTicksLimit: isMobile() ? 8 : 12,
               font: {
-                size: 11
+                size: chartFontSize(10, 11)
               }
             }
           }
         }
       }
-    });
-  }
+    },
 
-  /**
-   * График: Распределение по категориям
-   */
-  function initWorkersByCategoryChart() {
-    var canvas = document.getElementById('chart-workers-by-category');
-    if (!canvas) return;
-
-    var ctx = canvas.getContext('2d');
-    var data = window.DashboardData ? window.DashboardData.byCategory : [];
-
-    charts.byCategory = new Chart(ctx, {
+    'chart-workers-by-category': {
       type: 'pie',
-      data: {
-        labels: data.map(function(item) { return item.name; }),
-        datasets: [{
-          data: data.map(function(item) { return item.count; }),
-          backgroundColor: [
-            'rgba(102, 126, 234, 0.8)',
-            'rgba(118, 75, 162, 0.8)',
-            'rgba(67, 233, 123, 0.8)',
-            'rgba(79, 172, 254, 0.8)',
-            'rgba(250, 112, 154, 0.8)',
-            'rgba(161, 140, 209, 0.8)'
-          ],
-          borderColor: '#fff',
-          borderWidth: 2
-        }]
+      title: 'Распределение по категориям',
+      getItems: function() { return dashboardData('byCategory'); },
+      getData: function(items) {
+        var data = byNameCount(items);
+        data.datasets[0].backgroundColor = [
+          'rgba(102, 126, 234, 0.8)',
+          'rgba(118, 75, 162, 0.8)',
+          'rgba(67, 233, 123, 0.8)',
+          'rgba(79, 172, 254, 0.8)',
+          'rgba(250, 112, 154, 0.8)',
+          'rgba(161, 140, 209, 0.8)'
+        ];
+        data.datasets[0].borderColor = '#fff';
+        data.datasets[0].borderWidth = 2;
+        return data;
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
         plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              boxWidth: 12,
-              padding: 10,
-              font: {
-                size: 11
-              }
-            }
-          },
-          title: {
-            display: true,
-            text: 'Распределение по категориям',
-            font: {
-              size: 16,
-              weight: 'bold'
-            }
-          },
           tooltip: {
             callbacks: {
               label: function(context) {
@@ -180,57 +284,27 @@
           }
         }
       }
-    });
-  }
+    },
 
-  /**
-   * График: Распределение по зарплате
-   */
-  function initSalaryDistributionChart() {
-    var canvas = document.getElementById('chart-salary-distribution');
-    if (!canvas) return;
-
-    var ctx = canvas.getContext('2d');
-    var data = window.DashboardData ? window.DashboardData.salaryDistribution : [];
-
-    charts.salaryDistribution = new Chart(ctx, {
+    'chart-salary-distribution': {
       type: 'doughnut',
-      data: {
-        labels: data.map(function(item) { return item.name; }),
-        datasets: [{
-          data: data.map(function(item) { return item.count; }),
-          backgroundColor: [
-            'rgba(244, 67, 54, 0.8)',   // Менее 40 000
-            'rgba(255, 152, 0, 0.8)',   // 40 000 - 60 000
-            'rgba(76, 175, 80, 0.8)',   // 60 000 - 90 000
-            'rgba(33, 150, 243, 0.8)'   // Более 90 000
-          ],
-          borderColor: '#fff',
-          borderWidth: 2
-        }]
+      title: 'Распределение по зарплате (₽)',
+      getItems: function() { return dashboardData('salaryDistribution'); },
+      getData: function(items) {
+        var data = byNameCount(items);
+        data.datasets[0].backgroundColor = [
+          'rgba(244, 67, 54, 0.8)',
+          'rgba(255, 152, 0, 0.8)',
+          'rgba(76, 175, 80, 0.8)',
+          'rgba(33, 150, 243, 0.8)'
+        ];
+        data.datasets[0].borderColor = '#fff';
+        data.datasets[0].borderWidth = 2;
+        return data;
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
+        cutout: isMobile() ? '55%' : '62%',
         plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              boxWidth: 12,
-              padding: 10,
-              font: {
-                size: 11
-              }
-            }
-          },
-          title: {
-            display: true,
-            text: 'Распределение по зарплате (₽)',
-            font: {
-              size: 16,
-              weight: 'bold'
-            }
-          },
           tooltip: {
             callbacks: {
               label: function(context) {
@@ -244,145 +318,120 @@
           }
         }
       }
-    });
-  }
+    },
 
-  /**
-   * График: Фонд оплаты по месяцам
-   */
-  function initPayrollByMonthChart() {
-    var canvas = document.getElementById('chart-payroll-by-month');
-    if (!canvas) return;
-
-    var ctx = canvas.getContext('2d');
-    var data = window.DashboardData ? window.DashboardData.payrollByMonth : [];
-    
-    charts.payrollByMonth = new Chart(ctx, {
+    'chart-payroll-by-month': {
       type: 'line',
-      data: {
-        labels: data.map(function(item) { return item.месяц + '/' + item.год; }),
-        datasets: [{
-          label: 'Фонд оплаты труда (₽)',
-          data: data.map(function(item) { return item.total; }),
-          backgroundColor: 'rgba(102, 126, 234, 0.2)',
-          borderColor: 'rgba(102, 126, 234, 1)',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.4
-        }]
+      title: 'Фонд оплаты по месяцам',
+      getItems: function() { return dashboardData('payrollByMonth'); },
+      getData: function(items) {
+        return {
+          labels: items.map(function(item) { return item.month + '/' + item.year; }),
+          datasets: [{
+            label: 'Фонд оплаты труда (₽)',
+            data: items.map(function(item) { return item.total; }),
+            backgroundColor: 'rgba(102, 126, 234, 0.2)',
+            borderColor: 'rgba(102, 126, 234, 1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: chartFontSize(3, 4)
+          }]
+        };
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
         plugins: {
-          legend: {
-            display: false
-          },
-          title: {
-            display: true,
-            text: 'Фонд оплаты по месяцам',
-            font: {
-              size: 16,
-              weight: 'bold'
-            }
-          }
+          legend: { display: false }
+        },
+        interaction: {
+          mode: 'index',
+          intersect: false
         },
         scales: {
           y: {
-            beginAtZero: true
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return (value / 1000) + ' тыс ₽';
+              }
+            }
+          },
+          x: {
+            ticks: {
+              autoSkip: true,
+              maxTicksLimit: isMobile() ? 6 : 12,
+              font: {
+                size: chartFontSize(10, 11)
+              }
+            }
           }
         }
       }
-    });
-  }
+    },
 
-  /**
-   * График: Распределение по разрядам
-   */
-  function initWorkersByRankChart() {
-    var canvas = document.getElementById('chart-workers-by-rank');
-    if (!canvas) return;
-
-    var ctx = canvas.getContext('2d');
-    var data = window.DashboardData ? window.DashboardData.byRank : [];
-    
-    charts.byRank = new Chart(ctx, {
+    'chart-workers-by-rank': {
       type: 'radar',
-      data: {
-        labels: data.map(function(item) { return item.name + ' разряд'; }),
-        datasets: [{
-          label: 'Количество работников',
-          data: data.map(function(item) { return item.count; }),
-          backgroundColor: 'rgba(102, 126, 234, 0.2)',
-          borderColor: 'rgba(102, 126, 234, 1)',
-          pointBackgroundColor: 'rgba(102, 126, 234, 1)',
-          pointBorderColor: '#fff',
-          pointHoverBackgroundColor: '#fff',
-          pointHoverBorderColor: 'rgba(102, 126, 234, 1)'
-        }]
+      title: 'Распределение по разрядам',
+      getItems: function() { return dashboardData('byRank'); },
+      getData: function(items) {
+        return {
+          labels: items.map(function(item) { return item.name + ' разряд'; }),
+          datasets: [{
+            label: 'Количество работников',
+            data: items.map(function(item) { return item.count; }),
+            backgroundColor: 'rgba(102, 126, 234, 0.2)',
+            borderColor: 'rgba(102, 126, 234, 1)',
+            pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: 'rgba(102, 126, 234, 1)'
+          }]
+        };
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
         plugins: {
-          legend: {
-            display: false
-          },
-          title: {
-            display: true,
-            text: 'Распределение по разрядам',
-            font: {
-              size: 16,
-              weight: 'bold'
-            }
-          }
+          legend: { display: false }
         },
         scales: {
           r: {
-            beginAtZero: true
+            beginAtZero: true,
+            ticks: {
+              backdropPadding: 2,
+              font: {
+                size: chartFontSize(9, 10)
+              }
+            },
+            pointLabels: {
+              font: {
+                size: chartFontSize(9, 10)
+              }
+            }
           }
         }
       }
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // Инициализация
+  // --------------------------------------------------------------------------
+
+  function initCharts() {
+    Object.keys(CHART_CONFIG).forEach(function(id) {
+      createChart(id, CHART_CONFIG[id]);
     });
   }
 
-  // --------------------------------------------------------------------------
-  // Утилиты
-  // --------------------------------------------------------------------------
-
   /**
-   * Обновление данных графиков
+   * Обновление данных всех графиков
    */
   function updateCharts(newData) {
-    if (newData.byShop && charts.byShop) {
-      charts.byShop.data.labels = newData.byShop.map(function(item) { return item.name; });
-      charts.byShop.data.datasets[0].data = newData.byShop.map(function(item) { return item.count; });
-      charts.byShop.update();
+    if (newData) {
+      window.DashboardData = newData;
     }
-    
-    if (newData.byCategory && charts.byCategory) {
-      charts.byCategory.data.labels = newData.byCategory.map(function(item) { return item.name; });
-      charts.byCategory.data.datasets[0].data = newData.byCategory.map(function(item) { return item.count; });
-      charts.byCategory.update();
-    }
-    
-    if (newData.salaryDistribution && charts.salaryDistribution) {
-      charts.salaryDistribution.data.labels = newData.salaryDistribution.map(function(item) { return item.name; });
-      charts.salaryDistribution.data.datasets[0].data = newData.salaryDistribution.map(function(item) { return item.count; });
-      charts.salaryDistribution.update();
-    }
-    
-    if (newData.payrollByMonth && charts.payrollByMonth) {
-      charts.payrollByMonth.data.labels = newData.payrollByMonth.map(function(item) { return item.месяц + '/' + item.год; });
-      charts.payrollByMonth.data.datasets[0].data = newData.payrollByMonth.map(function(item) { return item.total; });
-      charts.payrollByMonth.update();
-    }
-    
-    if (newData.byRank && charts.byRank) {
-      charts.byRank.data.labels = newData.byRank.map(function(item) { return item.name + ' разряд'; });
-      charts.byRank.data.datasets[0].data = newData.byRank.map(function(item) { return item.count; });
-      charts.byRank.update();
-    }
+    Object.keys(CHART_CONFIG).forEach(function(id) {
+      refreshChart(id, CHART_CONFIG[id]);
+    });
   }
 
   /**
@@ -397,9 +446,33 @@
     });
   }
 
-  // --------------------------------------------------------------------------
-  // Инициализация
-  // --------------------------------------------------------------------------
+  /**
+   * Перерисовка после изменения размеров контейнеров
+   */
+  function resizeAllCharts() {
+    Object.keys(charts).forEach(function(key) {
+      if (charts[key]) charts[key].resize();
+    });
+  }
+
+  // Реакция на изменение размеров окна (с задержкой)
+  var resizeTimer = null;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resizeAllCharts, 150);
+  });
+
+  // Реакция на изменение раскладки (мобильная навигация, sidebar и т.п.)
+  if (typeof ResizeObserver !== 'undefined') {
+    var observer = new ResizeObserver(function() {
+      resizeAllCharts();
+    });
+    Object.keys(CHART_CONFIG).forEach(function(id) {
+      var canvas = document.getElementById(id);
+      if (canvas) observer.observe(canvas.parentNode || canvas);
+    });
+    window.__chartResizeObserver = observer;
+  }
 
   // Запуск после загрузки DOM
   if (document.readyState === 'loading') {
@@ -412,7 +485,8 @@
   window.DashboardCharts = {
     init: initCharts,
     update: updateCharts,
-    destroy: destroyCharts
+    destroy: destroyCharts,
+    resize: resizeAllCharts
   };
 
 })();
